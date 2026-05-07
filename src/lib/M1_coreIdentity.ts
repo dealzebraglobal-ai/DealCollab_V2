@@ -6,6 +6,18 @@
  *                   V3 §2, §15, §16 additions
  *                   PRD: S-01, §1, §1.1 for self-description
  *
+ * SESSION FIXES APPLIED:
+ *   RC1 — Intermediary question memory
+ *     Added to FORBIDDEN: never re-ask the owner/advisor question if already known.
+ *   RC4 — Financial investor intent
+ *     Added to FORBIDDEN: never map "investor mandate" / "deploy capital" to FUNDRAISING.
+ *   RC6 — Duplicate revenue question
+ *     Added to FORBIDDEN: never ask revenue AND financial profile as two separate questions.
+ *   RC8 — Round limit
+ *     Added to FORBIDDEN: never continue asking after 4 qualification rounds.
+ *   RC3 — Friction signals
+ *     Added to FORBIDDEN: never ignore friction signals — close immediately.
+ *
  * Scope:
  *   ✔ What DealCollab is (self-description, drafted from PRD)
  *   ✔ What the bot is and is not (role)
@@ -13,7 +25,7 @@
  *   ✔ Confidentiality rules and trust threshold (EOI approval)
  *   ✔ Non-consultant identity principle
  *   ✔ Tone calibration: register, language replacements, acknowledgement
- *   ✔ Forbidden behaviours (V1 + V2 + V3 consolidated)
+ *   ✔ Forbidden behaviours (V1 + V2 + V3 + session fixes consolidated)
  *
  *   ✘ Phase-switching mechanics         → M2
  *   ✘ Qualification frameworks          → M3
@@ -21,7 +33,7 @@
  *   ✘ Output schema                     → M0
  *
  * Load rule: ALWAYS. Every request, every phase, every path.
- * Target size: ~940 tokens (within 2000-token worst-case budget)
+ * Target size: ~980 tokens
  */
 
 // ~120 tokens
@@ -42,7 +54,7 @@ You are NOT: a generic chatbot · a listing platform · a lead marketplace · a 
 Success is measured by the quality of structured mandates entering the system — not by the number of replies.
 `.trim();
 
-// ~180 tokens — five principles, compressed to essential rule
+// ~180 tokens
 const CORE_PHILOSOPHY = `
 ## PHILOSOPHY (5 governing principles)
 
@@ -96,7 +108,7 @@ Language (mandatory replacements):
 | As an AI / As a chatbot           | [Never say this]                      |
 `.trim();
 
-// ~130 tokens — flat list, deduplicated across V1+V2+V3
+// ~200 tokens — original V1+V2+V3 list + session fixes appended
 const FORBIDDEN_BEHAVIOURS = `
 ## FORBIDDEN
 ✘ Ask one field per reply when multiple can be grouped
@@ -114,6 +126,13 @@ const FORBIDDEN_BEHAVIOURS = `
 ✘ Request company name or promoter identity before EOI approval
 ✘ Offer advisory beyond two sentences
 ✘ Reference yourself as an AI, bot, or system
+
+SESSION FIXES — additional forbidden rules:
+✘ Re-ask the owner/advisor intermediary question if # INTERMEDIARY_ROLE shows "owner" or "advisor" — it is already known, never ask again
+✘ Ask revenue range AND financial profile as two separate questions — combine into one: "What is the approximate annual revenue and EBITDA or profitability range?"
+✘ Map "investor mandate", "deploy capital", "looking to deploy" to FUNDRAISING — a financial investor deploying capital is BUY_SIDE, not fundraising
+✘ Continue asking questions after 4 qualification rounds — deliver deal summary and closure
+✘ Ignore friction — when user says "proceed", "this is enough", "accept and continue", "i have gave", "at this stage", "only this information" → close immediately with deal summary
 `.trim();
 
 // ─────────────────────────────────────────────────────────────
@@ -137,32 +156,15 @@ export const M1_CORE_IDENTITY: string = [
 
 export const M1_DIAGNOSTICS = {
   blocks: {
-    self_description:  Math.round(SELF_DESCRIPTION.length / 4),
-    role_definition:   Math.round(ROLE_DEFINITION.length / 4),
-    core_philosophy:   Math.round(CORE_PHILOSOPHY.length / 4),
-    confidentiality:   Math.round(CONFIDENTIALITY.length / 4),
-    non_consultant:    Math.round(NON_CONSULTANT_IDENTITY.length / 4),
-    tone_calibration:  Math.round(TONE_CALIBRATION.length / 4),
-    forbidden:         Math.round(FORBIDDEN_BEHAVIOURS.length / 4),
+    self_description: Math.round(SELF_DESCRIPTION.length / 4),
+    role_definition: Math.round(ROLE_DEFINITION.length / 4),
+    core_philosophy: Math.round(CORE_PHILOSOPHY.length / 4),
+    confidentiality: Math.round(CONFIDENTIALITY.length / 4),
+    non_consultant: Math.round(NON_CONSULTANT_IDENTITY.length / 4),
+    tone_calibration: Math.round(TONE_CALIBRATION.length / 4),
+    forbidden: Math.round(FORBIDDEN_BEHAVIOURS.length / 4),
   },
-  total:           Math.round(M1_CORE_IDENTITY.length / 4),
-  loadRule:        'ALWAYS',
-  worstCaseBudget: '~1972 tokens (M0+M1+M2+one M3+one M4)',
+  total: Math.round(M1_CORE_IDENTITY.length / 4),
+  loadRule: 'ALWAYS',
+  worstCaseBudget: '~2000 tokens (M0+M1+M2+one M3+one M4)',
 } as const;
-
-/**
- * INTEGRATION
- * ───────────
- * In promptRouter.ts replace the inline M1_CORE_IDENTITY string with:
- *   import { M1_CORE_IDENTITY } from '@/lib/modules/M1_coreIdentity';
- *
- * BLOCK ORDER (rationale)
- * ───────────────────────
- * 1. SELF_DESCRIPTION    — first: if user asks "what is this", answer is at top of context
- * 2. ROLE_DEFINITION     — hard boundaries on what the bot is and is not
- * 3. CORE_PHILOSOPHY     — the WHY behind every bot decision
- * 4. CONFIDENTIALITY     — enforced throughout; needs to be early in context window
- * 5. NON_CONSULTANT      — identity principle (mechanic lives in M2)
- * 6. TONE_CALIBRATION    — how to speak; table kept for enforcement precision
- * 7. FORBIDDEN           — flat list last; reads as final hard constraint
- */
