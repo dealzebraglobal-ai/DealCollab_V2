@@ -69,6 +69,14 @@ export default function Home() {
 
         console.log("=== PARSE RESPONSE STATUS ===", parseRes.status);
         
+        // Safety check for non-JSON responses (timeouts, redirects, etc)
+        const contentType = parseRes.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await parseRes.text();
+          console.error("Non-JSON response from parse-document:", text.slice(0, 500));
+          throw new Error(`Server returned an unexpected response format (${parseRes.status}). The server might be busy or timed out.`);
+        }
+
         const parseData = await parseRes.json();
         console.log("=== PARSE RESPONSE BODY ===", JSON.stringify(parseData).slice(0, 300));
 
@@ -110,6 +118,18 @@ export default function Home() {
           documentStructured: structuredData,
         }),
       });
+
+      // Safety check for non-JSON responses
+      const chatContentType = response.headers.get('content-type');
+      if (!chatContentType || !chatContentType.includes('application/json')) {
+        const errorText = await response.text();
+        console.error("Non-JSON response from chat API:", errorText.slice(0, 500));
+        
+        if (response.status === 504 || response.status === 500) {
+          throw new Error("The AI processing is taking longer than expected. Please try again in a moment.");
+        }
+        throw new Error(`Server error (${response.status}). Please try again.`);
+      }
 
       const chatData = await response.json();
 

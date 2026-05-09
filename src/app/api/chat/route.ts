@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { chatSessions } from '@/db/schema';
+import { chatSessions, mandates } from '@/db/schema';
 import { processIntelligence } from '@/lib/intelligenceEngine';
 import { normalizeMessage } from '@/lib/normalizeMessage';
 import {
@@ -14,7 +14,7 @@ import {
 } from '@/lib/promptRouter';
 import { buildFinalMessage } from '@/lib/responseBuilder';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
-import { desc, eq } from 'drizzle-orm';
+import { and, arrayOverlaps, desc, eq, not } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 
@@ -97,8 +97,7 @@ export async function POST(req: NextRequest) {
     if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
     // 2. SESSION & MESSAGE PERSISTENCE
-    const { data: { user: sbUser } } = await supabase.auth.getUser();
-    let userId = sbUser?.id || session.user.id;
+    let userId = session.user.id;
 
     // Critical: Ensure the user exists in the public.users table to satisfy FK constraints
     const { data: dbUser, error: userCheckErr } = await supabase
@@ -255,9 +254,6 @@ export async function POST(req: NextRequest) {
     });
 
     // 🔥 5. MATCHMAKING ENGINE (Isolate DB failures from AI flow)
-    const { mandates } = await import('@/db/schema');
-    const { and, eq, not, arrayOverlaps } = await import('drizzle-orm');
-
     let matchedMandatesStr = "No active mandates found in database yet.";
 
     if (storedState.sector || storedState.intent) {
@@ -318,14 +314,44 @@ export async function POST(req: NextRequest) {
     );
     console.log(`[ROUTER] Modules: ${modulesLoaded.join(', ')} | ~${tokenEstimate} tokens`);
 
-    const extraction = await processIntelligence(
-      message,
-      formattedHistory,
-      documentText,
-      systemPrompt
-    );
+    const startTime = Date.now();
+    let extraction: {
+      intent: DealIntent;
+      state: Partial<RouterState>;
+      is_complete: boolean;
+      message: string;
+    };
+
+    try {
+      const raw = await processIntelligence(message, formattedHistory, documentText, systemPrompt);
+
+      // Guard against HTML responses (Groq returning error page)
+      if (typeof raw === 'string') {
+        const trimmed = (raw as string).trim();
+        if (trimmed.startsWith('<') || trimmed.length === 0) {
+          throw new Error(`processIntelligence returned non-JSON: ${trimmed.slice(0, 80)}`);
+        }
+      }
+
+      extraction = raw as typeof extraction;
+
+      // Verify required fields exist
+      if (!extraction || typeof extraction !== 'object' || !('message' in extraction)) {
+        throw new Error('processIntelligence returned malformed response — missing "message" field');
+      }
+    } catch (aiErr) {
+      console.error('❌ AI PROCESSING FAILED:', aiErr);
+      return Response.json({
+        success: false,
+        error: 'The AI processing step failed. Please try again.',
+        details: aiErr instanceof Error ? aiErr.message : String(aiErr),
+      }, { status: 502 });
+    }
 
     const aiContent = JSON.stringify(extraction);
+    const duration = (Date.now() - startTime) / 1000;
+    console.log(`[AI] Processing completed in ${duration.toFixed(1)}s`);
+
     console.log("🧠 FINAL DATA:", aiContent);
 
     // 6. UPDATE STATE & PERSIST ASSISTANT RESPONSE
@@ -392,7 +418,7 @@ export async function POST(req: NextRequest) {
         };
 
         const size = parseRange(resolvedDealSize);
-        const revenue = parseRange(s.revenue || s.deal_size);
+        const revenue = parseRange((s.revenue || s.deal_size) ?? null);
 
         // Step 3: Insert into Mandates
         const { error: mandateErr } = await supabase
@@ -457,7 +483,7 @@ export async function POST(req: NextRequest) {
     console.log(`[DEBUG] AI Output Valid JSON: ${!!extraction}`);
     console.log(`[DEBUG] Final Message: ${finalMessage.slice(0, 50)}...`);
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       data: aiContent,
       message: finalMessage,
@@ -480,7 +506,7 @@ export async function POST(req: NextRequest) {
       errorMessage = error;
     }
 
-    return Response.json({
+    return NextResponse.json({
       success: false,
       error: errorMessage,
       stack: errorStack

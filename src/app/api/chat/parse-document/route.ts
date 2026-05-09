@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { extractTextFromFile } from '@/lib/documentParser';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow up to 60 seconds for processing
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     const mimeType = file.type || '';
     if (!SUPPORTED_TYPES[mimeType]) {
       return NextResponse.json(
-        { 
+        {
           error: `Unsupported file type: ${mimeType || 'unknown'}. Supported types: PDF, DOCX, PPTX, TXT, JPG, PNG, WEBP.`,
         },
         { status: 400 }
@@ -76,18 +77,47 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 1. UPLOAD TO STORAGE
+    // 1. UPLOAD TO STORAGE (with retry logic for resilience against network timeouts)
     const fileName = `${userId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const { error: uploadErr } = await supabase.storage
-      .from('pdfs')
-      .upload(fileName, buffer, {
-        contentType: mimeType,
-        upsert: true
-      });
+
+    let uploadErr = null;
+    const maxRetries = 5; // Increased for better resilience
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[STORAGE] Upload attempt ${attempt}/${maxRetries} for ${fileName}...`);
+        const result = await supabase.storage
+          .from('pdfs')
+          .upload(fileName, buffer, {
+            contentType: mimeType,
+            upsert: true
+          });
+
+        if (!result.error) {
+          uploadErr = null;
+          console.log(`[STORAGE] Upload successful on attempt ${attempt}`);
+          break;
+        }
+
+        uploadErr = result.error;
+        console.warn(`[STORAGE] Upload attempt ${attempt} failed:`, uploadErr.message);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        uploadErr = { message: msg };
+        console.warn(`[STORAGE] Upload attempt ${attempt} threw error:`, msg);
+      }
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`[STORAGE] Waiting ${delay}ms before next attempt...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
 
     if (uploadErr) {
-      console.error('[STORAGE] Upload failed:', uploadErr);
-      throw new Error(`Failed to upload document: ${uploadErr.message}`);
+      console.error('[STORAGE] Final upload failure after all attempts:', uploadErr);
+      const isTimeout = uploadErr.message?.toLowerCase().includes('timeout') || uploadErr.message?.toLowerCase().includes('fetch failed');
+      throw new Error(`Failed to upload document${isTimeout ? ' due to network timeout or unstable connection' : ''}: ${uploadErr.message}. (Size: ${(file.size / 1024).toFixed(1)}KB)`);
     }
 
     // 2. GET PUBLIC URL
@@ -109,7 +139,19 @@ export async function POST(req: NextRequest) {
 
     // 4. GENERATE STRUCTURED INTELLIGENCE (Expert Engine)
     const { cleanAndStructureDocument } = await import('@/lib/intelligenceEngine');
-    const structuredData = await cleanAndStructureDocument(cleanText);
+    let structuredData: Record<string, unknown> = {};
+    try {
+      const raw = await cleanAndStructureDocument(cleanText);
+      // Guard: if Groq returned HTML or a non-object, discard it
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        structuredData = raw as unknown as Record<string, unknown>;
+      } else {
+        console.warn('[PARSE] cleanAndStructureDocument returned non-object — using empty fallback');
+      }
+    } catch (intelligenceErr) {
+      console.error('[PARSE] cleanAndStructureDocument failed:', intelligenceErr);
+      // Continue with empty structuredData — document text is still usable
+    }
 
     // 5. PERSIST IN DOCUMENTS TABLE (Resilient Insertion)
     let docData: { id: string } | null = null;
@@ -137,7 +179,7 @@ export async function POST(req: NextRequest) {
           details: dbErr.details,
           payload: Object.keys(insertPayload)
         });
-        
+
         // Defensive: If it's a "column not found" error, we throw a clear instruction
         if (dbErr.code === '42703') {
           throw new Error(`Database Schema Mismatch: A required column is missing. Please run the migration script: ${dbErr.message}`);

@@ -32,6 +32,20 @@ export function createServerSupabaseClient(): SupabaseClient | null {
     _cachedKeyType = 'service_role';
     _cachedClient = createClient(url, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
+      global: {
+        fetch: async (url, options) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
+          try {
+            return await fetch(url, {
+              ...options,
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        }
+      }
     });
     return _cachedClient;
   }
@@ -42,6 +56,20 @@ export function createServerSupabaseClient(): SupabaseClient | null {
     _cachedKeyType = 'anon';
     _cachedClient = createClient(url, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
+      global: {
+        fetch: async (url, options) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
+          try {
+            return await fetch(url, {
+              ...options,
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        }
+      }
     });
     return _cachedClient;
   }

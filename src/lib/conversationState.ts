@@ -4,14 +4,15 @@
  */
 
 export interface ConversationState {
-  sector: string | null;
-  sub_sector: string | null;
-  geography: string | null;
-  deal_size: string | null;
-  revenue: string | null;
-  structure: string | null;
-  intent_focus: string | null;
-  industry_data: Record<string, unknown> | null;
+  sector?: string | null;
+  sub_sector?: string | null;
+  geography?: string | null;
+  deal_size?: string | null;
+  revenue?: string | null;
+  structure?: string | null;
+  intent_focus?: string | null;
+  is_intermediary?: 'owner' | 'advisor' | null;
+  industry_data?: Record<string, unknown> | null;
   _source?: "document" | "chat";
   valuation?: string | null;
   offerings?: string | null;
@@ -23,7 +24,6 @@ export interface ConversationState {
 
 export interface IntelligenceState {
   intent: "SELL_SIDE" | "BUY_SIDE" | "FUNDRAISING" | "DEBT" | "STRATEGIC_PARTNERSHIP" | null;
-  is_intermediary: boolean | null;
   state: ConversationState;
   is_complete: boolean;
   message: string;
@@ -37,5 +37,6 @@ export const INITIAL_STATE: ConversationState = {
   revenue: null,
   structure: null,
   intent_focus: null,
+  is_intermediary: null,
   industry_data: null
 };
