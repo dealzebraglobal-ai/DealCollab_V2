@@ -397,27 +397,6 @@ Once answered, map to the most relevant primary sector and proceed with that sub
 `.trim();
 
 // ─────────────────────────────────────────────────────────────
-// FIX C — SHELL COMPANY OVERRIDE MODULE
-// Not a sector — loaded by promptRouter when sub_sector='shell_company'
-// regardless of what sector is detected. Overrides all sector M4 modules.
-// Value drivers for shell deals: Structure + Licence + Compliance + Shareholding.
-// Exported separately so promptRouter can reference it directly.
-// ─────────────────────────────────────────────────────────────
-export const M4_SHELL = `
-## M4: SHELL COMPANY
-This is a shell or dormant company deal. Ignore ALL sector-specific questions.
-The entire value in this deal lies in four things: Structure · Licence · Compliance · Shareholding.
-
-Ask ALL of these — these are the only questions that matter for this deal type:
-• "What is the legal structure of the entity — Section 8, Private Limited, LLP, or Public Limited?"
-• "What licences, registrations, or approvals does the entity hold — GST, 12A, 80G, FCRA, RBI, SEBI, IRDAI, or any sector-specific permits?"
-• "What is the current compliance status — are ROC filings and IT returns current, any pending statutory dues, or litigation?"
-• "What is the shareholding structure — promoter holding percentage, any locked-in shares, or pending share transfers?"
-
-Buyer signals: licence transferability · clean compliance record · no legacy liabilities · clear shareholding · absence of contingent liabilities.
-`.trim();
-
-// ─────────────────────────────────────────────────────────────
 // MODULE MAP — router selects by sector key
 // ─────────────────────────────────────────────────────────────
 

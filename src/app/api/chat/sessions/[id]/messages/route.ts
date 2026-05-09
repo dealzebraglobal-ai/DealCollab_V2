@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 
+export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,34 +14,35 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = await params;
-  const supabase = createServerSupabaseClient();
-  if (!supabase) throw new Error("Supabase client failed to initialize");
-
   try {
-    // 1. Fetch DB ID by email (Mismatch fix)
-    const { data: dbUser, error: userErr } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", session.user.email)
-      .single();
+    const { id } = await params;
+    const supabase = createServerSupabaseClient();
+    if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    if (userErr || !dbUser) {
-      return NextResponse.json({ error: 'User record missing' }, { status: 404 });
+    // 1. Resolve User ID
+    let userId = session.user.id;
+    if (!userId && session.user.email) {
+      const { data: dbUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", session.user.email)
+        .single();
+      if (dbUser) userId = dbUser.id;
     }
 
-    const userId = dbUser.id;
+    // 2. Verify session ownership (if userId available)
+    if (userId) {
+      const { data: chatSession, error: sessionErr } = await supabase
+        .from("chat_sessions")
+        .select("id")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .single();
 
-    // 2. Verify session ownership
-    const { data: chatSession, error: sessionErr } = await supabase
-      .from("chat_sessions")
-      .select("*")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .single();
-
-    if (sessionErr || !chatSession) {
-      return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
+      if (sessionErr || !chatSession) {
+        console.warn(`[CHAT_MESSAGES] Session ${id} not found for user ${userId}`);
+        return NextResponse.json({ error: 'Chat not found or access denied' }, { status: 404 });
+      }
     }
 
     // 3. Fetch messages

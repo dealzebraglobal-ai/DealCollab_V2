@@ -77,6 +77,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setActiveChatId(id);
     try {
       const res = await fetch(`/api/chat/sessions/${id}/messages`);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(`Failed to load messages: ${res.status} ${res.statusText}`, text.slice(0, 200));
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (Array.isArray(data)) {
         setMessages(data);

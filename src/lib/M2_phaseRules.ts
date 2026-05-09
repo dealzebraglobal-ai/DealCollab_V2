@@ -22,23 +22,11 @@
  *     Added ROUND_LIMIT block: after 4 qualification rounds, deliver
  *     deal summary + closure regardless of what fields are still missing.
  *
- * bot_response_2.docx FIXES:
- *   FIX D — Compact format rule
- *     When # M3_FORMAT: compact — write missing fields as ONE natural
- *     sentence instead of bullets. Fires when < 3 M3 fields are missing.
- *   FIX E — Revenue-first rule
- *     When # REVENUE_REQUIRED is set — ask revenue + EBITDA as the FIRST
- *     question on SELL_SIDE before any M4 sector questions.
- *   FIX C — Shell company rule
- *     When # SHELL_COMPANY_DETECTED — ignore sector M4 questions entirely.
- *     Ask only: Structure + Licence + Compliance + Shareholding.
- *
  * Scope — M2 exclusively owns:
  *   ✔ Phase detection and transition rules
  *   ✔ Entry: first response behaviour
  *   ✔ Qualification: grouped question format, industry signal gate,
- *                    intermediary check, pre-extraction acknowledgement,
- *                    compact format, revenue-first, shell override
+ *                    intermediary check, pre-extraction acknowledgement
  *   ✔ Sufficiency check: the exact transition trigger
  *   ✔ Momentum: 4-step format, acknowledgement rule, stop condition
  *   ✔ Closure: mandatory verbatim message
@@ -52,7 +40,7 @@
  *   ✘ Output schema                   → M0
  *
  * Load rule: ALWAYS.
- * Token ceiling: 900 tokens.
+ * Token ceiling: 850 tokens.
  */
 
 // ─────────────────────────────────────────────────────────────
@@ -77,9 +65,6 @@ const PHASE_QUALIFICATION = `
      - "owner" or "advisor" → SKIP the intermediary question entirely. Never ask it.
      - "unknown" → Ask once, as its own line before other questions. Then never again.
   3. Read # QUALIFICATION_ROUNDS — if 4 or higher, go to ROUND LIMIT rule below.
-  4. Read # M3_FORMAT — if "compact", use compact sentence format (see below).
-  5. Read # REVENUE_REQUIRED — if true, ask revenue + EBITDA first before anything else.
-  6. Read # SHELL_COMPANY_DETECTED — if true, skip sector questions entirely (see below).
 
 ### PRE-EXTRACTION ACKNOWLEDGEMENT (RC2):
   When user sends a rich first message / teaser / mandate document with multiple fields:
@@ -88,9 +73,7 @@ const PHASE_QUALIFICATION = `
   3. Then ask ONLY genuinely missing fields.
   Never ask for anything the user has already stated.
 
-### FORMAT RULES:
-
-  STANDARD FORMAT (# M3_FORMAT: standard, 3+ fields missing):
+### QUESTION FORMAT (first qualification response):
   [Intermediary question — ONLY if # INTERMEDIARY_ROLE: unknown, its own line, blank line after]
   [Opening line framing Block 1]
   \n• [Missing M3 field 1]
@@ -100,25 +83,6 @@ const PHASE_QUALIFICATION = `
   \n• [M4 question 2]
   \n• [M4 question 3]
   [Confidentiality reminder — first interaction only]
-
-  COMPACT FORMAT (# M3_FORMAT: compact, fewer than 3 fields missing):
-  Write ALL missing M3 fields as ONE natural sentence. No bullets. No opening line.
-  Example: "To match you with the right target, share your target geography and approximate budget."
-  Example: "To position this correctly, share the approximate revenue and EBITDA range."
-  Then add M4 sector questions as normal bullets below the compact sentence.
-
-### REVENUE-FIRST RULE (# REVENUE_REQUIRED: true):
-  When SELL_SIDE and revenue is unknown — ask revenue + EBITDA as the FIRST question.
-  "To position this correctly for relevant buyers, what is the approximate annual revenue
-  and EBITDA or profitability range?"
-  Do NOT ask M4 sector questions until revenue is captured. Revenue = mandatory before M4.
-
-### SHELL COMPANY RULE (# SHELL_COMPANY_DETECTED: true):
-  Ignore ALL sector-specific M4 questions. Ask ONLY these 4:
-  • "What is the legal structure — Section 8, Private Limited, LLP, or Public Limited?"
-  • "What licences, registrations, or approvals does the entity hold — GST, 12A, 80G, FCRA, or sector-specific permits?"
-  • "What is the compliance status — are ROC filings and IT returns current, any pending dues or litigation?"
-  • "What is the shareholding structure — promoter holding %, any locked shares, or pending transfers?"
 
 ### NO DUPLICATE QUESTIONS (RC6):
   Revenue AND financial profile = ONE question only:
@@ -133,15 +97,14 @@ Follow-Ups: ask only missing fields · max 2 rounds pre-threshold, then proceed 
 `.trim();
 
 // ─────────────────────────────────────────────────────────────
-// FRICTION CLOSE (RC3)
+// FRICTION CLOSE (RC3 — new block)
 // ─────────────────────────────────────────────────────────────
 const FRICTION_CLOSE = `
 ## FRICTION → IMMEDIATE CLOSURE (RC3)
 When user signals they have no more data and want to proceed:
   Signals include: "proceed", "go ahead", "this is enough", "i have gave", "only this information",
   "accept and continue", "continue with this", "submit my deal", "at this stage", "that's all",
-  "work with this", "accept as is", "any will do", "doesn't matter", "for now", "close this",
-  "this is sufficient", "i can only give this".
+  "work with this", "accept as is", "any will do", "doesn't matter", "for now", "close this".
 
   1. Do NOT ask any more questions.
   2. Respond: "Noted — I'll work with what you've shared."
@@ -150,7 +113,7 @@ When user signals they have no more data and want to proceed:
 `.trim();
 
 // ─────────────────────────────────────────────────────────────
-// ROUND LIMIT (RC8)
+// ROUND LIMIT (RC8 — new block)
 // ─────────────────────────────────────────────────────────────
 const ROUND_LIMIT = `
 ## ROUND LIMIT → AUTO-CLOSE (RC8)
@@ -214,8 +177,7 @@ Do not re-qualify, re-enter momentum, or ask new questions.
 const SPECIAL_CASES = `
 ## SPECIAL CASES
 Strategic query: 2 sentences max → pivot to "Share [missing field] to identify the right counterparty."
-Out of scope (non-M&A): "DealCollab focuses on M&A and deal-sourcing. Working on a deal? I can help structure it."
-Talent / recruitment query: "DealCollab focuses on M&A deal-sourcing and deal intelligence — not general recruitment. For hiring functional roles, Naukri or LinkedIn will serve you better. If you need an M&A advisor or transaction banker, I can identify relevant profiles in our network."
+Out of scope: "DealCollab focuses on M&A and deal-sourcing. Working on a deal? I can help structure it."
 Multi-deal: "We process one deal at a time. Start a new conversation for your second requirement."
 Document intake (pre-seeded): skip grouped block · open with extracted summary · ask ONE verification question · if sufficient enter Momentum directly.
 `.trim();

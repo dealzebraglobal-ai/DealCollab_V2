@@ -7,31 +7,24 @@
  *
  * SESSION FIXES APPLIED:
  *   RC1 — Intermediary question is now conditional on # INTERMEDIARY_ROLE
+ *     Previous: "Opening (ask first, embedded in the grouped block): Are you..."
+ *     — This caused the question to repeat every single turn because it was
+ *     always present in the module regardless of whether it was already answered.
+ *     Fix: Each sub-module now reads # INTERMEDIARY_ROLE from phaseContext.
  *     "owner" or "advisor" → skip entirely.
  *     "unknown" → ask once, as standalone line, blank line after.
  *
  *   RC6 — M3_SELL_SIDE duplicate question merged
- *     Merged into one: "What is the approximate annual revenue and EBITDA
+ *     Previous: separate "annual revenue range" + "business size and financial profile"
+ *     These are functionally the same question. Users correctly flagged this.
+ *     Fix: Merged into one: "What is the approximate annual revenue and EBITDA
  *     or profitability range?" One question, two signals, richer answer.
- *
- * bot_response_2.docx FIXES:
- *   FIX D — Compact format (# M3_FORMAT: compact)
- *     When fewer than 3 M3 fields are missing, all sub-modules render
- *     missing fields as ONE natural sentence instead of bullets.
- *     Example: "To match you with the right target, share your geography
- *     and approximate budget." — no bullets, no opening line.
- *
- *   FIX E — Revenue-first for SELL_SIDE (# REVENUE_REQUIRED)
- *     When SELL_SIDE and revenue is unknown, M3_SELL_SIDE asks revenue
- *     + EBITDA as the first and only question. No M4 questions until
- *     revenue is captured.
  *
  * Scope — M3 exclusively owns:
  *   ✔ Minimum required fields per intent (Block 1)
  *   ✔ Optional / contextual fields per intent
- *   ✔ Intermediary detection and posture adjustment (conditional)
- *   ✔ Compact format mode when few fields missing
- *   ✔ Revenue-first gate for sell-side
+ *   ✔ Intermediary detection and posture adjustment (now conditional)
+ *   ✔ Post-qualification refinement hints per intent
  *
  *   ✘ Sector-specific questions         → M4 (Block 2)
  *   ✘ Phase switching / format rules    → M2
@@ -39,17 +32,14 @@
  *   ✘ Profile search                    → M6
  *
  * Load rule: CONDITIONAL — exactly ONE sub-module per request.
- * Token budget: ~160 tokens per sub-module.
+ * Token budget: ~140 tokens per sub-module.
  */
 
 import type { DealIntent } from './promptRouter';
 
 // ─────────────────────────────────────────────────────────────
 // M3_A — SELL-SIDE
-// RC1: intermediary conditional
-// RC6: duplicate question merged
-// FIX D: compact format
-// FIX E: revenue-first rule
+// RC1: intermediary conditional | RC6: duplicate question merged
 // ─────────────────────────────────────────────────────────────
 
 const M3_SELL_SIDE = `
@@ -62,29 +52,22 @@ INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   If advisor: teaser-level data is sufficient — share only what's authorised.
   If owner: proceed with fields below.
 
-REVENUE-FIRST — check # REVENUE_REQUIRED:
-  If TRUE → ask ONLY this question this turn, nothing else:
-  "To position this correctly for relevant buyers, what is the approximate annual revenue
-  and EBITDA or profitability range?"
-  Do NOT ask other M3 fields or M4 questions until revenue is captured.
-
-COMPACT FORMAT — check # M3_FORMAT:
-  compact → Write all missing fields as ONE natural sentence. No bullets. No opening line.
-  Example: "To position this correctly, share the business sector and approximate revenue."
-  standard → Use bullet format below.
-
-Minimum required fields (standard format) — ask only those NOT in # FIELDS ALREADY PROVIDED:
+Minimum required fields — ask only those NOT in # FIELDS ALREADY PROVIDED:
 • What does the business do, and where does it operate? [SKIP if sector + geography known]
 • What is the approximate annual revenue and EBITDA or profitability range? [SKIP if revenue known]
-• What kind of transaction — full sale, majority stake, or minority stake? [SKIP if structure known]
+• What kind of transaction are you looking for — and what is driving that decision? [SKIP if structure known]
 
-Note: Revenue + profitability is ONE question. Never split into two bullets.
+Note: Revenue + financial profile is ONE question. Never split them into two separate bullets.
 
 Ask only when context makes them useful:
 • Expected valuation or asking price range
 • Preferred buyer type — strategic, PE, family office, or open
+• Promoter's expected role post-deal
 • Timeline or urgency
 • Reason for exit (optional — never press if not offered)
+
+Post-qualification (V3 §7): once first block answered, do NOT repeat framework.
+Ask only targeted refinements. Shift to Momentum Mode.
 
 MANDATORY: After Block 1, add Block 2 from M4 SECTOR INTELLIGENCE. Same message.
 `.trim();
@@ -92,7 +75,6 @@ MANDATORY: After Block 1, add Block 2 from M4 SECTOR INTELLIGENCE. Same message.
 // ─────────────────────────────────────────────────────────────
 // M3_B — BUY-SIDE
 // RC1: intermediary conditional
-// FIX D: compact format
 // ─────────────────────────────────────────────────────────────
 
 const M3_BUY_SIDE = `
@@ -105,21 +87,14 @@ INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   If advisor: share what the client's mandate covers — ranges are sufficient.
   If direct acquirer: proceed with fields below.
 
-Note: Financial investors deploying capital ("investor mandate", "deploy ₹X Cr") are direct
-acquirers — use "you", not "your client".
+Note: Financial investors deploying capital ("investor mandate", "deploy ₹X Cr") are direct acquirers — use "you", not "your client".
 
-COMPACT FORMAT — check # M3_FORMAT:
-  compact → Write all missing fields as ONE natural sentence. No bullets. No opening line.
-  Example: "To match you with the right target, share your geography and approximate budget."
-  Example: "To match you with the right target, share your deal structure preference."
-  standard → Use bullet format below.
-
-Minimum required fields (standard format) — ask only those NOT in # FIELDS ALREADY PROVIDED:
+Minimum required fields — ask only those NOT in # FIELDS ALREADY PROVIDED:
 • Target industry / sector (sub-sector preferred) [SKIP if sector known]
 • Preferred geography — state, region, or pan-India [SKIP if geography known]
 • Acquisition budget / ticket size (range acceptable) [SKIP if deal_size known]
 • Deal structure — majority acquisition, minority stake, or full buyout? [SKIP if structure known]
-• Strategic objective — expansion, synergy, platform acquisition, roll-up? [SKIP if intent_focus known]
+• Strategic objective — expansion, synergy, platform acquisition, roll-up, capability buy? [SKIP if intent_focus known]
 
 Ask only when contextually relevant:
 • Cross-border openness
@@ -127,13 +102,14 @@ Ask only when contextually relevant:
 • Must-have capabilities, certifications, or approvals in the target
 • Timeline or urgency
 
+Post-qualification (V3 §8): avoid repeating structure. Use single refinement questions.
+
 MANDATORY: After Block 1, add Block 2 from M4 SECTOR INTELLIGENCE. Same message.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────
 // M3_C — FUNDRAISING
 // RC1: intermediary conditional
-// FIX D: compact format
 // ─────────────────────────────────────────────────────────────
 
 const M3_FUNDRAISING = `
@@ -150,12 +126,7 @@ INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   If advisor: teaser-level data and authorised ranges are sufficient.
   If founder: proceed with fields below.
 
-COMPACT FORMAT — check # M3_FORMAT:
-  compact → Write all missing fields as ONE natural sentence. No bullets.
-  Example: "To identify the right investors, share how much you are looking to raise and the current revenue scale."
-  standard → Use bullet format below.
-
-Minimum required fields (standard format) — ask only those NOT in # FIELDS ALREADY PROVIDED:
+Minimum required fields — ask only those NOT in # FIELDS ALREADY PROVIDED:
 • Industry / sector and business stage (early, growth, pre-IPO) [SKIP if known]
 • Amount to raise (range acceptable) [SKIP if deal_size known]
 • Instrument — equity, CCPS, SAFE, or hybrid? [SKIP if structure known]
@@ -174,7 +145,6 @@ MANDATORY: After Block 1, add Block 2 from M4 SECTOR INTELLIGENCE. Same message.
 // ─────────────────────────────────────────────────────────────
 // M3_D — DEBT / STRUCTURED FINANCE
 // RC1: intermediary conditional
-// FIX D: compact format
 // ─────────────────────────────────────────────────────────────
 
 const M3_DEBT = `
@@ -187,12 +157,7 @@ INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   If advisor: share what the client's brief covers — amounts and purpose in ranges are fine.
   If direct: proceed with fields below.
 
-COMPACT FORMAT — check # M3_FORMAT:
-  compact → Write all missing fields as ONE natural sentence. No bullets.
-  Example: "To identify relevant debt providers, share the approximate amount required and collateral position."
-  standard → Use bullet format below.
-
-Minimum required fields (standard format) — ask only those NOT in # FIELDS ALREADY PROVIDED:
+Minimum required fields — ask only those NOT in # FIELDS ALREADY PROVIDED:
 • Industry / business type [SKIP if sector known]
 • Purpose of funding — working capital, capex, acquisition financing, refinancing? [SKIP if known]
 • Approximate amount required (range acceptable) [SKIP if deal_size known]
@@ -205,7 +170,7 @@ Ask when relevant:
 • Preferred tenure
 • Any regulatory constraints (NBFC, RBI-governed entities flag early)
 
-Instrument refinement (Momentum phase only):
+Instrument refinement (ask in Momentum phase, not first block):
 Bridge / NCD / ECB / WC facility / mezzanine — identify after purpose and amount are clear.
 
 MANDATORY: After Block 1, add Block 2 from M4 SECTOR INTELLIGENCE. Same message.
@@ -214,7 +179,6 @@ MANDATORY: After Block 1, add Block 2 from M4 SECTOR INTELLIGENCE. Same message.
 // ─────────────────────────────────────────────────────────────
 // M3_E — STRATEGIC PARTNERSHIP
 // RC1: intermediary conditional
-// FIX D: compact format
 // ─────────────────────────────────────────────────────────────
 
 const M3_STRATEGIC_PARTNERSHIP = `
@@ -227,12 +191,7 @@ INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   If advisor: share what's been scoped — ranges and high-level descriptors are sufficient.
   If direct: proceed with fields below.
 
-COMPACT FORMAT — check # M3_FORMAT:
-  compact → Write all missing fields as ONE natural sentence. No bullets.
-  Example: "To identify aligned partners, share what your business brings and what you are looking for."
-  standard → Use bullet format below.
-
-Minimum required fields (standard format) — ask only those NOT in # FIELDS ALREADY PROVIDED:
+Minimum required fields — ask only those NOT in # FIELDS ALREADY PROVIDED:
 • Your industry / sector [SKIP if sector known]
 • Geography — where you operate and where you seek a partner [SKIP if geography known]
 • Partnership type — JV, distribution tie-up, licensing, co-investment, strategic collaboration? [SKIP if known]
@@ -275,5 +234,5 @@ export const M3_DIAGNOSTICS = {
     STRATEGIC_PARTNERSHIP: Math.round(M3_STRATEGIC_PARTNERSHIP.length / 4),
   },
   loadRule: 'ONE sub-module per request, selected by state.intent',
-  perRequestCost: 'one sub-module only (~160–200 tokens)',
+  perRequestCost: 'one sub-module only (~140–180 tokens)',
 } as const;
