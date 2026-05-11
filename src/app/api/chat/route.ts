@@ -8,6 +8,12 @@ import {
   createBlankState,
   detectIntentFromText,
   detectSectorFromText,
+  detectIntermediaryFromText,
+  detectShellCompanyFromText,
+  detectStructureFromText,
+  detectDealSizeFromText,
+  detectRevenueFromText,
+  detectFrictionSignal,
   updateStateFromExtraction,
   type DealIntent,
   type RouterState
@@ -17,18 +23,45 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { and, arrayOverlaps, desc, eq, not } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
-
 /**
- * 🎯 HARDENED PRODUCTION CHAT SYSTEM (v4.0)
- * Resolves: Model decommissioning, Vercel build conflicts, silent failures.
+ * DealCollab Chat Route
+ * =====================
+ * BASE: repo v4.0 structure preserved exactly
+ *   - NextResponse.json (not Response.json)
+ *   - try/catch around processIntelligence with 502 fallback
+ *   - mandates imported at top from @/db/schema
+ *   - resolvedDealSize logic retained
+ *
+ * SESSION FIXES ADDED:
+ *
+ * RC1 — Intermediary pre-detected every turn
+ *   detectIntermediaryFromText() runs on every message. Catches semantic
+ *   patterns: "one of client", "investment banker for my client",
+ *   "i am promoter" (without "the").
+ *   candidateState.is_intermediary set before prompt builds so
+ *   # INTERMEDIARY_ROLE is always correct.
+ *
+ * RC2 — Structure, size, revenue pre-detected from rich messages
+ *   detectStructureFromText(), detectDealSizeFromText(), detectRevenueFromText()
+ *   seed candidateState before buildSystemPrompt(). # FIELDS ALREADY PROVIDED
+ *   is populated on turn 1, LLM skips known fields.
+ *
+ * RC3 — Friction hard override (3-layer guarantee)
+ *   Layer 1: detectFrictionSignal() in updateStateFromExtraction
+ *   Layer 2: route.ts detects friction BEFORE prompt build → patches storedState to CLOSURE
+ *   Layer 3: After extraction → forces is_complete=true on updatedState
+ *
+ * RC8 — 4-turn server-side auto-close
+ *   After turn_count reaches 4 with deal context, forces CLOSURE.
+ *   resolvePhase() in promptRouter also handles this (belt-and-suspenders).
+ *
+ * RC9 — Shell company pre-detected server-side
+ *   detectShellCompanyFromText() runs on every message. Sets sub_sector='shell_company'.
+ *   buildSystemPrompt() then loads M4_SHELL instead of sector M4.
  */
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
-
-// getSystemPrompt removed in favor of modular promptRouter.ts
-
-
 
 export async function GET() {
   try {
@@ -64,7 +97,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  // 1. HARD ENVIRONMENT VALIDATION
   if (!process.env.GROQ_API_KEY) {
     console.error("❌ CRITICAL: Missing GROQ_API_KEY");
     throw new Error("GROQ_API_KEY not found in runtime");
@@ -78,13 +110,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const rawMessage = body.message || "";
-
-    // 🔥 Pre-processing layer (BEFORE LLM)
-    const normalizedMessage = normalizeMessage(rawMessage);
-    // const detectedConditions = extractSpecialConditions(rawMessage); // Removed as it's now handled inside promptRouter.ts
-
-    // 🔥 NEW: Normalize message (fix typos, expand shorthands, translate Hinglish)
-    const message = normalizedMessage;
+    const message = normalizeMessage(rawMessage);
 
     let documentText = body.document || body.documentText || "";
     const documentUrl = body.documentUrl || "";
@@ -96,10 +122,9 @@ export async function POST(req: NextRequest) {
 
     if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
-    // 2. SESSION & MESSAGE PERSISTENCE
+    // ─── USER RESOLUTION ─────────────────────────────────────
     let userId = session.user.id;
 
-    // Critical: Ensure the user exists in the public.users table to satisfy FK constraints
     const { data: dbUser, error: userCheckErr } = await supabase
       .from("users")
       .select("id")
@@ -117,7 +142,6 @@ export async function POST(req: NextRequest) {
       if (userByEmail) {
         userId = userByEmail.id;
       } else {
-        // Create user if absolutely missing
         const { data: newUser } = await supabase
           .from("users")
           .upsert({
@@ -126,16 +150,14 @@ export async function POST(req: NextRequest) {
           }, { onConflict: 'email' })
           .select('id')
           .single();
-
         if (newUser) userId = newUser.id;
         else throw new Error("Could not resolve valid user_id for chat persistence");
       }
     }
 
-    // 2. SESSION & STATE LOADING
+    // ─── STATE LOADING ────────────────────────────────────────
     let storedState: RouterState = createBlankState();
 
-    // Consistency Guard: If chatId is missing but documentId is present, try to find the seeded session
     if (!activeChatId && (documentId || body.documentId)) {
       const docIdToSearch = documentId || body.documentId;
       console.log(`[STATE] No activeChatId, searching for seeded session with documentId: ${docIdToSearch}`);
@@ -158,7 +180,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Standard session loading if chatId exists
     if (activeChatId) {
       console.log(`[STATE] Loading existing session: ${activeChatId}`);
       const { data: existingSession } = await supabase
@@ -168,20 +189,17 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (!existingSession) {
-        console.log("[STATE] Provided chatId not found, checking for last active session...");
+        console.log("[STATE] Provided chatId not found.");
         activeChatId = null;
       } else {
         storedState = {
           ...createBlankState(),
           ...(existingSession.state as unknown as Partial<RouterState> || {})
         };
-        console.log(`[STATE] Loaded state for phase: ${storedState.phase} | turn: ${storedState.turn_count}`);
+        console.log(`[STATE] Phase: ${storedState.phase} | turn: ${storedState.turn_count} | intermediary: ${storedState.is_intermediary} | sub_sector: ${storedState.sub_sector}`);
       }
     }
 
-
-
-    // If still no active session, create one
     if (!activeChatId) {
       console.log("[STATE] Creating fresh session for user:", userId);
       const { data: newSession, error: sessionErr } = await supabase
@@ -194,13 +212,11 @@ export async function POST(req: NextRequest) {
         }])
         .select()
         .single();
-
       if (sessionErr) throw new Error(sessionErr.message);
       activeChatId = newSession.id;
     }
 
-    // 🔥 PERSISTENT CONTEXT RESTORATION (Moved after session recovery)
-    // If no document text but activeChatId is now present, fetch the linked document
+    // ─── DOCUMENT RESTORATION ─────────────────────────────────
     if (!documentText && activeChatId) {
       console.log(`[PERSISTENCE] Attempting to restore document context for chat: ${activeChatId}`);
       const { data: sessionDoc } = await supabase
@@ -210,14 +226,12 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       const docId = documentId || sessionDoc?.document_id;
-
       if (docId) {
         const { data: doc } = await supabase
           .from('documents')
           .select('extracted_text')
           .eq('id', docId)
           .maybeSingle();
-
         if (doc?.extracted_text) {
           documentText = doc.extracted_text;
           console.log(`[PERSISTENCE] Successfully restored context from DB (${documentText.length} chars)`);
@@ -225,14 +239,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. PERSIST USER MESSAGE
+    // ─── RC3: FRICTION HARD OVERRIDE (before prompt build) ───
+    const hasFriction = detectFrictionSignal(message);
+    if (hasFriction) {
+      console.log('[ROUTE] Friction detected — patching to CLOSURE before prompt build.');
+      storedState = { ...storedState, is_complete: true, phase: 'CLOSURE' };
+    }
+
+    // ─── PERSIST USER MESSAGE ─────────────────────────────────
     await supabase.from("chat_messages").insert([{
       chat_id: activeChatId,
       role: 'user',
       content: message,
     }]);
 
-    // 4. FETCH HISTORY
+    // ─── FETCH HISTORY ────────────────────────────────────────
     const { data: history } = await supabase
       .from("chat_messages")
       .select("*")
@@ -247,19 +268,15 @@ export async function POST(req: NextRequest) {
           content = parsed.message || h.content;
         } catch { }
       }
-      return {
-        role: h.role as "user" | "assistant" | "system",
-        content: content
-      };
+      return { role: h.role as "user" | "assistant" | "system", content };
     });
 
-    // 🔥 5. MATCHMAKING ENGINE (Isolate DB failures from AI flow)
+    // ─── MATCHMAKING ENGINE ───────────────────────────────────
     let matchedMandatesStr = "No active mandates found in database yet.";
 
     if (storedState.sector || storedState.intent) {
       try {
         console.log(`[MATCHMAKING] Querying for Sector: ${storedState.sector} | Intent: ${storedState.intent}`);
-
         const targetIntent = storedState.intent === 'SELL_SIDE' ? 'BUY_SIDE' :
           storedState.intent === 'BUY_SIDE' ? 'SELL_SIDE' : null;
 
@@ -281,21 +298,17 @@ export async function POST(req: NextRequest) {
         }
       } catch (matchErr) {
         console.error("❌ MATCHMAKING FAILED (Isolating):", matchErr);
-        // We continue with matchedMandatesStr as default to avoid 500
       }
     }
 
-    // 5. AI PROCESSING & INTELLIGENCE
-    // PRE-DETECTION: Detect intent and sector from current message before building prompt.
-    // This ensures M3 and M4 load on turn 1 even though storedState is still blank.
-    // storedState itself is NOT modified here — only candidateState is used for prompt building.
+    // ─── PRE-DETECTION ────────────────────────────────────────
     const candidateState: RouterState = { ...storedState };
 
     if (!candidateState.intent) {
       const detectedIntent = detectIntentFromText(message);
       if (detectedIntent) {
         candidateState.intent = detectedIntent;
-        console.log(`[PRE-DETECT] Intent detected from message: ${detectedIntent}`);
+        console.log(`[PRE-DETECT] Intent: ${detectedIntent}`);
       }
     }
 
@@ -303,17 +316,47 @@ export async function POST(req: NextRequest) {
       const detectedSector = detectSectorFromText(message);
       if (detectedSector) {
         candidateState.sector = detectedSector;
-        console.log(`[PRE-DETECT] Sector detected from message: ${detectedSector}`);
+        console.log(`[PRE-DETECT] Sector: ${detectedSector}`);
       }
     }
 
-    // Use candidateState for prompt building — not storedState
+    // RC1: Intermediary detected every turn
+    if (candidateState.is_intermediary === null) {
+      const detectedRole = detectIntermediaryFromText(message);
+      if (detectedRole) {
+        candidateState.is_intermediary = detectedRole;
+        console.log(`[PRE-DETECT] Intermediary: ${detectedRole}`);
+      }
+    }
+
+    // RC9: Shell company detection
+    if (candidateState.sub_sector === null && detectShellCompanyFromText(message)) {
+      candidateState.sub_sector = 'shell_company';
+      console.log('[PRE-DETECT] Shell company — sub_sector=shell_company');
+    }
+
+    // RC2: Pre-detect structure, size, revenue from rich messages
+    if (!candidateState.structure) {
+      const s = detectStructureFromText(message);
+      if (s) { candidateState.structure = s; console.log(`[PRE-DETECT] Structure: ${s}`); }
+    }
+    if (!candidateState.deal_size) {
+      const ds = detectDealSizeFromText(message);
+      if (ds) { candidateState.deal_size = ds; console.log(`[PRE-DETECT] Deal size: ${ds}`); }
+    }
+    if (!candidateState.revenue) {
+      const rv = detectRevenueFromText(message);
+      if (rv) { candidateState.revenue = rv; console.log(`[PRE-DETECT] Revenue: ${rv}`); }
+    }
+
+    // ─── BUILD SYSTEM PROMPT ──────────────────────────────────
     const { systemPrompt, modulesLoaded, tokenEstimate } = buildSystemPrompt(
       candidateState,
       matchedMandatesStr
     );
     console.log(`[ROUTER] Modules: ${modulesLoaded.join(', ')} | ~${tokenEstimate} tokens`);
 
+    // ─── AI PROCESSING ────────────────────────────────────────
     const startTime = Date.now();
     let extraction: {
       intent: DealIntent;
@@ -325,7 +368,6 @@ export async function POST(req: NextRequest) {
     try {
       const raw = await processIntelligence(message, formattedHistory, documentText, systemPrompt);
 
-      // Guard against HTML responses (Groq returning error page)
       if (typeof raw === 'string') {
         const trimmed = (raw as string).trim();
         if (trimmed.startsWith('<') || trimmed.length === 0) {
@@ -335,13 +377,12 @@ export async function POST(req: NextRequest) {
 
       extraction = raw as typeof extraction;
 
-      // Verify required fields exist
       if (!extraction || typeof extraction !== 'object' || !('message' in extraction)) {
         throw new Error('processIntelligence returned malformed response — missing "message" field');
       }
     } catch (aiErr) {
       console.error('❌ AI PROCESSING FAILED:', aiErr);
-      return Response.json({
+      return NextResponse.json({
         success: false,
         error: 'The AI processing step failed. Please try again.',
         details: aiErr instanceof Error ? aiErr.message : String(aiErr),
@@ -351,11 +392,9 @@ export async function POST(req: NextRequest) {
     const aiContent = JSON.stringify(extraction);
     const duration = (Date.now() - startTime) / 1000;
     console.log(`[AI] Processing completed in ${duration.toFixed(1)}s`);
-
     console.log("🧠 FINAL DATA:", aiContent);
 
-    // 6. UPDATE STATE & PERSIST ASSISTANT RESPONSE
-    // 🛡️ STATE HYDRATION GUARD: Ensure we don't lose previously extracted data
+    // ─── STATE UPDATE ─────────────────────────────────────────
     const updatedState = updateStateFromExtraction(
       storedState,
       extraction as unknown as { intent: DealIntent; state: Partial<RouterState>; is_complete: boolean },
@@ -363,12 +402,42 @@ export async function POST(req: NextRequest) {
       modulesLoaded
     );
 
-    // 🛡️ PHASE LOCK: If we were in MOMENTUM, stay in MOMENTUM (unless complete)
-    if (storedState.phase === 'MOMENTUM' && updatedState.phase !== 'CLOSURE' && !updatedState.is_complete) {
-      updatedState.phase = 'MOMENTUM';
-      updatedState.is_sufficient = true; // Maintain sufficiency
+    // Persist pre-detected values the LLM may not have re-extracted
+    if (updatedState.is_intermediary === null && candidateState.is_intermediary !== null) {
+      updatedState.is_intermediary = candidateState.is_intermediary;
+    }
+    if (!updatedState.sub_sector && candidateState.sub_sector) {
+      updatedState.sub_sector = candidateState.sub_sector;
+    }
+    if (!updatedState.structure  && candidateState.structure)  updatedState.structure  = candidateState.structure;
+    if (!updatedState.deal_size  && candidateState.deal_size)  updatedState.deal_size  = candidateState.deal_size;
+    if (!updatedState.revenue    && candidateState.revenue)    updatedState.revenue    = candidateState.revenue;
+
+    // RC3: Friction hard override (layer 3)
+    if (hasFriction) {
+      updatedState.is_complete = true;
+      updatedState.phase = 'CLOSURE';
+      (extraction as Record<string, unknown>).is_complete = true;
+      console.log('[ROUTE] Friction override applied: is_complete=true, phase=CLOSURE');
     }
 
+    // RC8: 4-turn server-side auto-close
+    if (updatedState.turn_count >= 4 &&
+        (updatedState.intent || updatedState.sector) &&
+        !updatedState.is_complete) {
+      updatedState.is_complete = true;
+      updatedState.phase = 'CLOSURE';
+      (extraction as Record<string, unknown>).is_complete = true;
+      console.log(`[ROUTE] 4-turn auto-close at turn ${updatedState.turn_count}`);
+    }
+
+    // Phase lock: stay in MOMENTUM unless complete
+    if (storedState.phase === 'MOMENTUM' && updatedState.phase !== 'CLOSURE' && !updatedState.is_complete) {
+      updatedState.phase = 'MOMENTUM';
+      updatedState.is_sufficient = true;
+    }
+
+    // ─── PERSIST ASSISTANT RESPONSE ──────────────────────────
     const { error: assistantMsgErr } = await supabase
       .from("chat_messages")
       .insert([{
@@ -382,19 +451,17 @@ export async function POST(req: NextRequest) {
       throw new Error(assistantMsgErr.message);
     }
 
-    // Persist updated state to session
     await supabase
       .from('chat_sessions')
       .update({ state: updatedState })
       .eq('id', activeChatId);
 
-    // 7. DEAL EXTRACTION LOGIC & PERSISTENCE
+    // ─── DEAL PERSISTENCE ─────────────────────────────────────
     const s = extraction.state;
-    const isComplete = extraction.is_complete;
+    const isComplete = updatedState.is_complete;
 
     console.log("🧠 FINAL DATA:", JSON.stringify(extraction));
 
-    // Resolve deal_size from multiple possible sources
     const resolvedDealSize =
       s.deal_size ||
       s.revenue ||
@@ -405,13 +472,10 @@ export async function POST(req: NextRequest) {
     if (isComplete) {
       console.log("✅ DATA COMPLETE - INSERTING INTO DB");
       try {
-        // Parse deal size and revenue if they are strings like "10-50 Cr"
         const parseRange = (val: string | null) => {
           if (!val) return { min: null, max: null };
-          // Handle ranges like "10-50 Cr", "20-30 MW", "15 to 20 Cr"
           const rangeMatch = val.match(/(\d+(?:\.\d+)?)\s*(?:to|-)\s*(\d+(?:\.\d+)?)/i);
           if (rangeMatch) return { min: rangeMatch[1], max: rangeMatch[2] };
-          // Handle single values like "20 MW", "15Cr", "~90 acres"
           const singleMatch = val.match(/~?(\d+(?:\.\d+)?)/);
           if (singleMatch) return { min: singleMatch[1], max: singleMatch[1] };
           return { min: null, max: null };
@@ -420,7 +484,6 @@ export async function POST(req: NextRequest) {
         const size = parseRange(resolvedDealSize);
         const revenue = parseRange((s.revenue || s.deal_size) ?? null);
 
-        // Step 3: Insert into Mandates
         const { error: mandateErr } = await supabase
           .from("mandates")
           .insert([{
@@ -434,7 +497,6 @@ export async function POST(req: NextRequest) {
             deal_size_max_cr: size.max,
             revenue_min_cr: revenue.min,
             revenue_max_cr: revenue.max,
-            // For non-Cr deals (MW, acres etc.) store raw string in special_conditions
             deal_structure: s.structure,
             special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
             urgency: "Medium",
@@ -450,7 +512,6 @@ export async function POST(req: NextRequest) {
           throw new Error(mandateErr.message);
         }
 
-        // Step 4: Insert into Deals
         const { error: dealErr } = await supabase
           .from("deals")
           .insert([{
@@ -477,10 +538,8 @@ export async function POST(req: NextRequest) {
 
     const finalMessage = buildFinalMessage(extraction);
 
-    // 🔬 DEBUG STRATEGY: Log critical pipeline steps
-    console.log(`[DEBUG] RouterState Phase: ${storedState.phase} | is_sufficient: ${storedState.is_sufficient}`);
+    console.log(`[DEBUG] ${storedState.phase}→${updatedState.phase} | intermediary:${updatedState.is_intermediary} | sub_sector:${updatedState.sub_sector} | m4_asked:${updatedState.m4_questions_asked} | friction:${hasFriction}`);
     console.log(`[DEBUG] System Prompt Length: ${systemPrompt.length} chars`);
-    console.log(`[DEBUG] AI Output Valid JSON: ${!!extraction}`);
     console.log(`[DEBUG] Final Message: ${finalMessage.slice(0, 50)}...`);
 
     return NextResponse.json({

@@ -396,6 +396,27 @@ Ask these 3 universal questions to identify the primary sector lens for matching
 Once answered, map to the most relevant primary sector and proceed with that sub-module's signals.
 `.trim();
 
+
+// ─────────────────────────────────────────────────────────────
+// RC9 — SHELL COMPANY OVERRIDE MODULE
+// Not a sector — loaded by promptRouter when sub_sector='shell_company'
+// Overrides all sector M4 modules regardless of sector detected.
+// Value drivers for shell deals: Structure + Licence + Compliance + Shareholding.
+// ─────────────────────────────────────────────────────────────
+export const M4_SHELL = `
+## M4: SHELL COMPANY
+This is a shell or dormant company deal. Ignore ALL sector-specific questions.
+The value lies entirely in: Structure · Licence · Compliance · Shareholding.
+
+Ask ALL of these:
+• "What is the legal structure — Section 8, Private Limited, LLP, or Public Limited?"
+• "What licences, registrations, or approvals does the entity hold — GST, 12A, 80G, FCRA, RBI, SEBI, IRDAI, or sector-specific permits?"
+• "What is the compliance status — are ROC filings and IT returns current, any pending dues or litigation?"
+• "What is the shareholding structure — promoter holding %, any locked shares, or pending transfers?"
+
+Buyer signals: licence transferability · clean compliance · no legacy liabilities · clear shareholding.
+`.trim();
+
 // ─────────────────────────────────────────────────────────────
 // MODULE MAP — router selects by sector key
 // ─────────────────────────────────────────────────────────────

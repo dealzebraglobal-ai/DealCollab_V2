@@ -14,6 +14,5 @@ export default {
   ],
   pages: {
     signIn: "/",
-    error: "/api/auth/error", // Explicitly define error page
   },
 } satisfies NextAuthConfig;

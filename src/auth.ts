@@ -17,7 +17,6 @@ if (process.env.NODE_ENV === "production") {
 }
 
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
 
 const adapter = DrizzleAdapter(db, {
   usersTable: users,
@@ -29,6 +28,7 @@ const adapter = DrizzleAdapter(db, {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter,
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+  basePath: "/api/auth",
   ...authConfig,
   trustHost: true,
   debug: true, // Enabled for production debugging
@@ -80,6 +80,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       console.log("SIGNIN FLOW:", { userId: user.id, userEmail: user.email });
       if (!user.id) return true;
 
+      const { cookies } = await import("next/headers");
       const cookieStore = await cookies();
       const whatsappPhone = cookieStore.get("whatsapp_phone")?.value;
       console.log("SIGNIN WHATSAPP CHECK:", { whatsappPhone });
@@ -184,5 +185,3 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
-
-export const { GET, POST } = handlers;

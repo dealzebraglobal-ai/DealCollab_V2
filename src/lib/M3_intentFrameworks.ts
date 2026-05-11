@@ -47,7 +47,7 @@ const M3_SELL_SIDE = `
 
 INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   "owner" or "advisor" → SKIP entirely. The role is already known. Never ask.
-  "unknown" → Ask as its own standalone line, blank line after, before any other question:
+  "unknown" → Ask as the FIRST LINE of your response (not the only content). One blank line after, then continue with M3 + M4 in the SAME message:
   "Are you the business owner / promoter, or an advisor representing a client?"
   If advisor: teaser-level data is sufficient — share only what's authorised.
   If owner: proceed with fields below.
@@ -82,7 +82,7 @@ const M3_BUY_SIDE = `
 
 INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   "owner" or "advisor" → SKIP entirely. The role is already known. Never ask.
-  "unknown" → Ask as its own standalone line, blank line after:
+  "unknown" → Ask as the FIRST LINE of your response (not the only content). One blank line after, then continue with M3 + M4 in the SAME message:
   "Are you the acquirer directly, or an advisor running a mandate on behalf of a client?"
   If advisor: share what the client's mandate covers — ranges are sufficient.
   If direct acquirer: proceed with fields below.
@@ -121,7 +121,7 @@ Debt → switch to M3_D framework. Equity → proceed below.
 
 INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   "owner" or "advisor" → SKIP entirely.
-  "unknown" → Ask as standalone line, blank line after:
+  "unknown" → Ask as the FIRST LINE of your response (not the only content). One blank line after, then continue with M3 + M4 in the SAME message:
   "Are you the founder / promoter of the business, or an advisor running this raise?"
   If advisor: teaser-level data and authorised ranges are sufficient.
   If founder: proceed with fields below.
@@ -152,7 +152,7 @@ const M3_DEBT = `
 
 INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   "owner" or "advisor" → SKIP entirely.
-  "unknown" → Ask as standalone line, blank line after:
+  "unknown" → Ask as the FIRST LINE of your response (not the only content). One blank line after, then continue with M3 + M4 in the SAME message:
   "Are you the business seeking the facility, or an advisor arranging it for a client?"
   If advisor: share what the client's brief covers — amounts and purpose in ranges are fine.
   If direct: proceed with fields below.
@@ -186,7 +186,7 @@ const M3_STRATEGIC_PARTNERSHIP = `
 
 INTERMEDIARY QUESTION — conditional on # INTERMEDIARY_ROLE:
   "owner" or "advisor" → SKIP entirely.
-  "unknown" → Ask as standalone line, blank line after:
+  "unknown" → Ask as the FIRST LINE of your response (not the only content). One blank line after, then continue with M3 + M4 in the SAME message:
   "Are you representing your own firm, or acting as an advisor facilitating this partnership?"
   If advisor: share what's been scoped — ranges and high-level descriptors are sufficient.
   If direct: proceed with fields below.
