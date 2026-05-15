@@ -1,5 +1,5 @@
-import { pgTable, uuid, text, integer, timestamp, jsonb, pgEnum, index, boolean, primaryKey, numeric } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { boolean, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Enums
 export const dealStatusEnum = pgEnum('deal_status', ['draft', 'live', 'paused', 'closed']);
@@ -19,7 +19,7 @@ export const users = pgTable('users', {
   profileCompletedOnce: boolean('profile_completed_once').default(false),
   profileCompletion: integer('profile_completion').default(0),
   tokens: integer('tokens').default(0),
-  
+
   // Professional Profile Fields (PRD-aligned)
   firmName: text('firm_name'),
   role: text('role'),
@@ -43,8 +43,8 @@ export const users = pgTable('users', {
   additionalInfo: text('additional_info'),
   document_url: text('document_url'),
   document_text: text('document_text'),
-  
-  
+
+
   // OTP Verification
   otpCode: text('otp_code'),
   otpExpires: timestamp('otp_expires'),
@@ -184,6 +184,63 @@ export const mandates = pgTable('mandates', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// 8.1 PROPOSALS (for matchmaking engine — semantic embeddings + scoring)
+// SYNCHRONIZED WITH LIVE DB SCHEMA (2026-05-12)
+export const proposals = pgTable('proposals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  rawText: text('raw_text'),
+  normalisedText: text('normalised_text').notNull(),
+  intent: text('intent').notNull(),
+  sectors: text('sectors').array(),
+  geographies: text('geographies').array(),
+  dealStructure: text('deal_structure'),
+  dealSizeMinCr: numeric('deal_size_min_cr'),
+  dealSizeMaxCr: numeric('deal_size_max_cr'),
+  revenueMinCr: numeric('revenue_min_cr'),
+  revenueMaxCr: numeric('revenue_max_cr'),
+  specialConditions: text('special_conditions').array(),
+  qualityScore: numeric('quality_score'),
+  qualityTier: text('quality_tier'),
+  status: text('status').default('ACTIVE').notNull(),
+  fraudFlags: text('fraud_flags').array(),
+  advisorName: text('advisor_name'),
+  contactPhone: text('contact_phone'),
+  source: text('source').default('WEB'),
+  refCode: text('ref_code'),
+  metadata: jsonb('metadata').default({}),
+  embeddingStatus: text('embedding_status').default('PENDING'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('idx_proposals_user_id').on(table.userId),
+  intentIdx: index('idx_proposals_intent').on(table.intent),
+  statusIdx: index('idx_proposals_status').on(table.status),
+}));
+
+// 8.2 PROPOSAL MATCHES (scored matches between proposals)
+export const proposalMatches = pgTable('proposal_matches', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  proposalId: uuid('proposal_id').references(() => proposals.id, { onDelete: 'cascade' }).notNull(),
+  matchedProposalId: uuid('matched_proposal_id').references(() => proposals.id, { onDelete: 'cascade' }).notNull(),
+  similarityScore: numeric('similarity_score').notNull(),
+  intentScore: numeric('intent_score').default('0'),
+  industryScore: numeric('industry_score').default('0'),
+  financialScore: numeric('financial_score').default('0'),
+  nicheScore: numeric('niche_score').default('0'),
+  geographyBoost: numeric('geography_boost').default('0'),
+  finalScore: numeric('final_score').notNull(),
+  confidenceScore: numeric('confidence_score').default('0'),
+  matchReason: text('match_reason').notNull(),
+  matchArchetype: text('match_archetype'),
+  status: text('status').default('ACTIVE'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  proposalIdx: index('idx_pm_proposal_id').on(table.proposalId),
+  matchedIdx: index('idx_pm_matched_id').on(table.matchedProposalId),
+  scoreIdx: index('idx_pm_final_score').on(table.finalScore),
+}));
+
 // 8.5 DOCUMENTS
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -202,6 +259,7 @@ export const chatSessions = pgTable('chat_sessions', {
   documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
   title: text('title').default('New Deal Intake'),
   state: jsonb('state').default({}),
+  stateVersion: integer('state_version').default(0).notNull(),  // ADDED for OCC
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -213,6 +271,21 @@ export const chatMessages = pgTable('chat_messages', {
   content: text('content').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// 11. SAVED SEARCHES — async re-match queue for zero-match proposals
+export const savedSearches = pgTable('saved_searches', {
+  searchId: uuid('search_id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  proposalId: uuid('proposal_id').references(() => proposals.id, { onDelete: 'cascade' }),
+  queryObject: jsonb('query_object').notNull(),
+  status: text('status').default('PENDING').notNull(),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  notifiedAt: timestamp('notified_at'),
+}, (table) => ({
+  statusIdx: index('idx_saved_searches_status').on(table.status),
+  userIdx: index('idx_saved_searches_user').on(table.userId),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -262,6 +335,17 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 
 export const mandatesRelations = relations(mandates, ({ one }) => ({
   user: one(users, { fields: [mandates.userId], references: [users.id] }),
+}));
+
+export const proposalsRelations = relations(proposals, ({ one, many }) => ({
+  user: one(users, { fields: [proposals.userId], references: [users.id] }),
+  matches: many(proposalMatches, { relationName: 'sourceProposal' }),
+  matchedBy: many(proposalMatches, { relationName: 'matchedProposal' }),
+}));
+
+export const proposalMatchesRelations = relations(proposalMatches, ({ one }) => ({
+  proposal: one(proposals, { fields: [proposalMatches.proposalId], references: [proposals.id], relationName: 'sourceProposal' }),
+  matchedProposal: one(proposals, { fields: [proposalMatches.matchedProposalId], references: [proposals.id], relationName: 'matchedProposal' }),
 }));
 
 export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({

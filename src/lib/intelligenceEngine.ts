@@ -75,29 +75,35 @@ function validateAndClean(raw: string, source: string): string {
 
 async function callOpenAI(messages: ChatMessage[], maxTokens: number): Promise<string> {
   const openai = getOpenAI();
-  const res = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages,
-    temperature: 0.2,
-    max_tokens: maxTokens,
-    response_format: { type: "json_object" },
-  });
+  const res = await openai.chat.completions.create(
+    {
+      model: "gpt-4o-mini",
+      messages,
+      temperature: 0.2,
+      max_tokens: maxTokens,
+      response_format: { type: "json_object" },
+    },
+    { timeout: 20000 } // 20s hard limit — fail fast so Groq fallback can run
+  );
   const raw = res.choices[0]?.message?.content ?? "";
   return validateAndClean(raw, "OpenAI gpt-4o-mini");
 }
 
 async function callGroq(messages: ChatMessage[], maxTokens: number): Promise<string> {
   const groq = getGroq();
-  const res = await groq.chat.completions.create({
-    // llama-3.1-8b-instant  → REMOVED: deprecated, returns HTML 404
-    // llama-3.1-70b-versatile → REMOVED: deprecated
-    // llama-3.3-70b-versatile → CURRENT stable model (2025)
-    model: "llama-3.3-70b-versatile",
-    messages,
-    temperature: 0.2,
-    max_tokens: maxTokens,
-    response_format: { type: "json_object" },
-  });
+  const res = await groq.chat.completions.create(
+    {
+      // llama-3.1-8b-instant  → REMOVED: deprecated, returns HTML 404
+      // llama-3.1-70b-versatile → REMOVED: deprecated
+      // llama-3.3-70b-versatile → CURRENT stable model (2025)
+      model: "llama-3.3-70b-versatile",
+      messages,
+      temperature: 0.2,
+      max_tokens: maxTokens,
+      response_format: { type: "json_object" },
+    },
+    { timeout: 25000 } // 25s limit for Groq
+  );
   const raw = res.choices[0]?.message?.content ?? "";
   return validateAndClean(raw, "Groq llama-3.3-70b-versatile");
 }
@@ -133,13 +139,18 @@ async function callAI(messages: ChatMessage[], maxTokens: number = 700): Promise
 
     // Infrastructure errors → worth trying Groq as backup
     const isInfraError =
-      msg.includes("429") ||            // Rate limit
-      msg.includes("401") ||            // Bad/expired key
-      msg.includes("500") ||            // OpenAI server error
-      msg.includes("503") ||            // OpenAI unavailable
-      msg.includes("ECONNREFUSED") ||   // Network down
-      msg.includes("fetch failed") ||   // Next.js network error
-      msg.includes("not set in environment"); // Key missing → try Groq
+      msg.includes("429") ||                // Rate limit
+      msg.includes("401") ||                // Bad/expired key
+      msg.includes("500") ||                // OpenAI server error
+      msg.includes("503") ||                // OpenAI unavailable
+      msg.includes("ECONNREFUSED") ||       // Network down
+      msg.includes("fetch failed") ||       // Next.js network error
+      msg.includes("not set in environment") || // Key missing → try Groq
+      msg.toLowerCase().includes("timed out") || // OpenAI SDK timeout
+      msg.toLowerCase().includes("timeout") ||   // Generic timeout
+      msg.toLowerCase().includes("etimedout") || // Node.js ETIMEDOUT
+      msg.toLowerCase().includes("aborted") ||   // AbortError
+      msg.toLowerCase().includes("connection error"); // Network level
 
     if (!isInfraError) {
       // Logic error: the API call reached OpenAI and got a bad response.

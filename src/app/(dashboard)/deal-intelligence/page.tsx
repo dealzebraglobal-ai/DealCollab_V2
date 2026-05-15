@@ -10,7 +10,7 @@ import IntelligenceVideoBackground from '@/components/intelligence/IntelligenceV
 import FeatureLockedOverlay from '@/components/FeatureLockedOverlay';
 
 export default function DealIntelligencePage() {
-  const isLocked = true; // Feature lock enabled
+  const isLocked = false; // Feature lock enabled
 
   return (
     <div className={`relative flex-1 w-full min-h-screen bg-[#0B0F1A] transition-all duration-700 ${isLocked ? 'h-screen overflow-hidden pointer-events-none' : 'overflow-x-hidden overflow-y-auto scrollbar-hide'}`}>

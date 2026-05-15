@@ -15,6 +15,13 @@
       "when": 1776789994833,
       "tag": "0001_glamorous_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778574005432,
+      "tag": "0002_shocking_captain_cross",
+      "breakpoints": true
     }
   ]
 }

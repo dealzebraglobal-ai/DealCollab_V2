@@ -77,6 +77,8 @@ export type DealIntent =
   | 'STRATEGIC_PARTNERSHIP'
   | null;
 
+import { normalizeSize } from './dataQuality';
+
 export type SectorKey =
   | 'pharma'
   | 'manufacturing'
@@ -103,46 +105,50 @@ export type ConversationPhase =
   | 'PROFILE_SEARCH';
 
 export interface RouterState {
-  intent:             DealIntent;
-  sector:             SectorKey | null;
-  sub_sector:         string | null;
-  geography:          string | null;
-  deal_size:          string | null;
-  revenue:            string | null;
-  structure:          string | null;
-  intent_focus:       string | null;
-  industry_data:      Record<string, unknown>;
-  is_sufficient:      boolean;
-  is_complete:        boolean;
-  is_profile_search:  boolean;
-  is_intermediary:    'owner' | 'advisor' | null;  // RC1
+  intent: DealIntent;
+  sector: SectorKey | null;
+  sub_sector: string | null;
+  geography: string | null;
+  deal_size: string | null;
+  revenue: string | null;
+  structure: string | null;
+  intent_focus: string | null;
+  industry_data: Record<string, unknown>;
+  is_sufficient: boolean;
+  is_complete: boolean;
+  is_profile_search: boolean;
+  is_intermediary: 'owner' | 'advisor' | null;  // RC1
   m4_questions_asked: boolean;
-  phase:              ConversationPhase;
-  turn_count:         number;
-  refinement_count:   number;
-  round_count:        number;  // RC8
+  phase: ConversationPhase;
+  turn_count: number;
+  refinement_count: number;
+  round_count: number;  // RC8
+  special_conditions: string[];
+  strategic_intent: string | null;
 }
 
 export function createBlankState(): RouterState {
   return {
-    intent:             null,
-    sector:             null,
-    sub_sector:         null,
-    geography:          null,
-    deal_size:          null,
-    revenue:            null,
-    structure:          null,
-    intent_focus:       null,
-    industry_data:      {},
-    is_sufficient:      false,
-    is_complete:        false,
-    is_profile_search:  false,
-    is_intermediary:    null,
+    intent: null,
+    sector: null,
+    sub_sector: null,
+    geography: null,
+    deal_size: null,
+    revenue: null,
+    structure: null,
+    intent_focus: null,
+    industry_data: {},
+    is_sufficient: false,
+    is_complete: false,
+    is_profile_search: false,
+    is_intermediary: null,
     m4_questions_asked: false,
-    phase:              'ENTRY',
-    turn_count:         0,
-    refinement_count:   0,
-    round_count:        0,
+    phase: 'ENTRY',
+    turn_count: 0,
+    refinement_count: 0,
+    round_count: 0,
+    special_conditions: [],
+    strategic_intent: null,
   };
 }
 
@@ -212,6 +218,9 @@ const SECTOR_KEYWORDS: Record<SectorKey, string[]> = {
     'stu', 'stu connectivity', 'grid connectivity',
     'wind farm', 'wind project', 'hybrid project', 're asset',
     'spv acquisition', 'acquire spv', 'energy asset', 'power asset',
+    'ev charging', 'charging infrastructure', 'clean mobility',
+    'battery storage', 'energy storage', 'ess', 'bess',
+    'ev infrastructure', 'electric mobility', 'smart charging',
   ],
   defence: [
     'defence', 'defense', 'aerospace', 'drdl', 'drdo', 'hal', 'military',
@@ -413,12 +422,12 @@ export function detectShellCompanyFromText(text: string): boolean {
 export function detectStructureFromText(text: string): string | null {
   const lower = text.toLowerCase();
   if (lower.includes('100%') || lower.includes('full buyout') ||
-      lower.includes('complete acquisition') || lower.includes('outright purchase')) {
+    lower.includes('complete acquisition') || lower.includes('outright purchase')) {
     return '100% / Full Buyout';
   }
   if (lower.includes('majority acquisition') || lower.includes('majority buyout') ||
-      lower.includes('majority stake') || lower.includes('control acquisition') ||
-      lower.includes('majority / 100%') || lower.includes('majority/100%')) {
+    lower.includes('majority stake') || lower.includes('control acquisition') ||
+    lower.includes('majority / 100%') || lower.includes('majority/100%')) {
     return 'Majority / Control Acquisition';
   }
   if (lower.includes('minority stake') || lower.includes('minority investment')) {
@@ -426,32 +435,21 @@ export function detectStructureFromText(text: string): string | null {
   }
   return null;
 }
-
-// RC2: Pre-detect deal size from teasers
 export function detectDealSizeFromText(text: string): string | null {
-  const patterns = [
-    /budget[:\s]+(?:₹|rs\.?)?[\s]?(\d[\d,]*)[\s]?(?:[–\-to]+[\s]?(\d[\d,]*)[\s]?)?(?:cr|crore)/gi,
-    /ticket[:\s]+(?:₹|rs\.?)?[\s]?(\d[\d,]*)[\s]?(?:[–\-to]+[\s]?(\d[\d,]*)[\s]?)?(?:cr|crore)/gi,
-    /(?:₹|rs\.?)[\s]?(\d[\d,]*)[\s]?[–\-to]+[\s]?(?:₹|rs\.?)?[\s]?(\d[\d,]*)[\s]?(?:cr|crore)/gi,
-  ];
-  for (const pattern of patterns) {
-    const match = pattern.exec(text);
-    if (match) return match[2] ? `₹${match[1]}–${match[2]} Cr` : `₹${match[1]} Cr`;
-  }
-  return null;
+  const n = normalizeSize(text);
+  if (!n || n.min_cr == null) return null;
+  if (n.min_cr === n.max_cr) return `₹${n.min_cr} Cr`;
+  return `₹${n.min_cr}–${n.max_cr} Cr`;
 }
 
-// RC2: Pre-detect revenue from teasers
+// RC2: Pre-detect revenue from teasers — only fires if revenue-keyword nearby
 export function detectRevenueFromText(text: string): string | null {
-  const patterns = [
-    /₹[\s]?(\d[\d,]*)[\s]?[–\-to]+[\s]?(\d[\d,]*)[\s]?(?:Cr|cr|crore)/gi,
-    /revenue[:\s]+₹?[\s]?(\d[\d,]*)[\s]?[–\-to]+[\s]?(\d[\d,]*)[\s]?(?:Cr|cr|crore)/gi,
-  ];
-  for (const pattern of patterns) {
-    const match = pattern.exec(text);
-    if (match) return `₹${match[1]}–${match[2]} Cr`;
-  }
-  return null;
+  const lower = text.toLowerCase();
+  if (!/revenue|turnover|t\/o|topline|sales/i.test(lower)) return null;
+  const n = normalizeSize(text);
+  if (!n || n.min_cr == null) return null;
+  if (n.min_cr === n.max_cr) return `₹${n.min_cr} Cr`;
+  return `₹${n.min_cr}–${n.max_cr} Cr`;
 }
 
 // RC10: Compute missing M3 fields server-side for compact format decision
@@ -517,14 +515,18 @@ export function updateStateFromExtraction(
     }
   }
 
-  if (extraction.state.sub_sector)   updated.sub_sector   = extraction.state.sub_sector as string;
-  if (extraction.state.geography)    updated.geography    = extraction.state.geography as string;
-  if (extraction.state.deal_size)    updated.deal_size    = extraction.state.deal_size as string;
-  if (extraction.state.revenue)      updated.revenue      = extraction.state.revenue as string;
-  if (extraction.state.structure)    updated.structure    = extraction.state.structure as string;
-  if (extraction.state.intent_focus) updated.intent_focus = extraction.state.intent_focus as string;
+  if (extraction.state.sub_sector) updated.sub_sector = extraction.state.sub_sector as string;
+  if (extraction.state.geography) updated.geography = extraction.state.geography as string;
+  if (extraction.state.deal_size) updated.deal_size = extraction.state.deal_size as string;
+  if (extraction.state.revenue) updated.revenue = extraction.state.revenue as string;
+  if (extraction.state.structure) updated.structure = extraction.state.structure as string;
+  if (extraction.state.intent_focus) {
+    updated.intent_focus = extraction.state.intent_focus as string;
+    updated.strategic_intent = extraction.state.intent_focus as string;
+  }
+
   if (extraction.state.industry_data &&
-      Object.keys(extraction.state.industry_data as object).length > 0) {
+    Object.keys(extraction.state.industry_data as object).length > 0) {
     updated.industry_data = { ...current.industry_data, ...(extraction.state.industry_data as object) };
   }
 
@@ -538,6 +540,7 @@ export function updateStateFromExtraction(
     if (detected) updated.is_intermediary = detected;
   }
 
+  // RC12: M4 questions asked state transition
   if (extraction.state.m4_questions_asked === true) {
     const m4WasLoaded = modulesLoaded.some(m => m.startsWith('M4_'));
     if (m4WasLoaded) {
@@ -546,6 +549,9 @@ export function updateStateFromExtraction(
     } else {
       console.warn('[ROUTER] Rejected m4_questions_asked=true — M4 not in prompt this turn.');
     }
+  } else if (extraction.state.m4_questions_asked === false) {
+    // If AI explicitly says false, we respect it, but we don't overwrite if it was already true
+    // unless we want to allow regression (usually not).
   }
 
   if (!updated.sector) {
@@ -563,32 +569,73 @@ export function updateStateFromExtraction(
     console.log('[DETECTOR] Shell company — sub_sector=shell_company');
   }
 
-  // RC3: Friction → force is_complete
-  if (detectFrictionSignal(currentMessage)) {
-    updated.is_complete = true;
-    console.log('[ROUTER] Friction — forcing is_complete=true');
-  } else {
-    updated.is_complete = extraction.is_complete;
+  // RC16: Auto-detect 'hospital' or 'clinic' for Pharma if sub_sector is null
+  if (updated.sector === 'pharma' && updated.sub_sector === null) {
+    const lower = currentMessage.toLowerCase();
+    if (lower.includes('hospital')) {
+      updated.sub_sector = 'hospital';
+      console.log('[DETECTOR] Pharma sub_sector detected: hospital');
+    } else if (lower.includes('clinic')) {
+      updated.sub_sector = 'clinic';
+      console.log('[DETECTOR] Pharma sub_sector detected: clinic');
+    }
   }
 
   const hasIndustrySignal = !!(updated.sector || updated.sub_sector);
-
-  // Renewable/realestate: capacity/acreage = size proxy, revenue may never be stated
   const capacitySectors: (SectorKey | null)[] = ['renewable', 'realestate'];
   const hasCapacitySignal = capacitySectors.includes(updated.sector)
     ? !!(updated.deal_size || updated.industry_data?.capacity || updated.industry_data?.installed_capacity || updated.sub_sector)
     : !!(updated.revenue || updated.deal_size);
 
-  const qualifyingFields = [
+  const qualifyingFieldsCount = [
     hasCapacitySignal,
     !!(updated.structure || updated.intent),
     !!(updated.geography),
   ].filter(Boolean).length;
 
-  updated.is_sufficient = hasIndustrySignal && qualifyingFields >= 2 && updated.m4_questions_asked;
-  updated.phase = resolvePhase(updated);
+  // RC3: Friction → force is_complete (Step 4 Guard)
+  // Only allow friction auto-close if MINIMUM FIELDS exist (Rule: Intent + Sector + 1 scale/geo signal)
+  const isFrictionSignal = detectFrictionSignal(currentMessage);
+  const meetsMinimumFrictionGuard = updated.intent && hasIndustrySignal && qualifyingFieldsCount >= 1;
 
-  if (current.phase === 'MOMENTUM')      updated.refinement_count = current.refinement_count + 1;
+  if (isFrictionSignal && meetsMinimumFrictionGuard) {
+    updated.is_complete = true;
+    console.log('[ROUTER] Friction — forcing is_complete=true (Guard: PASS)');
+  } else if (isFrictionSignal) {
+    console.warn('[ROUTER] Friction signal ignored — mandate does not meet minimum qualification fields.');
+    updated.is_complete = false;
+  } else {
+    updated.is_complete = extraction.is_complete;
+  }
+
+  // MINIMUM MATCHMAKING REQUIREMENTS (Phase 7 Directive)
+  // Rule: intent + sector + sub_sector AND (size OR revenue OR structure OR strategic_intent)
+  const hasIntent = !!updated.intent;
+  const hasSector = !!updated.sector;
+  const hasSubSector = !!updated.sub_sector;
+  const hasScale = !!(updated.deal_size || updated.revenue || updated.structure || updated.strategic_intent);
+
+  updated.is_sufficient = hasIntent && hasSector && hasSubSector && hasScale && updated.m4_questions_asked;
+
+  // PHASE STABILITY (Rule 18 / Step 3)
+  const nextPhase = resolvePhase(updated);
+  const PHASE_ORDER_VAL: Record<ConversationPhase, number> = {
+    ENTRY: 1,
+    QUALIFICATION: 2,
+    MOMENTUM: 3,
+    CLOSURE: 4,
+    MATCHING: 5,
+    PROFILE_SEARCH: 6
+  };
+
+  if (PHASE_ORDER_VAL[nextPhase] >= PHASE_ORDER_VAL[current.phase]) {
+    updated.phase = nextPhase;
+  } else {
+    console.warn(`[ROUTER] Phase regression blocked: Attempted ${current.phase} -> ${nextPhase}`);
+    updated.phase = current.phase;
+  }
+
+  if (current.phase === 'MOMENTUM') updated.refinement_count = current.refinement_count + 1;
   if (current.phase === 'QUALIFICATION') updated.round_count = current.round_count + 1;
 
   return updated;
@@ -610,9 +657,9 @@ export function initializeStateFromDocument(
   }
   if (location) state.geography = location;
   if (structuredData.sub_sector) state.sub_sector = String(structuredData.sub_sector);
-  if (structuredData.deal_size)  state.deal_size  = String(structuredData.deal_size);
-  if (structuredData.revenue)    state.revenue    = String(structuredData.revenue);
-  if (structuredData.structure)  state.structure  = String(structuredData.structure);
+  if (structuredData.deal_size) state.deal_size = String(structuredData.deal_size);
+  if (structuredData.revenue) state.revenue = String(structuredData.revenue);
+  if (structuredData.structure) state.structure = String(structuredData.structure);
   if (structuredData.company_overview) {
     state.industry_data = { ...state.industry_data, company_overview: structuredData.company_overview };
   }
@@ -630,13 +677,13 @@ export function initializeStateFromDocument(
 }
 
 function resolvePhase(state: RouterState): ConversationPhase {
-  if (state.is_profile_search)                            return 'PROFILE_SEARCH';
-  if (state.is_complete)                                  return 'CLOSURE';
+  if (state.is_profile_search) return 'PROFILE_SEARCH';
+  if (state.is_complete) return 'CLOSURE';
   if (state.is_sufficient && state.refinement_count >= 3) return 'CLOSURE';
   // RC8: Auto-close after 4 qualification rounds
   if (state.round_count >= 4 && (state.intent || state.sector)) return 'CLOSURE';
-  if (state.is_sufficient)                                return 'MOMENTUM';
-  if (state.intent || state.sector)                       return 'QUALIFICATION';
+  if (state.is_sufficient) return 'MOMENTUM';
+  if (state.intent || state.sector) return 'QUALIFICATION';
   return 'ENTRY';
 }
 
@@ -648,105 +695,18 @@ function resolvePhase(state: RouterState): ConversationPhase {
 // ─────────────────────────────────────────────────────────────
 
 const M0_OUTPUT_SCHEMA = `
-# OUTPUT CONTRACT (non-negotiable)
-Return ONLY valid JSON. No preamble, no markdown, no fences.
-{
-  "intent": "SELL_SIDE"|"BUY_SIDE"|"FUNDRAISING"|"DEBT"|"STRATEGIC_PARTNERSHIP"|null,
-  "state": {
-    "sector":             string|null,
-    "sub_sector":         string|null,
-    "geography":          string|null,
-    "deal_size":          string|null,
-    "revenue":            string|null,
-    "structure":          string|null,
-    "intent_focus":       string|null,
-    "industry_data":      {},
-    "is_intermediary":    "owner"|"advisor"|null,
-    "m4_questions_asked": boolean
-  },
-  "is_complete": boolean,
-  "message": "YOUR FULL RESPONSE TEXT HERE"
-}
+# OUTPUT CONTRACT
+Return ONLY valid JSON. { "intent": string|null, "state": { "sector": string|null, "sub_sector": string|null, "geography": string|null, "deal_size": string|null, "revenue": string|null, "structure": string|null, "intent_focus": string|null, "industry_data": {}, "is_intermediary": "owner"|"advisor"|null, "m4_questions_asked": boolean }, "is_complete": boolean, "message": "YOUR RESPONSE" }
 
-STEP 1 — EXTRACT ALL FIELDS BEFORE WRITING A SINGLE WORD:
-  Read the ENTIRE user message and ALL prior conversation.
-  Fill every state field you can from what was said. Then check # FIELDS ALREADY PROVIDED.
-  Never ask for any field already in # FIELDS ALREADY PROVIDED.
-
-  is_intermediary detection:
-    "advisor": investment banker, ca, chartered accountant, "one of client", "for my client",
-               "our client", "on behalf of", "i represent", "mandated to", "representing a client"
-    "owner":   "i am promoter", "i am founder", "i am the owner", "my business", "our company",
-               "i am an investor", "i am the acquirer"
-
-  sub_sector: set "shell_company" when 2+ signals from: ROC, authorised capital,
-    paid up capital, GST surrendered, C/F loss, zero litigation, dormant.
-
-  structure: extract from "100% exit", "Majority Acquisition", "full sale", "SPV sale".
-
-  STRUCTURE VALIDATION — only accept real transaction structures:
-    Valid: "full sale", "majority acquisition", "minority stake", "full buyout", "partial sale",
-           "asset sale", "100% buyout", "SPV sale", "strategic stake", "majority stake"
-    INVALID — do NOT store as structure (store in intent_focus instead, set structure=null):
-      "economic stability", "financially balanced", "growth", "stability", "diversification"
-      If user says these → store in intent_focus, re-ask structure.
-
-STEP 2 — M4 SECTOR QUESTIONS ARE MANDATORY THIS TURN:
-  Check: # MODULES IN THIS PROMPT. If M4_ is listed:
-  ✔ Your message MUST contain M4 sector questions as bullets below M3.
-  ✔ Do not save M4 for next turn. They go in the SAME response as M3.
-  ✔ Set m4_questions_asked=true only when M4 bullets appear in your message.
-  Self-check before writing JSON: "Does my message contain M4 sector questions?"
-  If no → add them now before submitting.
-
-STEP 3 — INTENT-AWARE M4 FRAMING:
-  BUY_SIDE / FUNDRAISING → M4 asks "what do you want IN a target?"
-  SELL_SIDE / DEBT / STRATEGIC_PARTNERSHIP → M4 asks "what does your existing business look like?"
-
-STEP 4 — MESSAGE FORMAT:
-  INTERMEDIARY QUESTION RULE (RC12 — critical):
-  When # INTERMEDIARY_ROLE is unknown — write the intermediary question as LINE 1.
-  Then IMMEDIATELY continue in the SAME message with M3 fields and M4 questions.
-  The intermediary question is the OPENING LINE — NOT the entire response.
-  NEVER send a response containing ONLY the intermediary question. M3 + M4 follow in same message.
-
-  COMPACT FORMAT (# M3_FORMAT: compact):
-  When set → write all missing M3 fields as ONE natural sentence. No bullets, no opening line.
-  Example: "To match you with the right target, share your geography and approximate budget."
-  Then M4 questions follow as normal bullets.
-
-  REVENUE-FIRST (# REVENUE_REQUIRED):
-  When set → ask revenue + EBITDA as the FIRST question only. No M4 until revenue captured.
-  "To position this correctly, what is the approximate annual revenue and EBITDA or profitability range?"
-
-  SHELL COMPANY (# SHELL_COMPANY_DETECTED):
-  When set → ignore ALL sector M4 questions. Ask ONLY:
-  Legal structure · Licences held · Compliance status · Shareholding structure.
-
-  OPTION-LISTING BAN:
-  ✘ NEVER list choices inside a question using "—", "or", commas, or slashes.
-  All questions must be open-ended.
-
-STEP 5 — FRICTION + ROUND LIMIT:
-  Friction: "proceed", "this is all", "i have gave", "accept and continue", "at this stage",
-    "only this information" → is_complete=TRUE. Deliver deal summary + closure. Ask nothing more.
-  Round limit (# QUALIFICATION_ROUNDS ≥ 4) → stop questions, summarise, close.
-
-STEP 6 — SECTOR MAPPING:
-  pharma | manufacturing | saas | finserv | consumer | realestate |
-  logistics | education | chemicals | hospitality | renewable | defence | oil_gas | ngo | mixed | null
-  hospital/clinic/healthcare/multispeciality → "pharma"
-  defence/defense/military/aerospace → "defence"
-  digital marketing agency / performance marketing / adtech → "saas"
-  section 8 / ngo / trust / society / 12a / 80g → "ngo"
-  refinery / petroleum / downstream / storage terminal → "oil_gas"
-
-STEP 7 — INTENT FROM DOCUMENTS:
-  "Investor Mandate" / "deploy capital" / "actively looking to invest" = BUY_SIDE.
-  "Acquisition opportunity" / "for sale" / "SPV available" = SELL_SIDE.
-  "looking for investor" / "raise capital" = FUNDRAISING (only when business seeks funds).
-
-M4_QUESTIONS_ASKED: TRUE only when M4_ in module list AND message has M4 bullets. Once TRUE stays TRUE.
+# EXTRACTION RULES
+- INTERMEDIARY: "advisor" if banker/consultant/CA/representing. "owner" if promoter/founder/my business.
+- STRUCTURE: Only transaction types (full sale, majority stake, asset sale). Invalid → store in intent_focus.
+- M4 MANDATORY: When M4_ in module list, include sector bullets in "message". Set m4_questions_asked=true.
+- COMPACT FORMAT: If # M3_FORMAT: compact, write missing fields as one natural sentence.
+- REVENUE-FIRST: If # REVENUE_REQUIRED, ask ONLY revenue/EBITDA this turn.
+- SECTOR MAPPING: EV/Solar → renewable | Hospital/Clinic → pharma | Agency/Adtech → saas | NGO/Trust → ngo | Refinery/Fuel → oil_gas.
+- INTENT: EOI/Teaser/Proposal looking to buy → BUY_SIDE. IM/Teaser looking to sell → SELL_SIDE.
+- FRICTION/ROUNDS: auto-close if friction signal or turn 4 reached.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────
@@ -754,39 +714,21 @@ M4_QUESTIONS_ASKED: TRUE only when M4_ in module list AND message has M4 bullets
 // ─────────────────────────────────────────────────────────────
 
 const M1_CORE_IDENTITY = `
-# ROLE
-You are the DealCollab Deal Intelligence Assistant — a deal qualification engine and matchmaking optimizer.
-Not a generic chatbot, listing platform, or consultant.
+# ROLE: DealCollab Deal Intelligence Engine. Institutional, sharp, premium tone.
 
 # PHILOSOPHY
-- Trust First: never ask for company name or identity early.
-- Matching First: every question improves counterparty discovery.
-- Fewer Interactions, Better Intelligence: group questions. Never one field per reply.
-- Transactional, Not Advisory: two sentences max on strategy questions.
-- Momentum Over Completeness: sector + 2 qualifying fields = sufficient.
+- Trust: No company names early.
+- Grouping: 2-4 questions at once. Never one field per turn.
+- Transactional: No long strategic advice.
+- Momentum: Sufficient at sector + 2 fields.
 
-# TONE
-Premium. Sharp. Credible. Institutional. Active voice. No hedging. No filler.
-
-# CONFIDENTIALITY
-Remind once: "Your inputs remain confidential. Share in ranges or descriptors — no sensitive details required at this stage."
+# CONFIDENTIALITY: Remind once: "Ranges and descriptors only. No sensitive details needed."
 
 # FORBIDDEN
-✘ Ask for any field already provided in any prior turn
-✘ Re-ask the owner/advisor question if # INTERMEDIARY_ROLE shows "owner" or "advisor" — it is known
-✘ Send a response containing ONLY the intermediary question — M3 + M4 must follow in the same message
-✘ For BUY_SIDE: ask target TYPE when user already stated it — ask sub-type instead
-✘ Write bullets without newlines — each bullet MUST start on a new line
-✘ Re-ask the full block after user has already responded
-✘ Continue structured questioning after sufficiency met
-✘ List options inside questions — questions must be open-ended
-✘ Map "investor mandate" or "deploy capital" to FUNDRAISING — this is BUY_SIDE
-✘ Continue asking after 4 qualification rounds — deliver deal summary and closure
-✘ Ignore friction — "proceed", "this is enough", "accept and continue", "i have gave" → close immediately
-✘ Store "economic stability" or "financially balanced" as structure — these are rationale, not structures
-✘ Ask M4 questions next turn — when M4_ is loaded, M4 bullets go in the SAME response as M3
-✘ Banned phrases: "Thank you for the information" | "To proceed" | "To move forward" |
-  "Great" | "Absolutely" | "Happy to help" | "Could you share" | "Tell me more" | "As an AI" | "As a chatbot"
+- Re-asking any field in # FIELDS ALREADY PROVIDED.
+- Asking intermediary role if # INTERMEDIARY_ROLE is known.
+- Asking M4 next turn (must include now if loaded).
+- Banned: "Thank you", "Happy to help", "As an AI", "Great".
 `.trim();
 
 // ─────────────────────────────────────────────────────────────
@@ -1030,10 +972,10 @@ MANDATORY: After Block 1, add Block 2 from M4 SECTOR INTELLIGENCE. Same message.
 `.trim();
 
 const M3_MODULES: Record<Exclude<DealIntent, null>, string> = {
-  SELL_SIDE:             M3_SELL_SIDE,
-  BUY_SIDE:             M3_BUY_SIDE,
-  FUNDRAISING:          M3_FUNDRAISING,
-  DEBT:                 M3_DEBT,
+  SELL_SIDE: M3_SELL_SIDE,
+  BUY_SIDE: M3_BUY_SIDE,
+  FUNDRAISING: M3_FUNDRAISING,
+  DEBT: M3_DEBT,
   STRATEGIC_PARTNERSHIP: M3_STRATEGIC,
 };
 
@@ -1048,18 +990,20 @@ const M4_PHARMA = `
 ## M4: PHARMA / HEALTHCARE — Block 2
 Add as SEPARATE bullets after Block 1 in the SAME message. Each bullet on a new line.
 
+STRICT SKIP RULE: If a field is already in # FIELDS ALREADY PROVIDED (e.g., scale, accreditations, hospital_type), do NOT include the bullet for it. Skip it entirely.
+
 IF INTENT = BUY_SIDE or FUNDRAISING:
   Sub-type rule: if user said "hospital", do NOT ask hospital vs clinic — ask sub-type.
-\n• What type of hospital are you looking for — multispecialty, specialty, or standalone?
-\n• What scale matters — approximate bed count, revenue range, or patient volume?
-\n• Are specific accreditations (NABH, NABL) important for the target?
-\n• What operational profile — established with doctors in place, or open to a turnaround?
+\n• What type of hospital are you looking for — multispecialty, specialty, or standalone? [key: hospital_type] [SKIP if known]
+\n• What scale matters — approximate bed count, revenue range, or patient volume? [key: scale] [SKIP if known]
+\n• Are specific accreditations (NABH, NABL) important for the target? [key: accreditations] [SKIP if known]
+\n• What operational profile — established with doctors in place, or open to a turnaround? [key: operational_profile] [SKIP if known]
 
 IF INTENT = SELL_SIDE / DEBT / STRATEGIC_PARTNERSHIP:
-\n• What does the business actually do — hospital, clinic, diagnostic centre, or specialty service?
-\n• What regulatory approvals does the business hold, and how critical are they?
-\n• How concentrated is the revenue — key doctors, institutional contracts, or broad patient base?
-\n• What is the operational scale — bed count, occupancy rate, or patient volumes?
+\n• What does the business actually do — hospital, clinic, diagnostic centre, or specialty service? [key: hospital_subtype]
+\n• What regulatory approvals does the business hold, and how critical are they? [key: approvals]
+\n• How concentrated is the revenue — key doctors, institutional contracts, or broad patient base? [key: revenue_concentration]
+\n• What is the operational scale — bed count, occupancy rate, or patient volumes? [key: scale]
 
 Buyer signals: NABH/NABL · type and scale · operational independence · doctor concentration.
 `.trim();
@@ -1342,21 +1286,21 @@ Ask all 3 regardless of intent:
 `.trim();
 
 const M4_MODULES: Record<SectorKey, string> = {
-  pharma:        M4_PHARMA,
+  pharma: M4_PHARMA,
   manufacturing: M4_MANUFACTURING,
-  saas:          M4_SAAS,
-  finserv:       M4_FINSERV,
-  consumer:      M4_CONSUMER,
-  realestate:    M4_REALESTATE,
-  logistics:     M4_LOGISTICS,
-  education:     M4_EDUCATION,
-  chemicals:     M4_CHEMICALS,
-  hospitality:   M4_HOSPITALITY,
-  renewable:     M4_RENEWABLE,
-  defence:       M4_DEFENCE,
-  oil_gas:       M4_OIL_GAS,
-  ngo:           M4_NGO,
-  mixed:         M4_MIXED,
+  saas: M4_SAAS,
+  finserv: M4_FINSERV,
+  consumer: M4_CONSUMER,
+  realestate: M4_REALESTATE,
+  logistics: M4_LOGISTICS,
+  education: M4_EDUCATION,
+  chemicals: M4_CHEMICALS,
+  hospitality: M4_HOSPITALITY,
+  renewable: M4_RENEWABLE,
+  defence: M4_DEFENCE,
+  oil_gas: M4_OIL_GAS,
+  ngo: M4_NGO,
+  mixed: M4_MIXED,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -1366,27 +1310,31 @@ const M4_MODULES: Record<SectorKey, string> = {
 export function buildM5_Matching(matchedMandates: string | null): string {
   if (!matchedMandates || matchedMandates.trim().length === 0) {
     return `
-## M5: NO MATCHES FOUND
+## M5: MATCHMAKING — NO INSTANT MATCHES
+The semantic matchmaking engine has been triggered and is running asynchronously.
 Deliver verbatim then closure:
-"No matches at this stage. Your mandate has been saved and is running against the network continuously.
-You will be notified via WhatsApp or email when a relevant counterparty is identified — this runs for 90 days."
+"Your mandate has been captured and the matchmaking engine is now active.
+We use semantic intelligence — not keyword filtering — to identify truly aligned counterparties.
+You will be notified via WhatsApp or email when relevant matches emerge. This runs continuously for 90 days."
     `.trim();
   }
   return `
-## M5: DEAL MATCHING MODE
-Matched counterparties found. Present now.
+## M5: MATCH INTELLIGENCE PRESENTATION
+The matchmaking engine has identified aligned counterparties via semantic analysis.
 
-### Matched mandates (anonymous):
+### Active matches (anonymous):
 ${matchedMandates}
 
 ### Presentation rules:
 1. "We have identified [N] potentially aligned counterpart[y/ies] in our network."
-2. Per match: "[Sector] · [Geography] · [Size]" + one sentence why relevant.
+2. Per match: "[Sector] · [Geography] · [Compatibility]" + one sentence on alignment reason.
 3. "To connect, send a connection request from your Deal Dashboard.
    Tokens deducted only if both parties approve."
 4. Then deliver closure message verbatim.
 
-✘ Never reveal name · firm · contact · mandate ID. ✘ Never fabricate.
+✘ Never reveal: name · firm · contact · mandate ID · user identity.
+✘ Never fabricate counterparty details.
+✘ Never present matches below 40% compatibility.
   `.trim();
 }
 
@@ -1423,8 +1371,8 @@ Set intent_focus = "PROFILE_SEARCH". is_complete = true after interest expressed
 // ─────────────────────────────────────────────────────────────
 
 export interface RouterOutput {
-  systemPrompt:  string;
-  phase:         ConversationPhase;
+  systemPrompt: string;
+  phase: ConversationPhase;
   modulesLoaded: string[];
   tokenEstimate: number;
 }
@@ -1471,7 +1419,7 @@ export function buildSystemPrompt(
 
   modules.push({ key: 'M0_output_schema', content: M0_OUTPUT_SCHEMA });
   modules.push({ key: 'M1_core_identity', content: M1_CORE_IDENTITY });
-  modules.push({ key: 'M2_phase_rules',   content: M2_PHASE_RULES });
+  modules.push({ key: 'M2_phase_rules', content: M2_PHASE_RULES });
 
   if (state.is_profile_search || state.phase === 'PROFILE_SEARCH') {
     modules.push({ key: 'M6_profile_intelligence', content: M6_PROFILE_INTELLIGENCE });
@@ -1523,15 +1471,22 @@ export function buildSystemPrompt(
 
   // RC2: Known fields — prevents re-asking
   const knownFields: string[] = [];
-  if (state.intent)          knownFields.push(`intent:${state.intent}`);
-  if (state.sector)          knownFields.push(`sector:${state.sector}`);
-  if (state.sub_sector)      knownFields.push(`sub_sector:${state.sub_sector}`);
-  if (state.geography)       knownFields.push(`geography:${state.geography}`);
-  if (state.deal_size)       knownFields.push(`deal_size:${state.deal_size}`);
-  if (state.revenue)         knownFields.push(`revenue:${state.revenue}`);
-  if (state.structure)       knownFields.push(`structure:${state.structure}`);
-  if (state.intent_focus)    knownFields.push(`rationale:${state.intent_focus}`);
+  if (state.intent) knownFields.push(`intent:${state.intent}`);
+  if (state.sector) knownFields.push(`sector:${state.sector}`);
+  if (state.sub_sector) knownFields.push(`sub_sector:${state.sub_sector}`);
+  if (state.geography) knownFields.push(`geography:${state.geography}`);
+  if (state.deal_size) knownFields.push(`deal_size:${state.deal_size}`);
+  if (state.revenue) knownFields.push(`revenue:${state.revenue}`);
+  if (state.structure) knownFields.push(`structure:${state.structure}`);
+  if (state.intent_focus) knownFields.push(`rationale:${state.intent_focus}`);
   if (state.is_intermediary) knownFields.push(`role:${state.is_intermediary}`);
+
+  // RC15: Inject industry_data keys — prevents M4 re-asking
+  if (state.industry_data && typeof state.industry_data === 'object') {
+    Object.entries(state.industry_data).forEach(([k, v]) => {
+      if (v) knownFields.push(`${k}:${v}`);
+    });
+  }
 
   const phaseContext = [
     `\n# CURRENT CONVERSATION PHASE: ${state.phase}`,
@@ -1561,7 +1516,7 @@ export function buildSystemPrompt(
 
   return {
     systemPrompt,
-    phase:         state.phase,
+    phase: state.phase,
     modulesLoaded: modules.map(m => m.key),
     tokenEstimate: Math.round(systemPrompt.length / 4),
   };

@@ -8,7 +8,7 @@ import { Bell } from 'lucide-react';
 import FeatureLockedOverlay from '@/components/FeatureLockedOverlay';
 
 export default function NotificationsPage() {
-  const isLocked = true; // Feature lock enabled
+  const isLocked = false; // Feature lock enabled
   const { notifications, markAsRead, markAllAsRead, unreadCount, addNotification, refreshNotifications } = useNotifications();
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

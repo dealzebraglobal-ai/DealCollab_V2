@@ -9,8 +9,10 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log("[MESSAGES_ROUTE] GET hit for session messages");
   const session = await auth();
   if (!session?.user?.email) {
+    console.warn("[MESSAGES_ROUTE] Unauthorized access attempt");
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -56,7 +58,13 @@ export async function GET(
       throw new Error(msgErr.message);
     }
 
-    const cleanedMessages = messages.map(m => {
+    interface ChatMessage {
+      role: string;
+      content: string;
+      [key: string]: unknown;
+    }
+
+    const cleanedMessages = (messages as ChatMessage[]).map((m: ChatMessage) => {
       if (m.role === 'assistant') {
         try {
           const parsed = JSON.parse(m.content);

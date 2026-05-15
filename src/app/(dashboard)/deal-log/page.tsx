@@ -19,6 +19,23 @@ interface Deal {
   isConnectionActive?: boolean;
 }
 
+// Helper to create mock match objects conforming to new Match interface
+function mockMatch(id: string, label: string, sector: string, geography: string, intent: string, score: number, reason: string): Match {
+  return {
+    id,
+    rank: parseInt(id.replace(/\D/g, '')) || 1,
+    label,
+    proposalId: 'mock-proposal',
+    finalScore: score,
+    confidenceScore: score * 0.9,
+    scores: { intent: 0.95, industry: 0.85, financial: 0.7, niche: 0.6, geography: 0.03, similarity: 0.82 },
+    matchReason: reason,
+    counterparty: { sector, subSector: null, geography, intent, structure: null },
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString(),
+  };
+}
+
 // Mock API simulation
 const fetchDealsData = async (): Promise<Deal[]> => {
   await new Promise(resolve => setTimeout(resolve, 800));
@@ -31,9 +48,9 @@ const fetchDealsData = async (): Promise<Deal[]> => {
       status: "Matched",
       isNew: true,
       matches: [
-        { id: "p1", name: "Ventura Capital A", description: "Leading early-stage fintech investor with a focus on disruptive payment solutions and market expansion." },
-        { id: "p2", name: "BlueChip Equity", description: "Global private equity firm specializing in scaling enterprise software and AI infrastructure startups." },
-        { id: "p3", name: "NexGen Syndicate", description: "A group of prominent angel investors with deep expertise in B2B SaaS and high-growth technologies." }
+        mockMatch("p1", "P1", "finserv", "North America", "BUY_SIDE", 92.3, "Matched due to: finserv sector alignment, acquisition appetite, ticket size compatibility."),
+        mockMatch("p2", "P2", "finserv", "Global", "BUY_SIDE", 84.1, "Matched due to: enterprise software interest, financial compatibility, strategic rationale."),
+        mockMatch("p3", "P3", "saas", "North America", "BUY_SIDE", 76.8, "Matched due to: B2B SaaS expertise, geography overlap, niche technology alignment."),
       ]
     },
     {
@@ -52,9 +69,9 @@ const fetchDealsData = async (): Promise<Deal[]> => {
        status: "Matched",
        isConnectionActive: true,
        matches: [
-         { id: "p1", name: "LogiCorp Partners", description: "Supply chain giants looking for innovative regional last-mile delivery solutions." },
-         { id: "p2", name: "Oceanic Freight Group", description: "Marine logistics conglomerate interested in digital transformation of port operations." },
-         { id: "p3", name: "Transit Systems Int.", description: "Public-private partnership Specialists focused on regional rail and road infrastructure." }
+         mockMatch("p1", "P1", "logistics", "South Asia", "BUY_SIDE", 88.5, "Matched due to: logistics sector match, last-mile delivery interest, regional geography overlap."),
+         mockMatch("p2", "P2", "logistics", "Global", "BUY_SIDE", 79.2, "Matched due to: supply chain expertise, infrastructure alignment, digital transformation interest."),
+         mockMatch("p3", "P3", "realestate", "South Asia", "BUY_SIDE", 65.4, "Matched due to: infrastructure focus, geography overlap, public-private partnership interest."),
        ]
     },
     {
@@ -71,7 +88,7 @@ const fetchDealsData = async (): Promise<Deal[]> => {
 import FeatureLockedOverlay from '@/components/FeatureLockedOverlay';
 
 export default function DealLogPage() {
-  const isLocked = true; // Feature lock enabled
+  const isLocked = false; // Feature lock enabled
   const router = useRouter();
   const { addNotification } = useNotifications();
   const [deals, setDeals] = useState<Deal[]>([]);

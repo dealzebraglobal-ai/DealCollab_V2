@@ -1,11 +1,10 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { 
-  ArrowLeft, Calendar, MapPin, Globe, Briefcase, 
-  Target, Info, Share2, MoreHorizontal, MessageSquare, 
-  ShieldCheck, LayoutGrid, Sparkles, CheckCircle2,
+  ArrowLeft, Calendar, Globe, Briefcase, 
+  Target, Share2, MoreHorizontal, MessageSquare, 
+  ShieldCheck, Sparkles, CheckCircle2,
   Clock, FileText, Link2
 } from 'lucide-react';
 import { DealDetailSkeleton, ErrorState } from '@/components/Skeleton';
@@ -25,11 +24,22 @@ interface DealDetail {
   matches: Match[];
 }
 
+function mkMatch(id: string, label: string, sector: string, geography: string, intent: string, score: number, reason: string): Match {
+  return {
+    id, rank: parseInt(id.replace(/\D/g, '')) || 1, label,
+    proposalId: 'mock', finalScore: score, confidenceScore: score * 0.9,
+    scores: { intent: 0.95, industry: 0.85, financial: 0.7, niche: 0.6, geography: 0.03, similarity: 0.82 },
+    matchReason: reason,
+    counterparty: { sector, subSector: null, geography, intent, structure: null },
+    status: 'ACTIVE', createdAt: new Date().toISOString(),
+  };
+}
+
 const mockDealData: Record<string, DealDetail> = {
   "1": {
     id: "1",
     title: "Startup Funding Round: Fintech AI",
-    description: "Series A funding looking for strategic investors in the fintech space. The company focuses on AI-driven credit scoring models for emerging markets. We have already secured commitments for 40% of the round from existing institutional investors.",
+    description: "Series A funding looking for strategic investors in the fintech space. The company focuses on AI-driven credit scoring models for emerging markets.",
     sector: "Fintech / AI",
     region: "North America (Remote)",
     status: "Matched",
@@ -37,21 +47,21 @@ const mockDealData: Record<string, DealDetail> = {
     valuation: "$25M - $30M",
     dealType: "Equity Fundraising",
     matches: [
-      { id: "m1", name: "Ventura Capital Group", description: "Specialized in early-stage fintech with $500M AUM." },
-      { id: "m2", name: "Sarah Jenkins", description: "Angel Investor & Former Head of Product at Stripe." }
+      mkMatch("m1", "P1", "finserv", "North America", "BUY_SIDE", 92.3, "Matched due to: finserv sector alignment, early-stage fintech expertise."),
+      mkMatch("m2", "P2", "finserv", "Global", "BUY_SIDE", 84.1, "Matched due to: financial compatibility, payment solutions interest."),
     ]
   },
   "101": {
     id: "101",
     title: "Acquisition Strategy: Cloud Infra",
-    description: "Enterprise client looking for private cloud infrastructure partners to consolidate their European data center operations. Looking for firms with strong compliance posture in GDPR and local security standards.",
+    description: "Enterprise client looking for private cloud infrastructure partners to consolidate their European data center operations.",
     sector: "Cloud Infrastructure",
     region: "UK / Europe",
     status: "EOI Received",
     createdAt: "Apr 18, 2026",
     dealType: "Acquisition",
     matches: [
-      { id: "m3", name: "TechNode Solutions", description: "SME cloud provider with 3 Tier-IV data centers in Germany." }
+      mkMatch("m3", "P1", "saas", "Europe", "SELL_SIDE", 78.6, "Matched due to: cloud infrastructure alignment, GDPR compliance."),
     ]
   }
 };
@@ -65,18 +75,22 @@ export default function DealDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const [, startTransition] = useTransition();
+
   useEffect(() => {
     // Simulate API fetch
-    setLoading(true);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       const data = mockDealData[id];
-      if (data) {
-        setDeal(data);
-      } else {
-        setError(true);
-      }
-      setLoading(false);
+      startTransition(() => {
+        if (data) {
+          setDeal(data);
+        } else {
+          setError(true);
+        }
+        setLoading(false);
+      });
     }, 800);
+    return () => clearTimeout(timer);
   }, [id]);
 
   if (loading) return <DealDetailSkeleton />;
@@ -195,9 +209,9 @@ export default function DealDetailPage() {
                                 </div>
                              </div>
                              <div>
-                                <h4 className="text-lg font-bold text-[#1F2937] group-hover:text-[#F97316] transition-colors">{match.name}</h4>
+                                <h4 className="text-lg font-bold text-[#1F2937] group-hover:text-[#F97316] transition-colors">{match.label} — {match.counterparty.sector}</h4>
                                 <p className="text-sm text-[#6B7280] font-medium leading-relaxed mt-2 line-clamp-2">
-                                   {match.description}
+                                   {match.matchReason}
                                 </p>
                              </div>
                              <button className="w-full py-3 bg-gray-50 border border-transparent rounded-xl text-xs font-bold text-[#1F2937] group-hover:bg-[#1F2937] group-hover:text-white transition-all">

@@ -76,7 +76,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setActiveChatId(id);
     try {
-      const res = await fetch(`/api/chat/sessions/${id}/messages`);
+      const res = await fetch(`/api/chat/${id}/messages`);
       if (!res.ok) {
         const text = await res.text();
         console.error(`Failed to load messages: ${res.status} ${res.statusText}`, text.slice(0, 200));
@@ -89,7 +89,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Fetch document linked to this chat
-      const chatDetailsRes = await fetch(`/api/chat/sessions/${id}`);
+      const chatDetailsRes = await fetch(`/api/chat/${id}`);
       const chatDetails = await chatDetailsRes.json();
       if (chatDetails.success && chatDetails.document) {
         setDocumentId(chatDetails.document.id);

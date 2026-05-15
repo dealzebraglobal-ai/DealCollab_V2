@@ -47,6 +47,9 @@ export const SECTOR_SYNONYMS: Record<string, SectorKey> = {
     'ngo': 'ngo',
     'trust': 'ngo',
     'society': 'ngo',
+    'ev charging': 'renewable',
+    'clean mobility': 'renewable',
+    'charging infrastructure': 'renewable',
 };
 
 export const SHORTHAND_MAP: Record<string, string> = {

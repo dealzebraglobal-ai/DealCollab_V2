@@ -5,6 +5,8 @@ import InputBar from "@/components/InputBar";
 import { ChatSkeleton } from '@/components/Skeleton';
 import { Plus } from 'lucide-react';
 import { useChat } from '@/components/ChatProvider';
+import { useRouter } from 'next/navigation';
+import { MatchPanel } from '@/components/MatchPanel';
 
 export default function Home() {
   const { 
@@ -18,7 +20,12 @@ export default function Home() {
   } = useChat();
 
   const [isTyping, setIsTyping] = React.useState(false);
+  const [responseState, setResponseState] = React.useState<{ is_complete: boolean; proposalId: string | null }>({
+    is_complete: false,
+    proposalId: null
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -147,6 +154,14 @@ export default function Home() {
 
       setMessages(prev => [...prev, aiMsg]);
 
+      // Track completion for MatchPanel
+      if (chatData.is_complete) {
+        setResponseState({
+          is_complete: true,
+          proposalId: chatData.proposalId
+        });
+      }
+
       if (!activeChatId && chatData.chatId) {
         setActiveChatId(chatData.chatId);
         fetchSessions();
@@ -205,6 +220,19 @@ export default function Home() {
                     isTyping={isTyping}
                     onQuestionClick={(q) => handleSendMessage(q, null)}
                 />
+                
+                {/* Matchmaking Results Panel */}
+                {responseState.is_complete && responseState.proposalId && (
+                  <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <MatchPanel
+                      proposalId={responseState.proposalId}
+                      onStartOver={() => {
+                        setResponseState({ is_complete: false, proposalId: null });
+                        router.push('/home'); // Or the user's specified /chat/new
+                      }}
+                    />
+                  </div>
+                )}
             </div>
           )}
           {/* Invisible element for auto-scrolling */}

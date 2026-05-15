@@ -44,6 +44,25 @@
  */
 
 // ─────────────────────────────────────────────────────────────
+// PHASE STABILITY (Rule 18)
+// ─────────────────────────────────────────────────────────────
+export const PHASE_ORDER = {
+  ENTRY: 1,
+  QUALIFICATION: 2,
+  MOMENTUM: 3,
+  CLOSURE: 4,
+  MATCHING: 5, // Unified matching phase
+} as const;
+
+export const STATE_STABILITY_RULES = `
+## STATE MACHINE STABILITY (Rule 18)
+- Never allow backward transitions: ENTRY → QUAL → MOMENTUM → CLOSURE → MATCHING.
+- If current_phase is CLOSURE, do not re-ask qualification questions.
+- If is_complete is true, session stays in CLOSURE or MATCHING.
+`.trim();
+
+
+// ─────────────────────────────────────────────────────────────
 // PHASE 1 — ENTRY
 // ─────────────────────────────────────────────────────────────
 const PHASE_ENTRY = `

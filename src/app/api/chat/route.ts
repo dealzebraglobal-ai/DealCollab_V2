@@ -1,26 +1,30 @@
+// src/app/api/chat/route.ts
 import { auth } from '@/auth';
-import { db } from '@/db';
-import { chatSessions, mandates } from '@/db/schema';
+import {
+  computeQualityScore,
+  normalizeIntent,
+  normalizeSize,
+  qualityTierFromScore,
+} from '@/lib/dataQuality';
 import { processIntelligence } from '@/lib/intelligenceEngine';
 import { normalizeMessage } from '@/lib/normalizeMessage';
 import {
   buildSystemPrompt,
   createBlankState,
+  detectDealSizeFromText,
+  detectFrictionSignal,
   detectIntentFromText,
-  detectSectorFromText,
   detectIntermediaryFromText,
+  detectRevenueFromText,
+  detectSectorFromText,
   detectShellCompanyFromText,
   detectStructureFromText,
-  detectDealSizeFromText,
-  detectRevenueFromText,
-  detectFrictionSignal,
   updateStateFromExtraction,
   type DealIntent,
   type RouterState
 } from '@/lib/promptRouter';
 import { buildFinalMessage } from '@/lib/responseBuilder';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
-import { and, arrayOverlaps, desc, eq, not } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -29,49 +33,42 @@ import { NextRequest, NextResponse } from 'next/server';
  * BASE: repo v4.0 structure preserved exactly
  *   - NextResponse.json (not Response.json)
  *   - try/catch around processIntelligence with 502 fallback
- *   - mandates imported at top from @/db/schema
  *   - resolvedDealSize logic retained
  *
- * SESSION FIXES ADDED:
+ * SESSION FIXES (preserved):
+ *   RC1 — Intermediary pre-detected every turn (semantic patterns)
+ *   RC2 — Structure/size/revenue pre-detected from rich messages
+ *   RC3 — Friction hard override (3-layer guarantee)
+ *   RC8 — 4-turn server-side auto-close
+ *   RC9 — Shell company server-side detection → sub_sector='shell_company'
  *
- * RC1 — Intermediary pre-detected every turn
- *   detectIntermediaryFromText() runs on every message. Catches semantic
- *   patterns: "one of client", "investment banker for my client",
- *   "i am promoter" (without "the").
- *   candidateState.is_intermediary set before prompt builds so
- *   # INTERMEDIARY_ROLE is always correct.
- *
- * RC2 — Structure, size, revenue pre-detected from rich messages
- *   detectStructureFromText(), detectDealSizeFromText(), detectRevenueFromText()
- *   seed candidateState before buildSystemPrompt(). # FIELDS ALREADY PROVIDED
- *   is populated on turn 1, LLM skips known fields.
- *
- * RC3 — Friction hard override (3-layer guarantee)
- *   Layer 1: detectFrictionSignal() in updateStateFromExtraction
- *   Layer 2: route.ts detects friction BEFORE prompt build → patches storedState to CLOSURE
- *   Layer 3: After extraction → forces is_complete=true on updatedState
- *
- * RC8 — 4-turn server-side auto-close
- *   After turn_count reaches 4 with deal context, forces CLOSURE.
- *   resolvePhase() in promptRouter also handles this (belt-and-suspenders).
- *
- * RC9 — Shell company pre-detected server-side
- *   detectShellCompanyFromText() runs on every message. Sets sub_sector='shell_company'.
- *   buildSystemPrompt() then loads M4_SHELL instead of sector M4.
+ * DC-MATCH-001 v1.0 INTEGRATION (this version):
+ *   - normalizeIntent() canonicalizes intent before persistence
+ *   - normalizeSize() replaces ad-hoc parseRange (handles Cr / lakh / USD M / INR M)
+ *   - computeQualityScore() + qualityTierFromScore() drives Tier 1–4 assignment
+ *   - Proposals table is now canonical (matchmaking source of truth)
+ *   - Mandates table preserved for legacy reads (parallel write during transition)
+ *   - Matchmaking ONLY fires on is_complete=true && qTier < 4 (no intermediate waste)
+ *   - OCC version on chat_sessions prevents state-regression race conditions
  */
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
 
+// ─────────────────────────────────────────────────────────────
+// GET — chat history list
+// ─────────────────────────────────────────────────────────────
+
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    // Fetch DB ID by email (mismatch fix)
     const { data: dbUser, error: fetchErr } = await supabase
       .from("users")
       .select("id")
@@ -83,18 +80,26 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    const history = await db.query.chatSessions.findMany({
-      where: eq(chatSessions.userId, dbUser.id),
-      orderBy: [desc(chatSessions.createdAt)],
-    });
+    const { data: history } = await supabase
+      .from('chat_sessions')
+      .select('*')
+      .eq('user_id', dbUser.id)
+      .order('created_at', { ascending: false });
 
-    return NextResponse.json(history);
+    return NextResponse.json(history || []);
   } catch (error: unknown) {
     const err = error as Error;
     console.error("🔥 HISTORY FETCH ERROR:", err);
-    return NextResponse.json({ success: false, error: err.message, stack: err.stack }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message, stack: err.stack },
+      { status: 500 },
+    );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// POST — main chat turn
+// ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   if (!process.env.GROQ_API_KEY) {
@@ -106,7 +111,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
     const rawMessage = body.message || "";
@@ -120,7 +127,9 @@ export async function POST(req: NextRequest) {
     const supabase = await createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    if (!message) {
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    }
 
     // ─── USER RESOLUTION ─────────────────────────────────────
     let userId = session.user.id;
@@ -144,10 +153,13 @@ export async function POST(req: NextRequest) {
       } else {
         const { data: newUser } = await supabase
           .from("users")
-          .upsert({
-            email: session.user.email,
-            name: session.user.name || session.user.email?.split('@')[0]
-          }, { onConflict: 'email' })
+          .upsert(
+            {
+              email: session.user.email,
+              name: session.user.name || session.user.email?.split('@')[0],
+            },
+            { onConflict: 'email' },
+          )
           .select('id')
           .single();
         if (newUser) userId = newUser.id;
@@ -160,7 +172,7 @@ export async function POST(req: NextRequest) {
 
     if (!activeChatId && (documentId || body.documentId)) {
       const docIdToSearch = documentId || body.documentId;
-      console.log(`[STATE] No activeChatId, searching for seeded session with documentId: ${docIdToSearch}`);
+      console.log(`[STATE] No activeChatId, searching for seeded session: ${docIdToSearch}`);
       const { data: seededSession } = await supabase
         .from("chat_sessions")
         .select("id, state")
@@ -174,7 +186,7 @@ export async function POST(req: NextRequest) {
         activeChatId = seededSession.id;
         storedState = {
           ...createBlankState(),
-          ...(seededSession.state as unknown as Partial<RouterState> || {})
+          ...((seededSession.state as unknown as Partial<RouterState>) || {}),
         };
         console.log(`[STATE] Recovered seeded session: ${activeChatId} | Phase: ${storedState.phase}`);
       }
@@ -194,9 +206,11 @@ export async function POST(req: NextRequest) {
       } else {
         storedState = {
           ...createBlankState(),
-          ...(existingSession.state as unknown as Partial<RouterState> || {})
+          ...((existingSession.state as unknown as Partial<RouterState>) || {}),
         };
-        console.log(`[STATE] Phase: ${storedState.phase} | turn: ${storedState.turn_count} | intermediary: ${storedState.is_intermediary} | sub_sector: ${storedState.sub_sector}`);
+        console.log(
+          `[STATE] Phase: ${storedState.phase} | turn: ${storedState.turn_count} | intermediary: ${storedState.is_intermediary} | sub_sector: ${storedState.sub_sector}`,
+        );
       }
     }
 
@@ -208,7 +222,7 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           document_id: documentId || null,
           title: message.slice(0, 30) + (message.length > 30 ? "..." : ""),
-          state: storedState
+          state: storedState,
         }])
         .select()
         .single();
@@ -218,7 +232,7 @@ export async function POST(req: NextRequest) {
 
     // ─── DOCUMENT RESTORATION ─────────────────────────────────
     if (!documentText && activeChatId) {
-      console.log(`[PERSISTENCE] Attempting to restore document context for chat: ${activeChatId}`);
+      console.log(`[PERSISTENCE] Restoring document context for chat: ${activeChatId}`);
       const { data: sessionDoc } = await supabase
         .from('chat_sessions')
         .select('document_id')
@@ -234,12 +248,12 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
         if (doc?.extracted_text) {
           documentText = doc.extracted_text;
-          console.log(`[PERSISTENCE] Successfully restored context from DB (${documentText.length} chars)`);
+          console.log(`[PERSISTENCE] Restored ${documentText.length} chars`);
         }
       }
     }
 
-    // ─── RC3: FRICTION HARD OVERRIDE (before prompt build) ───
+    // ─── RC3: FRICTION HARD OVERRIDE (layer 2 — before prompt build) ───
     const hasFriction = detectFrictionSignal(message);
     if (hasFriction) {
       console.log('[ROUTE] Friction detected — patching to CLOSURE before prompt build.');
@@ -266,38 +280,52 @@ export async function POST(req: NextRequest) {
         try {
           const parsed = JSON.parse(h.content);
           content = parsed.message || h.content;
-        } catch { }
+        } catch { /* keep raw content */ }
       }
       return { role: h.role as "user" | "assistant" | "system", content };
     });
 
-    // ─── MATCHMAKING ENGINE ───────────────────────────────────
+    // ─── MATCHMAKING CONTEXT (LLM prompt enrichment only) ─────
+    // NOTE: This is for AI context — real matching runs in executeMatchmaking on closure.
     let matchedMandatesStr = "No active mandates found in database yet.";
 
     if (storedState.sector || storedState.intent) {
       try {
-        console.log(`[MATCHMAKING] Querying for Sector: ${storedState.sector} | Intent: ${storedState.intent}`);
-        const targetIntent = storedState.intent === 'SELL_SIDE' ? 'BUY_SIDE' :
-          storedState.intent === 'BUY_SIDE' ? 'SELL_SIDE' : null;
+        const reverseIntentMap: Record<string, string> = {
+          SELL_SIDE: 'BUY_SIDE',
+          BUY_SIDE: 'SELL_SIDE',
+          FUNDRAISING: 'BUY_SIDE',
+          DEBT: 'DEBT',
+          STRATEGIC_PARTNERSHIP: 'STRATEGIC_PARTNERSHIP',
+        };
+        const targetIntent = storedState.intent
+          ? (reverseIntentMap[storedState.intent] || null)
+          : null;
 
-        const results = await db.query.mandates.findMany({
-          where: and(
-            eq(mandates.status, 'ACTIVE'),
-            not(eq(mandates.userId, userId)),
-            targetIntent ? eq(mandates.intent, targetIntent) : undefined,
-            storedState.sector ? arrayOverlaps(mandates.sectors, [storedState.sector]) : undefined
-          ),
-          limit: 3
-        });
+        console.log(
+          `[MATCHMAKING] Querying context | Sector: ${storedState.sector} | Intent: ${storedState.intent} → ${targetIntent}`,
+        );
+
+        let query = supabase
+          .from('proposals')
+          .select('intent, sectors, geographies, deal_size_min_cr, deal_size_max_cr')
+          .eq('status', 'ACTIVE')
+          .neq('user_id', userId)
+          .limit(3);
+
+        if (targetIntent) query = query.eq('intent', targetIntent);
+        if (storedState.sector) query = query.contains('sectors', [storedState.sector]);
+
+        const { data: results } = await query;
 
         if (results && results.length > 0) {
           matchedMandatesStr = results.map(r =>
-            `- [${r.intent}] ${r.sectors?.join(", ")} | Size: ${r.dealSizeMinCr}-${r.dealSizeMaxCr} Cr | Geography: ${r.geographies?.join(", ")}`
+            `- [${r.intent}] ${r.sectors?.join(", ")} | Size: ${r.deal_size_min_cr}-${r.deal_size_max_cr} Cr | Geography: ${r.geographies?.join(", ")}`,
           ).join("\n");
-          console.log(`[MATCHMAKING] Found ${results.length} matches.`);
+          console.log(`[MATCHMAKING] Found ${results.length} context matches.`);
         }
       } catch (matchErr) {
-        console.error("❌ MATCHMAKING FAILED (Isolating):", matchErr);
+        console.error("❌ MATCHMAKING CONTEXT FAILED (isolated):", matchErr);
       }
     }
 
@@ -320,7 +348,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // RC1: Intermediary detected every turn
+    // RC1: Intermediary every turn
     if (candidateState.is_intermediary === null) {
       const detectedRole = detectIntermediaryFromText(message);
       if (detectedRole) {
@@ -329,13 +357,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // RC9: Shell company detection
+    // RC9: Shell company
     if (candidateState.sub_sector === null && detectShellCompanyFromText(message)) {
       candidateState.sub_sector = 'shell_company';
       console.log('[PRE-DETECT] Shell company — sub_sector=shell_company');
     }
 
-    // RC2: Pre-detect structure, size, revenue from rich messages
+    // RC2: Structure, size, revenue
     if (!candidateState.structure) {
       const s = detectStructureFromText(message);
       if (s) { candidateState.structure = s; console.log(`[PRE-DETECT] Structure: ${s}`); }
@@ -352,7 +380,7 @@ export async function POST(req: NextRequest) {
     // ─── BUILD SYSTEM PROMPT ──────────────────────────────────
     const { systemPrompt, modulesLoaded, tokenEstimate } = buildSystemPrompt(
       candidateState,
-      matchedMandatesStr
+      matchedMandatesStr,
     );
     console.log(`[ROUTER] Modules: ${modulesLoaded.join(', ')} | ~${tokenEstimate} tokens`);
 
@@ -399,7 +427,7 @@ export async function POST(req: NextRequest) {
       storedState,
       extraction as unknown as { intent: DealIntent; state: Partial<RouterState>; is_complete: boolean },
       message,
-      modulesLoaded
+      modulesLoaded,
     );
 
     // Persist pre-detected values the LLM may not have re-extracted
@@ -409,9 +437,9 @@ export async function POST(req: NextRequest) {
     if (!updatedState.sub_sector && candidateState.sub_sector) {
       updatedState.sub_sector = candidateState.sub_sector;
     }
-    if (!updatedState.structure  && candidateState.structure)  updatedState.structure  = candidateState.structure;
-    if (!updatedState.deal_size  && candidateState.deal_size)  updatedState.deal_size  = candidateState.deal_size;
-    if (!updatedState.revenue    && candidateState.revenue)    updatedState.revenue    = candidateState.revenue;
+    if (!updatedState.structure && candidateState.structure) updatedState.structure = candidateState.structure;
+    if (!updatedState.deal_size && candidateState.deal_size) updatedState.deal_size = candidateState.deal_size;
+    if (!updatedState.revenue && candidateState.revenue) updatedState.revenue = candidateState.revenue;
 
     // RC3: Friction hard override (layer 3)
     if (hasFriction) {
@@ -421,10 +449,12 @@ export async function POST(req: NextRequest) {
       console.log('[ROUTE] Friction override applied: is_complete=true, phase=CLOSURE');
     }
 
-    // RC8: 4-turn server-side auto-close
-    if (updatedState.turn_count >= 4 &&
-        (updatedState.intent || updatedState.sector) &&
-        !updatedState.is_complete) {
+    // RC8: 4-turn auto-close
+    if (
+      updatedState.turn_count >= 4 &&
+      (updatedState.intent || updatedState.sector) &&
+      !updatedState.is_complete
+    ) {
       updatedState.is_complete = true;
       updatedState.phase = 'CLOSURE';
       (extraction as Record<string, unknown>).is_complete = true;
@@ -451,12 +481,25 @@ export async function POST(req: NextRequest) {
       throw new Error(assistantMsgErr.message);
     }
 
-    await supabase
+    // ─── OCC VERSION CHECK — prevents state regression ───────
+    const { data: sessionRow } = await supabase
       .from('chat_sessions')
-      .update({ state: updatedState })
-      .eq('id', activeChatId);
+      .select('state_version')
+      .eq('id', activeChatId)
+      .single();
+    const currentVersion = ((sessionRow as { state_version?: number } | null)?.state_version) ?? 0;
 
-    // ─── DEAL PERSISTENCE ─────────────────────────────────────
+    const { error: stateErr } = await supabase
+      .from('chat_sessions')
+      .update({ state: updatedState, state_version: currentVersion + 1 })
+      .eq('id', activeChatId)
+      .eq('state_version', currentVersion);
+
+    if (stateErr) {
+      console.warn('[STATE] OCC conflict on chat_sessions update:', stateErr.message);
+    }
+
+    // ─── CLOSURE BRANCH: DB PERSISTENCE + MATCHMAKING ─────────
     const s = extraction.state;
     const isComplete = updatedState.is_complete;
 
@@ -472,25 +515,76 @@ export async function POST(req: NextRequest) {
     if (isComplete) {
       console.log("✅ DATA COMPLETE - INSERTING INTO DB");
       try {
-        const parseRange = (val: string | null) => {
-          if (!val) return { min: null, max: null };
-          const rangeMatch = val.match(/(\d+(?:\.\d+)?)\s*(?:to|-)\s*(\d+(?:\.\d+)?)/i);
-          if (rangeMatch) return { min: rangeMatch[1], max: rangeMatch[2] };
-          const singleMatch = val.match(/~?(\d+(?:\.\d+)?)/);
-          if (singleMatch) return { min: singleMatch[1], max: singleMatch[1] };
-          return { min: null, max: null };
+        // ─ NORMALIZE INTENT to canonical (BUY_SIDE | SELL_SIDE | ...) ─
+        const canonicalIntent = normalizeIntent(extraction.intent);
+
+        // ─ PARSE SIZES via canonical normalizer (Cr / lakh / USD M / INR M) ─
+        const sizeNorm = resolvedDealSize ? normalizeSize(resolvedDealSize) : null;
+        const revRaw = s.revenue || s.deal_size || null;
+        const revNorm = revRaw ? normalizeSize(revRaw) : null;
+
+        const size = {
+          min: sizeNorm?.min_cr != null ? String(sizeNorm.min_cr) : null,
+          max: sizeNorm?.max_cr != null ? String(sizeNorm.max_cr) : null,
+        };
+        const revenue = {
+          min: revNorm?.min_cr != null ? String(revNorm.min_cr) : null,
+          max: revNorm?.max_cr != null ? String(revNorm.max_cr) : null,
         };
 
-        const size = parseRange(resolvedDealSize);
-        const revenue = parseRange((s.revenue || s.deal_size) ?? null);
+        // ─ COMPUTE QUALITY SCORE + TIER (DC-MATCH-001 §3.3) ─
+        const qScore = computeQualityScore({
+          rawText: JSON.stringify(extraction), // Use full extracted data for quality scoring
+          intent: canonicalIntent,
+          sector: s.sector ?? null,
+          geography: s.geography ?? null,
+          deal_size_min_cr: sizeNorm?.min_cr ?? null,
+          revenue_min_cr: revNorm?.min_cr ?? null,
+          structure: s.structure ?? null,
+          industry_data: s.industry_data,
+        });
+        const qTier = qualityTierFromScore(qScore);
 
+        console.log(`[QUALITY] score=${qScore} tier=${qTier} intent=${canonicalIntent}`);
+
+        // ─ INSERT INTO PROPOSALS (CANONICAL — matching source of truth) ─
+        const { data: proposalData, error: proposalErr } = await supabase
+          .from("proposals")
+          .insert([{
+            user_id: userId,
+            raw_text: message,
+            normalised_text: message,
+            intent: canonicalIntent || 'BUY_SIDE', // proposals.intent is NOT NULL; fallback only if normalizer failed
+            sectors: s.sector ? [s.sector] : [],
+            geographies: s.geography ? [s.geography] : [],
+            deal_size_min_cr: size.min,
+            deal_size_max_cr: size.max,
+            revenue_min_cr: revenue.min,
+            revenue_max_cr: revenue.max,
+            deal_structure: s.structure,
+            special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
+            quality_score: qScore,
+            quality_tier: qTier.toString(),
+            status: qTier === 4 ? 'PENDING_ENRICHMENT' : 'ACTIVE',
+            source: 'WEB',
+            embedding_status: 'PENDING',
+          }])
+          .select('id')
+          .single();
+
+        if (proposalErr) {
+          console.error("❌ Proposal insert failed:", proposalErr);
+          throw new Error(proposalErr.message);
+        }
+
+        // ─ INSERT INTO MANDATES (LEGACY — preserved for backward compat) ─
         const { error: mandateErr } = await supabase
           .from("mandates")
           .insert([{
             user_id: userId,
             raw_text: message,
             normalised_text: JSON.stringify(extraction),
-            intent: extraction.intent,
+            intent: canonicalIntent,
             sectors: s.sector ? [s.sector] : [],
             geographies: s.geography ? [s.geography] : [],
             deal_size_min_cr: size.min,
@@ -506,41 +600,92 @@ export async function POST(req: NextRequest) {
             document_url: documentUrl,
             document_text: documentText,
           }]);
+        if (mandateErr) console.warn("⚠️ Legacy mandates insert warning:", mandateErr.message);
 
-        if (mandateErr) {
-          console.error("Supabase mandate error:", mandateErr);
-          throw new Error(mandateErr.message);
-        }
-
+        // ─ INSERT INTO DEALS (dashboard surface) ─
         const { error: dealErr } = await supabase
           .from("deals")
           .insert([{
             user_id: userId,
-            title: `${extraction.intent}: ${s.sector} deal`,
+            title: `${canonicalIntent || 'DEAL'}: ${s.sector || 'mixed'} deal`,
             sector: s.sector,
             region: s.geography,
             size: s.deal_size || "Undisclosed",
             status: 'live',
           }]);
+        if (dealErr) console.warn("⚠️ Deals insert warning:", dealErr.message);
 
-        if (dealErr) {
-          console.error("Supabase deal error:", dealErr);
-          throw new Error(dealErr.message);
+        console.log("✅ DB INSERTS COMPLETE (proposals + mandates + deals)");
+
+        // ─ M5 MATCHMAKING — blocking, only on full closure with viable quality ─
+        if (proposalData?.id && canonicalIntent && qTier < 4) {
+          console.log(`[M5] Closure detected — awaiting matchmaking (qTier=${qTier})...`);
+          const { executeMatchmaking } = await import('@/lib/matchmakingEngine');
+
+          try {
+            const result = await executeMatchmaking({
+              mandateId: proposalData.id,    // canonical proposal id
+              userId,
+              intent: canonicalIntent,
+              raw_text: message,
+              sector: s.sector || null,
+              sub_sector: s.sub_sector || null,
+              geography: s.geography || null,
+              deal_size: s.deal_size || null,
+              revenue: s.revenue || null,
+              structure: s.structure || null,
+              intent_focus: s.intent_focus || null,
+              industry_data: (s.industry_data as Record<string, unknown>) || {},
+              special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
+              deal_size_min: size.min,
+              deal_size_max: size.max,
+              revenue_min: revenue.min,
+              revenue_max: revenue.max,
+              strategic_intent: s.intent_focus || null,
+            });
+
+            if (result) {
+              console.log(`[M5] ✅ Matchmaking complete: ${result.matchCount} matches | top: ${result.topScore.toFixed(2)}`);
+            }
+          } catch (m5Err) {
+            console.error("[M5] ❌ Pipeline failure during closure:", m5Err);
+          }
+        } else if (qTier === 4) {
+          console.log("[M5] Skipped — Tier 4 (stub) proposal; queued for enrichment");
+        } else if (!canonicalIntent) {
+          console.warn("[M5] Skipped — no canonical intent extracted");
         }
+        // NOTE: Intermediate non-blocking matchmaking REMOVED.
+        // The previous `else if` branch fired wasteful embeddings on every turn.
+        // Matchmaking now runs ONLY on is_complete=true && qTier < 4.
 
-        console.log("✅ DB INSERT SUCCESSFUL");
       } catch (dbErr) {
-        console.error("❌ DB INSERT FAILED:", dbErr);
+        console.error("❌ DB INSERT/MATCHMAKING FAILED:", dbErr);
       }
-    } else {
-      console.log("⏳ DATA INCOMPLETE - WAITING FOR MORE DETAILS");
     }
 
+    // ─── FINAL RESPONSE ──────────────────────────────────────
     const finalMessage = buildFinalMessage(extraction);
 
-    console.log(`[DEBUG] ${storedState.phase}→${updatedState.phase} | intermediary:${updatedState.is_intermediary} | sub_sector:${updatedState.sub_sector} | m4_asked:${updatedState.m4_questions_asked} | friction:${hasFriction}`);
+    console.log(
+      `[DEBUG] ${storedState.phase}→${updatedState.phase} | intermediary:${updatedState.is_intermediary} | sub_sector:${updatedState.sub_sector} | m4_asked:${updatedState.m4_questions_asked} | friction:${hasFriction}`,
+    );
     console.log(`[DEBUG] System Prompt Length: ${systemPrompt.length} chars`);
     console.log(`[DEBUG] Final Message: ${finalMessage.slice(0, 50)}...`);
+
+    // Capture the proposal ID for frontend to fetch matches
+    let returnedProposalId: string | null = null;
+    if (isComplete) {
+      // proposalData was created in the closure block; surface its ID
+      const { data: latestProposal } = await supabase
+        .from('proposals')
+        .select('id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      returnedProposalId = latestProposal?.id ?? null;
+    }
 
     return NextResponse.json({
       success: true,
@@ -548,14 +693,15 @@ export async function POST(req: NextRequest) {
       message: finalMessage,
       is_complete: isComplete,
       chatId: activeChatId,
-      type: isComplete ? 'complete' : 'conversation'
+      proposalId: returnedProposalId,   // ← new
+      type: isComplete ? 'complete' : 'conversation',
     });
 
   } catch (error: unknown) {
     console.error("❌ CHAT ERROR:", error);
 
     let errorMessage = "An unknown error occurred";
-    let errorStack = undefined;
+    let errorStack: string | undefined = undefined;
 
     if (error instanceof Error) {
       errorMessage = error.message;
@@ -568,7 +714,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: false,
       error: errorMessage,
-      stack: errorStack
+      stack: errorStack,
     }, { status: 500 });
   }
 }

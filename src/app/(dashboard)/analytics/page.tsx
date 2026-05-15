@@ -5,7 +5,7 @@ import { BarChart3, TrendingUp, PieChart, Activity, ArrowUpRight, ArrowDownRight
 import FeatureLockedOverlay from '@/components/FeatureLockedOverlay';
 
 export default function AnalyticsPage() {
-  const isLocked = true; // Feature lock enabled
+  const isLocked = false; // Feature lock enabled
 
   const stats = [
     { label: 'Total Deal Volume', value: '$1.2B', change: '+12.5%', trending: 'up' },

@@ -31,7 +31,8 @@ export type SectorKey =
   | 'ngo'
   | 'mixed'
   | 'steel' // Keeping these for backward compatibility if needed, though M4 absorbs them
-  | 'automation';
+  | 'automation'
+  | 'oil_gas';
 
 export type ConversationPhase =
   | 'ENTRY'
@@ -59,4 +60,7 @@ export interface RouterState {
   turn_count: number;
   refinement_count: number;
   special_conditions: string[];
+  strategic_intent: string | null;
+  round_count: number;
+  m4_questions_asked: boolean;
 }

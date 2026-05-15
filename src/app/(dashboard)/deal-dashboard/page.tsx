@@ -50,7 +50,7 @@ const fetchDashboardData = async (): Promise<DashboardDeal[]> => {
 import FeatureLockedOverlay from '@/components/FeatureLockedOverlay';
 
 export default function DealDashboardPage() {
-  const isLocked = true; // Feature lock enabled
+  const isLocked = false; // Feature lock enabled
   const { addNotification } = useNotifications();
   const [data, setData] = useState<DashboardDeal[]>([]);
   const [loading, setLoading] = useState(true);
