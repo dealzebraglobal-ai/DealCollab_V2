@@ -60,8 +60,21 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
     }, [proposalId]);
 
     useEffect(() => { 
-        // Wrap in microtask to avoid "setState synchronously within effect" warning
         Promise.resolve().then(() => fetchMatches());
+        
+        // If we have no matches yet, poll every 3 seconds
+        const interval = setInterval(() => {
+            setData(current => {
+                if (!current || current.matchCount === 0) {
+                    fetchMatches();
+                } else {
+                    clearInterval(interval);
+                }
+                return current;
+            });
+        }, 3000);
+
+        return () => clearInterval(interval);
     }, [fetchMatches]);
 
     const handleConnect = async () => {
@@ -105,10 +118,12 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
 
     if (data.matchCount === 0) {
         return (
-            <div className="p-4 rounded-lg border border-amber-200 bg-amber-50">
-                <p className="text-sm font-medium text-amber-900">No matches yet</p>
-                <p className="text-xs text-amber-700 mt-1">{data.message}</p>
-                <button onClick={onStartOver} className="mt-3 text-xs underline">Start over</button>
+            <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 animate-pulse">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+                    <p className="text-sm font-medium text-amber-900">Searching for aligned counterparties...</p>
+                </div>
+                <p className="text-xs text-amber-700 mt-1">Our AI is analyzing the network to find the best fit for your mandate.</p>
             </div>
         );
     }

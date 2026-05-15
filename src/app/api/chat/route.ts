@@ -25,7 +25,7 @@ import {
 } from '@/lib/promptRouter';
 import { buildFinalMessage } from '@/lib/responseBuilder';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 
 /**
  * DealCollab Chat Route
@@ -319,9 +319,13 @@ export async function POST(req: NextRequest) {
         const { data: results } = await query;
 
         if (results && results.length > 0) {
-          matchedMandatesStr = results.map(r =>
-            `- [${r.intent}] ${r.sectors?.join(", ")} | Size: ${r.deal_size_min_cr}-${r.deal_size_max_cr} Cr | Geography: ${r.geographies?.join(", ")}`,
-          ).join("\n");
+          matchedMandatesStr = results.map(r => {
+            const size = (r.deal_size_min_cr || r.deal_size_max_cr) 
+              ? `${r.deal_size_min_cr || '?'}-${r.deal_size_max_cr || '?'} Cr`
+              : 'Undisclosed';
+            const geo = r.geographies?.length ? r.geographies.join(", ") : 'Global/Flexible';
+            return `- [${r.intent}] ${r.sectors?.join(", ") || 'General'} | Size: ${size} | Geography: ${geo}`;
+          }).join("\n");
           console.log(`[MATCHMAKING] Found ${results.length} context matches.`);
         }
       } catch (matchErr) {
@@ -502,6 +506,7 @@ export async function POST(req: NextRequest) {
     // ─── CLOSURE BRANCH: DB PERSISTENCE + MATCHMAKING ─────────
     const s = extraction.state;
     const isComplete = updatedState.is_complete;
+    let returnedProposalId: string | null = null;
 
     console.log("🧠 FINAL DATA:", JSON.stringify(extraction));
 
@@ -576,6 +581,7 @@ export async function POST(req: NextRequest) {
           console.error("❌ Proposal insert failed:", proposalErr);
           throw new Error(proposalErr.message);
         }
+        if (proposalData?.id) returnedProposalId = proposalData.id;
 
         // ─ INSERT INTO MANDATES (LEGACY — preserved for backward compat) ─
         const { error: mandateErr } = await supabase
@@ -617,39 +623,41 @@ export async function POST(req: NextRequest) {
 
         console.log("✅ DB INSERTS COMPLETE (proposals + mandates + deals)");
 
-        // ─ M5 MATCHMAKING — blocking, only on full closure with viable quality ─
+        // ─ M5 MATCHMAKING — NON-BLOCKING (Next.js after) ─
         if (proposalData?.id && canonicalIntent && qTier < 4) {
-          console.log(`[M5] Closure detected — awaiting matchmaking (qTier=${qTier})...`);
-          const { executeMatchmaking } = await import('@/lib/matchmakingEngine');
+          console.log(`[M5] Closure detected — scheduling background matchmaking (qTier=${qTier})...`);
+          
+          after(async () => {
+            try {
+              const { executeMatchmaking } = await import('@/lib/matchmakingEngine');
+              const result = await executeMatchmaking({
+                mandateId: proposalData.id,
+                userId,
+                intent: canonicalIntent,
+                raw_text: message,
+                sector: s.sector || null,
+                sub_sector: s.sub_sector || null,
+                geography: s.geography || null,
+                deal_size: s.deal_size || null,
+                revenue: s.revenue || null,
+                structure: s.structure || null,
+                intent_focus: s.intent_focus || null,
+                industry_data: (s.industry_data as Record<string, unknown>) || {},
+                special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
+                deal_size_min: size.min,
+                deal_size_max: size.max,
+                revenue_min: revenue.min,
+                revenue_max: revenue.max,
+                strategic_intent: s.intent_focus || null,
+              });
 
-          try {
-            const result = await executeMatchmaking({
-              mandateId: proposalData.id,    // canonical proposal id
-              userId,
-              intent: canonicalIntent,
-              raw_text: message,
-              sector: s.sector || null,
-              sub_sector: s.sub_sector || null,
-              geography: s.geography || null,
-              deal_size: s.deal_size || null,
-              revenue: s.revenue || null,
-              structure: s.structure || null,
-              intent_focus: s.intent_focus || null,
-              industry_data: (s.industry_data as Record<string, unknown>) || {},
-              special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
-              deal_size_min: size.min,
-              deal_size_max: size.max,
-              revenue_min: revenue.min,
-              revenue_max: revenue.max,
-              strategic_intent: s.intent_focus || null,
-            });
-
-            if (result) {
-              console.log(`[M5] ✅ Matchmaking complete: ${result.matchCount} matches | top: ${result.topScore.toFixed(2)}`);
+              if (result) {
+                console.log(`[M5] ✅ Background matchmaking complete: ${result.matchCount} matches`);
+              }
+            } catch (m5Err) {
+              console.error("[M5] ❌ Background pipeline failure:", m5Err);
             }
-          } catch (m5Err) {
-            console.error("[M5] ❌ Pipeline failure during closure:", m5Err);
-          }
+          });
         } else if (qTier === 4) {
           console.log("[M5] Skipped — Tier 4 (stub) proposal; queued for enrichment");
         } else if (!canonicalIntent) {
@@ -673,19 +681,6 @@ export async function POST(req: NextRequest) {
     console.log(`[DEBUG] System Prompt Length: ${systemPrompt.length} chars`);
     console.log(`[DEBUG] Final Message: ${finalMessage.slice(0, 50)}...`);
 
-    // Capture the proposal ID for frontend to fetch matches
-    let returnedProposalId: string | null = null;
-    if (isComplete) {
-      // proposalData was created in the closure block; surface its ID
-      const { data: latestProposal } = await supabase
-        .from('proposals')
-        .select('id')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      returnedProposalId = latestProposal?.id ?? null;
-    }
 
     return NextResponse.json({
       success: true,
