@@ -28,9 +28,9 @@ export function passesHardRules(source: ProposalInput, candidate: Candidate): { 
   const INTENT_FLIP: Record<string, string> = {
     BUY_SIDE: "SELL_SIDE",
     SELL_SIDE: "BUY_SIDE",
-    INVESTMENT: "FUNDRAISING",
-    FUNDRAISING: "INVESTMENT"
+    FUNDRAISING: "BUY_SIDE"
   };
+  if (!source.intent) return { passes: false, reason: 'HR-1: Intent missing' };
   const flipped = INTENT_FLIP[source.intent];
   if (flipped && candidate.intent !== flipped && source.intent !== 'DEBT' && source.intent !== 'STRATEGIC_PARTNERSHIP') {
     return { passes: false, reason: 'HR-1: Intent polarity mismatch' };

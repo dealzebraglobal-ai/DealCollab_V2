@@ -30,7 +30,7 @@ export function generateExplanation(source: ProposalInput, candidate: Candidate)
   }
 
   const sMax = parseFloat(source.deal_size_max || '0');
-  const cMax = candidate.deal_size_max_cr || 0;
+  const cMax = candidate.deal_size_max || 0;
   if (sMax > 0 && cMax > 0) {
     const ratio = Math.max(sMax, cMax) / Math.max(Math.min(sMax, cMax), 0.01);
     if (ratio < 2) explanations.push("Highly compatible deal size range");
