@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // Allow up to 5 minutes (300 seconds) for processing
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
     try {
       extractedText = await Promise.race([
         extractTextFromFile(buffer, mimeType),
-        new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Document parsing timed out. Please try a smaller or text-based document.")), 9000))
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Document parsing timed out. Please try a smaller or text-based document.")), 285000))
       ]);
     } catch (parseErr) {
       const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
