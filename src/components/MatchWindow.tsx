@@ -24,6 +24,7 @@ export interface MatchCounterparty {
   geography: string;
   intent: string;
   structure: string | null;
+  summary?: string;
 }
 
 export interface Match {
@@ -184,6 +185,14 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
                             </div>
                           )}
                         </div>
+
+                        {match.counterparty.summary && (
+                          <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded-lg">
+                            <p className="text-[11px] text-gray-700 italic line-clamp-2">
+                              "{match.counterparty.summary}"
+                            </p>
+                          </div>
+                        )}
 
                         {/* Match reason */}
                         <p className="text-[11px] text-[#6B7280] line-clamp-2 leading-relaxed">

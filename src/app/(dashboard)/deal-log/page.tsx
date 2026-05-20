@@ -15,7 +15,7 @@ interface DBMatch {
   score: string;
   similarity: string;
   reason?: string;
-  counterparty?: { sector: string; geography: string; intent: string };
+  counterparty?: { sector: string; geography: string; intent: string; raw_text?: string };
 }
 
 interface DBDeal {
@@ -24,6 +24,7 @@ interface DBDeal {
   sectors?: string[];
   geographies?: string[];
   matches: DBMatch[];
+  raw_text?: string;
 }
 
 interface Deal {
@@ -57,6 +58,7 @@ export default function DealLogPage() {
     deal: `${dbDeal.intent || 'Deal'}: ${dbDeal.sectors?.[0] || 'Unknown Sector'}`,
     sector: dbDeal.sectors?.[0] || 'Unknown',
     region: dbDeal.geographies?.[0] || 'Global',
+    summary: dbDeal.raw_text || '',
     status: dbDeal.matches && dbDeal.matches.length > 0 ? "Matched" : "Searching Match",
     matches: dbDeal.matches.map((m: DBMatch, i: number) => ({
        id: m.id,
@@ -66,7 +68,12 @@ export default function DealLogPage() {
        finalScore: parseFloat(m.score) * 100,
        confidenceScore: parseFloat(m.similarity) * 100,
        matchReason: m.reason || 'AI alignment detected.',
-       counterparty: m.counterparty || { sector: 'Unknown', geography: 'Global', intent: 'UNKNOWN' },
+       counterparty: { 
+         sector: m.counterparty?.sector || 'Unknown', 
+         geography: m.counterparty?.geography || 'Global', 
+         intent: m.counterparty?.intent || 'UNKNOWN',
+         summary: m.counterparty?.raw_text || '' 
+       },
        status: 'ACTIVE',
        createdAt: new Date().toISOString()
     }))

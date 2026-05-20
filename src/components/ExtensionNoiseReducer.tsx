@@ -7,28 +7,8 @@ import { useEffect } from 'react';
  */
 export function ExtensionNoiseReducer() {
   useEffect(() => {
-    // 1. Explicitly nullify Web3 interfaces to prevent wallet popups
-    try {
-      const win = window as unknown as { ethereum?: unknown; web3?: unknown };
-      if (!win.ethereum) {
-        Object.defineProperty(window, 'ethereum', {
-          get() { return undefined; },
-          set() { /* Block injection */ },
-          configurable: false
-        });
-      }
-      if (!win.web3) {
-        Object.defineProperty(window, 'web3', {
-          get() { return undefined; },
-          set() { /* Block injection */ },
-          configurable: false
-        });
-      }
-    } catch {
-      const win = window as unknown as { ethereum?: unknown; web3?: unknown };
-      win.ethereum = undefined;
-      win.web3 = undefined;
-    }
+    // 1. Suppress unhandled rejections from extensions
+    // Note: We avoid blocking window.ethereum injection as it causes MetaMask to throw unhandled rejections.
 
     // 2. Suppress console errors from extensions
     // const originalConsoleError = console.error;
