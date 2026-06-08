@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
             await supabase.from('notifications').insert([{
                 user_id: ss.user_id,
                 type: 'MATCH_FOUND',
-                message: `A new ${labelFor(bestScore)} match was found for your mandate.`,
+                message: `A new ${labelFor(bestScore) === 'VERIFIED_MATCH' ? 'verified' : 'high-confidence'} match was found for your mandate.`,
                 is_read: 'false',
             }]);
 

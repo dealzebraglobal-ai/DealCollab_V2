@@ -7,37 +7,52 @@ import { useEffect } from 'react';
  */
 export function ExtensionNoiseReducer() {
   useEffect(() => {
-    // 1. Suppress unhandled rejections from extensions
-    // Note: We avoid blocking window.ethereum injection as it causes MetaMask to throw unhandled rejections.
+    // Helper to check if an error message is from a known extension
+    const isExtensionError = (msg: string) => {
+      if (!msg) return false;
+      const lowerMsg = msg.toLowerCase();
+      return (
+        lowerMsg.includes('chrome-extension://') || 
+        lowerMsg.includes('metamask') ||
+        lowerMsg.includes('ethereum')
+      );
+    };
 
-    // 2. Suppress console errors from extensions
-    // const originalConsoleError = console.error;
-    // console.error = (...args) => {
-    //   const msg = args[0]?.toString() || '';
-    //   if (
-    //     msg.includes('chrome-extension://') || 
-    //     msg.includes('MetaMask') ||
-    //     msg.includes('ethereum') ||
-    //     msg.includes('web3') ||
-    //     msg.includes('data-qb-installed')
-    //   ) return;
-    //   originalConsoleError.apply(console, args);
-    // };
+    // 1. Suppress console errors from extensions
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      const msg = args[0]?.toString() || '';
+      if (isExtensionError(msg)) return;
+      originalConsoleError.apply(console, args);
+    };
 
-    // 3. Suppress unhandled rejections from extensions
+    // 2. Suppress unhandled rejections from extensions
     const handleRejection = (event: PromiseRejectionEvent) => {
       const msg = event.reason?.stack || event.reason?.message || '';
-      if (
-        msg.includes('chrome-extension://') || 
-        msg.includes('MetaMask') ||
-        msg.includes('ethereum')
-      ) {
+      if (isExtensionError(msg)) {
         event.preventDefault();
+        event.stopImmediatePropagation();
       }
     };
 
-    window.addEventListener('unhandledrejection', handleRejection);
-    return () => window.removeEventListener('unhandledrejection', handleRejection);
+    // 3. Suppress standard errors from extensions
+    const handleError = (event: ErrorEvent) => {
+      const msg = event.error?.stack || event.error?.message || event.message || '';
+      if (isExtensionError(msg)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+
+    // Use capture phase to intercept before Next.js error boundary
+    window.addEventListener('unhandledrejection', handleRejection, true);
+    window.addEventListener('error', handleError, true);
+    
+    return () => {
+      console.error = originalConsoleError;
+      window.removeEventListener('unhandledrejection', handleRejection, true);
+      window.removeEventListener('error', handleError, true);
+    };
   }, []);
 
   return null;

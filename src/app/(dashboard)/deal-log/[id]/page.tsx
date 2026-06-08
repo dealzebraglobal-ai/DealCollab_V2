@@ -35,15 +35,18 @@ const formatSize = (min: any, max: any) => {
   return `₹${maxVal || minVal} Cr`;
 };
 
+const PREVIEW_TRUNCATE = 400;
+
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { tokens, refreshProfile } = useUser();
   const { addNotification } = useNotifications();
   const id = params.id as string;
-  
+
   const { data, error, mutate } = useSWR(`/api/matches/detail/${id}`, fetcher);
   const [isSending, setIsSending] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
 
   if (error) return (
     <div className="flex-1 p-10 max-w-4xl mx-auto w-full text-center space-y-4">
@@ -65,6 +68,11 @@ export default function MatchDetailPage() {
 
   const { match, counterparty, eoi } = data;
   const hasTokens = (tokens ?? 0) >= 50;
+
+  const dealSummary = counterparty?.anonymizedPreview || counterparty?.teaser || '';
+  console.log('Deal Summary:', dealSummary);
+  console.log('Match Explanation:', match?.matchReason);
+  console.log('Preview Source:', counterparty?.previewSource ?? 'unknown');
 
   const handleSendEOI = async () => {
     if ((tokens ?? 0) < 50) return;
@@ -236,9 +244,27 @@ export default function MatchDetailPage() {
 
                  <div className="space-y-2 md:col-span-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Anonymized Preview</label>
-                    <p className="text-sm font-medium text-[#4B5563] leading-relaxed bg-gray-50/50 p-4 rounded-2xl border border-gray-100 italic">
-                       &quot;{counterparty.teaser || 'No preview available.'}&quot;
-                    </p>
+                    <div className="text-sm font-medium text-[#4B5563] leading-relaxed bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                      {dealSummary ? (
+                        <>
+                          <p className="italic">
+                            &quot;{previewExpanded || dealSummary.length <= PREVIEW_TRUNCATE
+                              ? dealSummary
+                              : dealSummary.slice(0, PREVIEW_TRUNCATE).trimEnd() + '…'}&quot;
+                          </p>
+                          {dealSummary.length > PREVIEW_TRUNCATE && (
+                            <button
+                              onClick={() => setPreviewExpanded(prev => !prev)}
+                              className="mt-2 text-[11px] font-black text-[#F97316] uppercase tracking-widest hover:underline"
+                            >
+                              {previewExpanded ? 'Read Less' : 'Read More'}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <p className="italic text-gray-400">No preview available.</p>
+                      )}
+                    </div>
                  </div>
               </div>
 

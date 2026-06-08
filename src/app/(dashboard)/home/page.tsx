@@ -9,21 +9,19 @@ import { useRouter } from 'next/navigation';
 import { MatchPanel } from '@/components/MatchPanel';
 
 export default function Home() {
-  const { 
-    messages, 
-    loading, 
-    activeChatId, 
-    setActiveChatId, 
-    setMessages, 
+  const {
+    messages,
+    loading,
+    activeChatId,
+    setActiveChatId,
+    setMessages,
     fetchSessions,
-    documentId
+    documentId,
+    activeProposalId,
+    setActiveProposalId,
   } = useChat();
 
   const [isTyping, setIsTyping] = React.useState(false);
-  const [responseState, setResponseState] = React.useState<{ is_complete: boolean; proposalId: string | null }>({
-    is_complete: false,
-    proposalId: null
-  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -194,14 +192,28 @@ export default function Home() {
       setMessages(prev => [...prev, aiMsg]);
 
       // Track completion for MatchPanel
-      if (chatData.is_complete) {
-        setResponseState({
-          is_complete: true,
-          proposalId: chatData.proposalId
-        });
+      if (chatData.is_complete && chatData.proposalId) {
+        setActiveProposalId(chatData.proposalId);
+
+        // Persist chatId → proposalId so loadChat can restore MatchPanel after refresh
+        // or navigation, even for sessions where OCC prevented state.proposal_id from saving.
+        const resolvedChatId = chatData.chatId || activeChatId;
+        if (resolvedChatId && typeof window !== 'undefined') {
+          try {
+            const map = JSON.parse(sessionStorage.getItem('dc_proposal_map') || '{}') as Record<string, string>;
+            map[resolvedChatId] = chatData.proposalId;
+            sessionStorage.setItem('dc_proposal_map', JSON.stringify(map));
+            console.log(`[home] saved proposalId=${chatData.proposalId} for chatId=${resolvedChatId}`);
+          } catch { /* ignore */ }
+        }
       }
 
+      console.log(`[home] chat complete=${chatData.is_complete} proposalId=${chatData.proposalId} chatId=${chatData.chatId || activeChatId}`);
+
       if (!activeChatId && chatData.chatId) {
+        // BUG #2 fix: when a brand-new session is created, clear any proposalId from
+        // the previous session so stale MatchPanel cards don't show in the new chat.
+        setActiveProposalId(null);
         setActiveChatId(chatData.chatId);
         fetchSessions();
       }
@@ -235,6 +247,8 @@ export default function Home() {
     }
   };
 
+  console.log(`[home render] activeChatId=${activeChatId} activeProposalId=${activeProposalId} msgs=${messages.length}`);
+
   return (
     <div className="flex-1 flex flex-col h-full relative bg-transparent overflow-hidden">
       {/* Scrollable Message Area */}
@@ -259,15 +273,14 @@ export default function Home() {
                     isTyping={isTyping}
                     onQuestionClick={(q) => handleSendMessage(q, null)}
                 />
-                
                 {/* Matchmaking Results Panel */}
-                {responseState.is_complete && responseState.proposalId && (
+                {activeProposalId && (
                   <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <MatchPanel
-                      proposalId={responseState.proposalId}
+                      proposalId={activeProposalId}
                       onStartOver={() => {
-                        setResponseState({ is_complete: false, proposalId: null });
-                        router.push('/home'); // Or the user's specified /chat/new
+                        setActiveProposalId(null);
+                        router.push('/home');
                       }}
                     />
                   </div>

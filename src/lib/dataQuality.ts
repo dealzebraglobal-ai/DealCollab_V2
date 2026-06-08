@@ -196,8 +196,11 @@ const SHELL_SIGNALS = [
     /inc[- ]20a/i,                                // INC-20A is a dormancy declaration
     /shell company/i,
     /kindly\s+dm\s+me?\b/i,                       // "please DM me" = no real description
-    /available\s+for\s+sale\.?\s*please\s+dm/i,
-    /company\s+for\s+sell?[:\-|]/i,              // "Company for sell:- 1. Year:..." template
+    /anyone\s+interested\s*,?\s*dm/i,
+    /available\s+for\s+sale\.?\s*(please\s+dm|anyone\s+interested|dm)/i,
+    /company\s+available\s+for\s+sale/i,
+    /company\s+for\s+sell?[:\-|]?/i,              // "Company for sell:- 1. Year:..." template
+    /price\s*[:\-]?\s*(?:very\s*)*cheap/i,
     /nature of business\s+trading/i,             // Trading companies falsely tagged as SaaS
     /trading\s+[na&]\s+distribution/i,           // Trading & Distribution
     /trading\s+and\s+distribution/i,
@@ -225,6 +228,15 @@ const SECTOR_CONTRADICTIONS: Record<string, RegExp[]> = {
     finserv: [
         /nature of business\s+trading/i,
         /\bmanufacturing\s+unit\b/i,
+        /\bfmcg\b/i,
+        /\btextiles?\b/i,
+        /\breal\s*estate\b/i,
+        /\bpharma(?:ceutical)?\b/i,
+        /\bhotel\b|\bhospitality\b/i,
+        /\bconstruction\s+company\b/i,
+        /\bimport\s+export\b/i,
+        /\bwholesale\s+trade\b/i,
+        /\bagriculture\b|\bfarming\b/i,
     ],
     manufacturing: [
         /\bsaas\s+platform\b/i,
@@ -245,14 +257,232 @@ const SAAS_LEGITIMACY_SIGNALS = [
     /\bproprietary\s+(?:platform|software|technology)\b/i,
 ];
 
+// Digital marketing / MarTech classification signals
+export const DIGITAL_MARKETING_SIGNALS: RegExp[] = [
+    /\bdigital\s+marketing\b/i,
+    /\bseo\b/i,
+    /\bperformance\s+marketing\b/i,
+    /\bpaid\s+(?:ads?|advertising|media)\b/i,
+    /\bsocial\s+media\s+marketing\b/i,
+    /\bcustomer\s+acquisition\b/i,
+    /\bcrm\s+automation\b/i,
+    /\bad[- ]?tech\b/i,
+    /\bmarketing\s+automation\b/i,
+    /\bcampaign\s+management\b/i,
+    /\bmartech\b/i,
+    /\bgoogle\s+ads\b/i,
+    /\bfacebook\s+ads\b/i,
+    /\bprogrammatic\s+advertising\b/i,
+    /\blead\s+generation\b/i,
+    /\bppc\b/i,
+    /\bsem\b/i,
+    /\binfluencer\s+marketing\b/i,
+    /\bemail\s+marketing\b/i,
+    /\bmarketing\s+agency\b/i,
+];
+
+/** Returns true if at least 2 digital marketing signals fire (avoids single-word false positives). */
+export function isDigitalMarketing(rawText: string): boolean {
+    if (!rawText) return false;
+    return DIGITAL_MARKETING_SIGNALS.filter(re => re.test(rawText)).length >= 2;
+}
+
+/**
+ * Returns a 0–100 shell company risk score.
+ * Hard signals (SHELL_SIGNALS regex hits) = 30 pts each.
+ * Soft signals (keyword matches) = 10 pts each.
+ * Capped at 100. Threshold: ≥40 = moderate risk, ≥70 = high risk.
+ */
+export function shellCompanyScore(rawText: string): number {
+    if (!rawText) return 0;
+    const hardHits = SHELL_SIGNALS.filter(re => re.test(rawText)).length;
+    const lower = rawText.toLowerCase();
+    const softSignals = [
+        'roc ', ' roc\n', '| roc', 'roc based', 'roc compliant', 'roc fully compliant',
+        'authorised capital', 'authorized capital', 'paid up capital', 'paid-up capital',
+        'gst surrendered', 'gst cancelled', 'gst inactive',
+        'c/f loss', 'c/f capital loss', 'c/f business loss',
+        'carried forward loss', 'carry forward loss', 'unabsorbed loss',
+        'zero litigation', 'no litigation', 'nil litigation',
+        'it compliant', 'objects -', 'objects:', '| objects',
+        'no operations', 'dormant', 'non-operational',
+    ];
+    const softHits = softSignals.filter(s => lower.includes(s)).length;
+    return Math.min(100, (hardHits * 30) + (softHits * 10));
+}
+
 /**
  * Returns true if the raw_text strongly indicates a shell/dormant company
  * with no real operational SaaS business.
  */
 export function isShellCompany(rawText: string): boolean {
     if (!rawText) return false;
+    
+    // 1. Strict regex hits
     const shellHits = SHELL_SIGNALS.filter(re => re.test(rawText)).length;
-    return shellHits >= 1; // Even one hard signal is enough to flag it
+    if (shellHits >= 1) return true; // Even one hard signal is enough
+    
+    // 2. Multi-signal hits (synchronized with promptRouter detection)
+    const lower = rawText.toLowerCase();
+    const multiSignals = [
+        'shell company', 'dormant company', 'blank company',
+        'roc ', ' roc\n', '| roc', 'roc based', 'roc compliant', 'roc fully compliant',
+        'authorised capital', 'authorized capital', 'paid up capital', 'paid-up capital',
+        'gst surrendered', 'gst cancelled', 'gst inactive',
+        'c/f loss', 'c/f capital loss', 'c/f business loss',
+        'carried forward loss', 'carry forward loss', 'unabsorbed loss',
+        'zero litigation', 'no litigation', 'nil litigation',
+        'it compliant', 'objects -', 'objects:', '| objects',
+        'no operations', 'dormant', 'non-operational',
+    ];
+    const score = multiSignals.filter(s => lower.includes(s)).length;
+    if (score >= 2) return true;
+
+    return false;
+}
+
+// ─────────────────────────────────────────────────────────────
+// HARD EXCLUSION PATTERNS
+// Companies matching these are excluded from ALL results unless user explicitly
+// requests shell/dormant/SPV entities (sub_sector='shell_company' query).
+// ─────────────────────────────────────────────────────────────
+
+export const HARD_EXCLUSION_SIGNALS: RegExp[] = [
+    // Compliance/certificate assets for sale (not businesses)
+    /\bgst\s+(?:number|no\.?|registration)?\s*(?:for\s+)?(?:sale|available|transfer)\b/i,
+    /\btrademark\s+(?:for\s+)?(?:sale|transfer|available)\b/i,
+    /\biso\s+(?:certificate|certified)?\s*(?:for\s+)?(?:sale|transfer|available)\b/i,
+    /\bfssai\s+(?:for\s+)?(?:sale|transfer|available)\b/i,
+    /\bdrug\s+license\s+(?:for\s+)?(?:sale|transfer|available)\b/i,
+    // Dormant / inactive / no operations
+    /\bdormant\s+(?:company|entity|firm)\b/i,
+    /\binactive\s+(?:company|entity|business|firm)\b/i,
+    /\bno\s+(?:business\s+)?operations?\b/i,
+    /\bnon[- ]operative\b/i,
+    /\bnon[- ]operational\b/i,
+    /\bblank\s+(?:company|entity)\b/i,
+    /\bpaper\s+company\b/i,
+    // Special purpose / shelf / holding-only entities
+    /\bspv\b/i,
+    /\bshelf\s+company\b/i,
+    /\bholding\s+(?:structure\s+)?only\b/i,
+    /\bcompliance[- ]only\b/i,
+    // Solicitation templates (zero operational detail)
+    /anyone\s+interested\s*[,]?\s*(?:dm|contact|whatsapp)/i,
+    /\bkindly\s+(?:dm|whatsapp|message)\s+me\b/i,
+    /\bprice\s*[:\-]?\s*(?:very\s*)?cheap\b/i,
+    /company\s+for\s+sell?[:\s|\-]/i,
+    /available\s+for\s+(?:sale|acquisition)[.\s]*(?:please\s+)?(?:dm|contact|whatsapp)/i,
+    // INC-20A dormancy declaration
+    /\binc[- ]20a\b/i,
+    // Corporate acquisition broker patterns (shell marketplace, not M&A)
+    // e.g. "Required 6 months old company with GST", "Required Delhi GST 1 yr old"
+    /\brequired?\s+\d+\s*(?:yr|year|month)s?\s+old\s+company\b/i,
+    /\bnon[- ]?gst\s+company\s+(?:available|for\s+sale)\b/i,
+    /\bwithout\s+gst\s*[,.]?\s*capital\s*[=:]/i,
+    /\bcompany\s+available\s+for\s+sale\b/i,
+    /\bcompany\s+for\s+sale\b/i,
+    /\bpvt\.?\s*ltd\.?\s+(?:company\s+)?(?:for\s+)?(?:sale|available)\b/i,
+    // NBFC / listed company shells (compliance market, not operational M&A)
+    /\bnbfc\s+(?:for\s+)?(?:sale|available|transfer)\b/i,
+    /\b(?:bse|nse)[- ]listed\s+company\s+(?:for\s+)?(?:sale|available|transfer)\b/i,
+    /\bunlisted\s+(?:company|nbfc)\s+(?:for\s+)?(?:sale|available)\b/i,
+    /\bnof\s*[=:]\s*[\d.]+\s*(?:cr|crore)\b/i,  // "NOF: 5.5 cr" — NBFC Net Owned Funds metric
+];
+
+/**
+ * Returns true if a proposal should be hard-excluded from all match results.
+ * exempt=true when the user explicitly wants shell/dormant entities.
+ */
+export function isHardExcluded(rawText: string, exempt = false): boolean {
+    if (!rawText || exempt) return false;
+    return HARD_EXCLUSION_SIGNALS.some(re => re.test(rawText));
+}
+
+// ─────────────────────────────────────────────────────────────
+// DIGITAL MARKETING OPERATIONAL CONTENT
+// For queries with sub_sector='digital_marketing', candidates MUST show
+// actual operational marketing activity — not just a generic SaaS label.
+// ─────────────────────────────────────────────────────────────
+
+const DIGITAL_MARKETING_OPERATIONAL: RegExp[] = [
+    /\bdigital\s+marketing\b/i,
+    /\bperformance\s+marketing\b/i,
+    /\bseo\b/i,
+    /\bsem\b/i,
+    /\bpaid\s+(?:ads?|advertising|media)\b/i,
+    /\bsocial\s+media\s+(?:marketing|management|agency)\b/i,
+    /\bcustomer\s+acquisition\b/i,
+    /\bcrm\s+(?:system|platform|automation|software)\b/i,
+    /\bmarketing\s+automation\b/i,
+    /\bcampaign\s+management\b/i,
+    /\bmartech\b/i,
+    /\bad[- ]?tech\b/i,
+    /\bgoogle\s+ads\b/i,
+    /\bfacebook\s+ads\b/i,
+    /\bmeta\s+ads\b/i,
+    /\bprogrammatic\s+advertising\b/i,
+    /\blead\s+generation\b/i,
+    /\binfluencer\s+marketing\b/i,
+    /\bemail\s+marketing\b/i,
+    /\bmarketing\s+agency\b/i,
+    /\bmedia\s+buying\b/i,
+    /\bppc\b/i,
+    /\bcontent\s+marketing\b/i,
+    /\bmarketing\s+(?:platform|saas|tool)\b/i,
+];
+
+/**
+ * Returns 0–1 relevance score for digital marketing operational content.
+ * Requires at least 1 signal; 3+ signals → 1.0.
+ */
+export function digitalMarketingRelevanceScore(rawText: string): number {
+    if (!rawText) return 0;
+    const hits = DIGITAL_MARKETING_OPERATIONAL.filter(re => re.test(rawText)).length;
+    return Math.min(1.0, hits / 3);
+}
+
+// ─────────────────────────────────────────────────────────────
+// OPERATIONAL RICHNESS SCORING
+// Measures how much real operational content a proposal has.
+// Skeleton/boilerplate proposals (ROC data, object clause, capital info)
+// score near 0. Genuine descriptions with clients, revenue, products score high.
+// ─────────────────────────────────────────────────────────────
+
+const BOILERPLATE_SIGNALS: RegExp[] = [
+    /\bobjects?\s*[:\-|]/i,                      // "Objects: Software development"
+    /\bauthoised\s+(?:share\s+)?capital\b/i,
+    /\bauthorised\s+(?:share\s+)?capital\b/i,
+    /\bpaid[- ]up\s+(?:share\s+)?capital\b/i,
+    /\bcin\s+[lu][0-9]/i,                        // CIN number
+    /\bdin\s+[0-9]{8}/i,                         // DIN number
+    /\broc\s+(?:compliant|registered|filing)/i,
+    /\bregistered\s+under\s+(?:the\s+)?companies\s+act/i,
+    /\bgst\s+(?:registered|active|compliant)\b/i,
+    /\bit\s+(?:returns?\s+)?(?:filed|compliant)\b/i,
+    /\bnature\s+of\s+business\s*[:\-]?\s*(?:it|software|digital|technology)\b/i,
+    /\bdate\s+of\s+(?:incorporation|registration)\b/i,
+    /year\s+of\s+(?:incorporation|establishment)\s*[:\-]?\s*\d{4}/i,
+];
+
+/**
+ * Returns 0–1 score of how operationally rich the content is.
+ * 1.0 = detailed real business description. 0 = skeleton / boilerplate only.
+ */
+export function operationalRichnessScore(rawText: string): number {
+    if (!rawText) return 0;
+    const text = rawText.trim();
+    if (text.length < 40) return 0;
+
+    const boilerplateHits = BOILERPLATE_SIGNALS.filter(re => re.test(text)).length;
+
+    // Base richness from content length (caps at 600 chars for full credit)
+    const lengthScore = Math.min(1.0, text.length / 600);
+
+    // Each boilerplate hit reduces richness — a pure ROC-dump scores near 0
+    const boilerplatePenalty = Math.min(0.8, boilerplateHits * 0.15);
+
+    return Math.max(0, lengthScore - boilerplatePenalty);
 }
 
 /**
@@ -285,6 +515,9 @@ export function computeQualityScore(input: QualityInput): number {
 
     // Penalize shell company signals heavily
     if (isShellCompany(input.rawText)) score = Math.max(0, score - 5);
+
+    // Hard cap for very thin proposals — under 80 chars cannot be meaningfully matched
+    if (len < 80) score = Math.min(score, 2);
 
     return Math.min(score, 10);
 }

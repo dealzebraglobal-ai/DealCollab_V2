@@ -78,7 +78,7 @@ async function main() {
     const result = await executeMatchmaking({
         mandateId: p.id,
         userId: p.user_id,
-        intent: p.intent as DealIntent,
+        intent: p.intent || '',
         raw_text: p.raw_text || '',
         sector: (p.sectors?.[0] ?? null) as SectorKey | null,
         sub_sector: null,

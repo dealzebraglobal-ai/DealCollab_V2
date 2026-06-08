@@ -4,36 +4,36 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
 const client = new pg.Client({
     connectionString: process.env.DATABASE_URL,
 });
 
-const BATCH_SIZE = 50;
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
-async function processPendingEmbeddings() {
+const BATCH_SIZE = 25;
+
+async function embedMandates() {
     await client.connect();
 
     try {
         while (true) {
             const { rows } = await client.query(`
         SELECT id, raw_text
-        FROM proposals
-        WHERE embedding_status = 'PENDING'
+        FROM mandates
+        WHERE embedding IS NULL
           AND raw_text IS NOT NULL
           AND LENGTH(TRIM(raw_text)) > 0
         LIMIT ${BATCH_SIZE}
       `);
 
             if (rows.length === 0) {
-                console.log("✅ No pending proposals remaining.");
+                console.log("🎉 All mandates embedded");
                 break;
             }
 
-            console.log(`Processing ${rows.length} proposals...`);
+            console.log(`Processing ${rows.length} mandates`);
 
             for (const row of rows) {
                 try {
@@ -46,28 +46,18 @@ async function processPendingEmbeddings() {
 
                     await client.query(
                         `
-            UPDATE proposals
+            UPDATE mandates
             SET
               embedding = $1::vector,
-              embedding_status = 'DONE',
               updated_at = NOW()
             WHERE id = $2
             `,
                         [JSON.stringify(embedding), row.id]
                     );
 
-                    console.log(`✅ Embedded ${row.id}`);
-                } catch (err) {
-                    console.error(`❌ Failed ${row.id}`, err);
-
-                    await client.query(
-                        `
-            UPDATE proposals
-            SET updated_at = NOW()
-            WHERE id = $1
-            `,
-                        [row.id]
-                    );
+                    console.log(`✅ ${row.id}`);
+                } catch (error) {
+                    console.error(`❌ Failed ${row.id}`, error);
                 }
             }
         }
@@ -76,10 +66,8 @@ async function processPendingEmbeddings() {
     }
 }
 
-processPendingEmbeddings()
-    .then(() => {
-        console.log("🎉 Backfill complete");
-    })
+embedMandates()
+    .then(() => process.exit(0))
     .catch((err) => {
         console.error(err);
         process.exit(1);

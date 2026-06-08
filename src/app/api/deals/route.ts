@@ -38,7 +38,8 @@ export async function GET() {
         status,
         created_at,
         raw_text,
-        normalised_text
+        normalised_text,
+        metadata
       `)
       .eq('user_id', dbUser.id)
       .eq('status', 'ACTIVE')
@@ -72,7 +73,8 @@ export async function GET() {
           deal_size_max_cr,
           deal_structure,
           raw_text,
-          normalised_text
+          normalised_text,
+          metadata
         )
       `)
       .in('proposal_id', proposalIds)
@@ -97,7 +99,8 @@ export async function GET() {
             size_min: cp.deal_size_min_cr,
             size_max: cp.deal_size_max_cr,
             raw_text: cp.raw_text,
-            normalised_text: cp.normalised_text
+            normalised_text: cp.normalised_text,
+            mandate_summary: (cp.metadata as Record<string, unknown> | null)?.mandate_summary as string | null ?? null,
           } : null
         };
       });

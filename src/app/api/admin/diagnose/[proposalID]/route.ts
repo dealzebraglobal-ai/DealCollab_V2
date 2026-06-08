@@ -67,7 +67,7 @@ export async function GET(
             .neq('user_id', proposal.user_id)
             .in('intent', targetIntents)
             .eq('status', 'ACTIVE')
-            .eq('embedding_status', 'ACTIVE')
+            .eq('embedding_status', 'DONE')
             .not('embedding', 'is', null);
 
         const { count: stage5_quality } = await supabase
@@ -76,7 +76,7 @@ export async function GET(
             .neq('user_id', proposal.user_id)
             .in('intent', targetIntents)
             .eq('status', 'ACTIVE')
-            .eq('embedding_status', 'ACTIVE')
+            .eq('embedding_status', 'DONE')
             .not('embedding', 'is', null)
             .in('quality_tier', ['1', '2', '3']);
 

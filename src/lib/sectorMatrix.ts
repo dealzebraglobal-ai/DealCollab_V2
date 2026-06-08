@@ -16,8 +16,16 @@ type SectorRule = {
 export const SECTOR_COMPATIBILITY: Record<SectorKey, SectorRule> = {
     pharma: {
         exact_match: ['pharma'],
-        adjacent: ['chemicals'],
+        // NM1: healthcare (delivery) is adjacent to pharma (manufacturing) — shared ecosystem
+        adjacent: ['chemicals', 'healthcare'],
         incompatible: ['realestate', 'logistics', 'hospitality', 'oil_gas', 'ngo'],
+    },
+    // NM1: healthcare sector (hospitals, clinics, diagnostics, healthtech)
+    healthcare: {
+        exact_match: ['healthcare'],
+        adjacent: ['pharma'],
+        incompatible: ['manufacturing', 'oil_gas', 'defence', 'chemicals', 'logistics',
+                       'realestate', 'finserv', 'ngo'],
     },
     manufacturing: {
         exact_match: ['manufacturing'],
@@ -26,12 +34,14 @@ export const SECTOR_COMPATIBILITY: Record<SectorKey, SectorRule> = {
     },
     saas: {
         exact_match: ['saas'],
-        adjacent: ['finserv', 'education'],
-        incompatible: ['manufacturing', 'realestate', 'oil_gas', 'pharma', 'chemicals', 'ngo'],
+        adjacent: ['education'],
+        // finserv (NBFC/lending) excluded per spec — a digital/SaaS mandate must not surface traditional FS
+        incompatible: ['manufacturing', 'realestate', 'oil_gas', 'pharma', 'chemicals', 'ngo',
+                       'finserv', 'hospitality', 'logistics', 'defence', 'renewable', 'consumer'],
     },
     finserv: {
         exact_match: ['finserv'],
-        adjacent: ['saas'],
+        adjacent: ['saas'],   // finserv CAN look for SaaS targets (e.g. fintech acquisition)
         incompatible: ['manufacturing', 'realestate', 'logistics', 'pharma', 'chemicals', 'oil_gas', 'ngo'],
     },
     consumer: {
@@ -97,24 +107,22 @@ export function sectorsAreCompatible(
 ): boolean {
     // If query has no sector, any candidate is OK
     if (!qSector) return true;
-    
+
     // If query has a specific sector but candidate has NO sector tag,
     // reject it — an untagged proposal is not a SaaS/pharma/finserv match.
     if (!cSectors || cSectors.length === 0) return false;
-    
+
     const rule = SECTOR_COMPATIBILITY[qSector];
     if (!rule) return true;
 
     const cSet = cSectors.map(s => (typeof s === 'string' ? s.toLowerCase() : s) as SectorKey);
-    
-    // Reject if any of the candidate's sectors are explicitly incompatible
-    if (cSet.some(cs => rule.incompatible.includes(cs))) return false;
-    
-    // Also require at least one sector to be exact-match or adjacent
-    const hasRelevantSector = cSet.some(cs => 
-        rule.exact_match.includes(cs) || rule.adjacent.includes(cs)
-    );
-    return hasRelevantSector;
+
+    // Pass if at least one of the candidate's sectors is an exact match or adjacent.
+    // We do NOT hard-reject on incompatible here — a company tagged ['saas', 'consumer']
+    // should still match a SaaS query even though 'consumer' is incompatible.
+    // Scoring penalises cross-sector matches via sector_score=0; HR-4 is the gate,
+    // not the ranker. Sector legitimacy is validated separately by HR-7 (isSectorLegitimate).
+    return cSet.some(cs => rule.exact_match.includes(cs) || rule.adjacent.includes(cs));
 }
 
 export type AdjacencyLevel = 'exact' | 'adjacent' | 'unrelated' | 'incompatible';

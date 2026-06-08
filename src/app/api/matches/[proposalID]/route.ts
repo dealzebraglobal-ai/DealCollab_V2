@@ -29,6 +29,22 @@ interface MatchRow {
     raw_text: string | null;
 }
 
+interface ParsedReason {
+    reason?: string;
+    sectorFit?: string;
+    revenueFit?: string;
+    strategicFit?: string;
+    geographyFit?: string;
+    riskFlags?: string[];
+}
+
+function parseMatchReason(raw: string): ParsedReason {
+    try {
+        if (raw.startsWith('{')) return JSON.parse(raw) as ParsedReason;
+    } catch { /* fall through */ }
+    return { reason: raw };
+}
+
 function summarizeDeal(p: MatchRow): string {
     const parts: string[] = [];
     if (p.sectors?.length) parts.push(`${p.sectors[0].toUpperCase()}`);
@@ -85,9 +101,20 @@ export async function GET(
             .from('proposals')
             .select('id, user_id, intent, sectors, geographies, status')
             .eq('id', proposalID)
-            .single();
+            .maybeSingle();
 
-        if (!proposal) return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
+        if (!proposal) {
+            return NextResponse.json({
+                proposalID,
+                matchCount: 0,
+                isSearching: true,
+                matches: [],
+                tokensRequired: 50,
+                userTokens: userRow.tokens ?? 0,
+                message: 'Initializing search...',
+            });
+        }
+
         if (proposal.user_id !== userRow.id) {
             return NextResponse.json({ error: 'Not your proposal' }, { status: 403 });
         }
@@ -115,13 +142,23 @@ export async function GET(
         }
 
         if (!matches || matches.length === 0) {
+            // Check if the engine already queued this for async re-match (meaning it found 0 matches)
+            const { data: savedSearch } = await supabase
+                .from('saved_searches')
+                .select('id')
+                .eq('proposal_id', proposalID)
+                .maybeSingle();
+
             return NextResponse.json({
                 proposalID,
                 matchCount: 0,
+                isSearching: !savedSearch,
                 matches: [],
                 tokensRequired: 50,
                 userTokens: userRow.tokens ?? 0,
-                message: 'No matches yet. Your mandate is queued — you will be notified when an aligned counterparty joins.',
+                message: savedSearch
+                    ? 'No immediate matches found. Your mandate is queued — you will be notified when an aligned counterparty joins.'
+                    : 'Searching for aligned counterparties...',
             });
         }
 
@@ -158,6 +195,7 @@ export async function GET(
             const cp = counterpartyMap.get(m.matched_proposal_id);
             const connection = connectedSet.get(m.matched_proposal_id);
             const isConnected = !!connection;
+            const parsed = parseMatchReason(m.match_reason);
 
             return {
                 rank: `P${idx + 1}`,
@@ -165,8 +203,13 @@ export async function GET(
                 proposalId: m.matched_proposal_id,
                 finalScore: Number(m.final_score),
                 similarityScore: Number(m.similarity_score),
-                label: m.match_archetype, // 'High' | 'Good' | 'Possible'
-                reason: m.match_reason,
+                label: m.match_archetype, // 'VERIFIED_MATCH' | 'HIGH_CONFIDENCE'
+                reason: parsed.reason ?? m.match_reason,
+                sectorFit: parsed.sectorFit ?? null,
+                revenueFit: parsed.revenueFit ?? null,
+                strategicFit: parsed.strategicFit ?? null,
+                geographyFit: parsed.geographyFit ?? null,
+                riskFlags: parsed.riskFlags ?? [],
                 // Anonymized public preview
                 summary: cp ? summarizeDeal(cp) : 'Counterparty details unavailable',
                 intent: cp?.intent ?? null,

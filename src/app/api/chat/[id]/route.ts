@@ -19,23 +19,81 @@ export async function GET(
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    // Fetch chat session and join with document
-    const { data: chat, error } = await supabase
-      .from('chat_sessions')
-      .select(`
-        *,
-        document:documents(*)
-      `)
-      .eq('id', id)
-      .single();
+    // Resolve DB user id (handles NextAuth id ↔ DB id mismatch)
+    let dbUserId: string = session.user.id;
+    if (session.user.email) {
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', session.user.email)
+        .single();
+      if (dbUser?.id) dbUserId = dbUser.id;
+    }
 
-    if (error || !chat) {
+    // Fetch chat session — plain select, no FK join to avoid PostgREST schema-cache errors
+    const { data: chat, error: chatErr } = await supabase
+      .from('chat_sessions')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (chatErr) {
+      console.error(`[chat/${id}] session fetch error:`, chatErr);
       return NextResponse.json({ success: false, error: 'Chat not found' }, { status: 404 });
+    }
+    if (!chat) {
+      return NextResponse.json({ success: false, error: 'Chat not found' }, { status: 404 });
+    }
+
+    // Fetch document separately if a document_id exists on the session
+    let document: Record<string, unknown> | null = null;
+    if (chat.document_id) {
+      const { data: doc } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', chat.document_id)
+        .maybeSingle();
+      document = doc ?? null;
+    }
+
+    // Fetch messages (consolidated here to avoid nested dynamic route issues)
+    const { data: rawMessages } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('chat_id', id)
+      .order('created_at', { ascending: true });
+
+    const messages = (rawMessages ?? []).map((m: Record<string, unknown>) => {
+      if (m.role === 'assistant') {
+        try {
+          const parsed = JSON.parse(m.content as string);
+          return { ...m, content: parsed.message || m.content };
+        } catch { return m; }
+      }
+      return m;
+    });
+
+    // Resolve proposalId for the match panel.
+    // ONLY use state.proposal_id — the fallback intent/sector query was removed because
+    // it scanned by user+intent+sector without a chatId filter, returning proposals from
+    // OTHER sessions that share the same intent/sector (BUG #2 stale-match root cause).
+    // The sessionStorage dc_proposal_map fallback in the frontend handles older sessions.
+    const chatState = (chat.state ?? {}) as Record<string, unknown>;
+    let proposalId: string | null = null;
+
+    if (chatState.proposal_id) {
+      proposalId = chatState.proposal_id as string;
+      console.log(`[chat/${id}] proposalId from state: ${proposalId}`);
+    } else {
+      console.log(`[chat/${id}] no proposalId in state — frontend sessionStorage fallback will handle this`);
     }
 
     return NextResponse.json({
       success: true,
-      ...chat
+      ...chat,
+      document,     // fetched separately to avoid FK join failures
+      proposalId,   // consumed by ChatProvider.loadChat to restore the MatchPanel
+      messages,     // consolidated here to avoid nested dynamic route issues
     });
 
   } catch (error: unknown) {

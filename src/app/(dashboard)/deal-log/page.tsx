@@ -54,7 +54,14 @@ interface DBMatch {
   score: string;
   similarity: string;
   reason?: string;
-  counterparty?: { sector: string; geography: string; intent: string; raw_text?: string; normalised_text?: string };
+  counterparty?: {
+    sector: string;
+    geography: string;
+    intent: string;
+    raw_text?: string;
+    normalised_text?: string;
+    mandate_summary?: string | null;
+  };
 }
 
 interface DBDeal {
@@ -65,6 +72,7 @@ interface DBDeal {
   matches: DBMatch[];
   raw_text?: string;
   normalised_text?: string;
+  metadata?: { mandate_summary?: string; [key: string]: unknown };
 }
 
 interface Deal {
@@ -99,7 +107,8 @@ export default function DealLogPage() {
     deal: `${dbDeal.intent || 'Deal'}: ${dbDeal.sectors?.[0] || 'Unknown Sector'}`,
     sector: dbDeal.sectors?.[0] || 'Unknown',
     region: dbDeal.geographies?.[0] || 'Global',
-    summary: cleanSummaryText(dbDeal.normalised_text || dbDeal.raw_text || '', dbDeal.intent, dbDeal.sectors, dbDeal.geographies),
+    summary: dbDeal.metadata?.mandate_summary ||
+      cleanSummaryText(dbDeal.normalised_text || dbDeal.raw_text || '', dbDeal.intent, dbDeal.sectors, dbDeal.geographies),
     status: dbDeal.matches && dbDeal.matches.length > 0 ? "Matched" : "Searching Match",
     matches: dbDeal.matches.map((m: DBMatch, i: number) => ({
        id: m.id,
@@ -113,7 +122,8 @@ export default function DealLogPage() {
          sector: m.counterparty?.sector || 'Unknown', 
          geography: m.counterparty?.geography || 'Global', 
          intent: m.counterparty?.intent || 'UNKNOWN',
-         summary: cleanSummaryText(m.counterparty?.normalised_text || m.counterparty?.raw_text || '', m.counterparty?.intent, m.counterparty?.sector ? [m.counterparty.sector] : [], m.counterparty?.geography ? [m.counterparty.geography] : []) 
+         summary: m.counterparty?.mandate_summary ||
+           cleanSummaryText(m.counterparty?.normalised_text || m.counterparty?.raw_text || '', m.counterparty?.intent, m.counterparty?.sector ? [m.counterparty.sector] : [], m.counterparty?.geography ? [m.counterparty.geography] : [])
        },
        status: 'ACTIVE',
        createdAt: new Date().toISOString()
