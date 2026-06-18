@@ -1,3 +1,23 @@
+/**
+ * DealCollab — Shared Type Definitions
+ * =====================================
+ * Layer 1: Pure TypeScript types. Zero logic. Zero imports.
+ * Every other module imports from here. Nothing imports into here.
+ *
+ * Owned by this file:
+ *   ✔ DealIntent
+ *   ✔ SectorKey
+ *   ✔ ConversationPhase
+ *   ✔ RouterState
+ *   ✔ RouterOutput
+ *
+ * NOT owned:
+ *   ✘ Keywords / detection logic  → detectors.ts
+ *   ✘ State transitions           → stateManager.ts
+ *   ✘ Quality scoring             → qualityGate.ts
+ *   ✘ Prompt content              → M0–M7 files
+ */
+
 // ─────────────────────────────────────────────────────────────
 // DEAL INTENT
 // ─────────────────────────────────────────────────────────────
@@ -56,7 +76,13 @@ export type ConversationPhase =
 export interface RouterState {
   // Core deal fields
   intent: DealIntent;
+  intent_flavor: 'strategic' | 'financial' | null;  // BUY_SIDE only: strategic acquirer vs financial sponsor
   sector: SectorKey | null;
+  // Hybrid taxonomy: the TRUE industry in the model's own words (e.g. "Freshwater
+  // Aquaculture (RAS)", "EV charging infrastructure", "specialty steel trading"). This is the
+  // PRIMARY industry signal — never forced into the preset list. `sector` above is now only a
+  // coarse category for legacy filtering; `industry` is what should drive matching/embeddings.
+  industry: string | null;
   sub_sector: string | null;
   geography: string | null;
   deal_size: string | null;
@@ -84,6 +110,10 @@ export interface RouterState {
 
   // M4 sector intelligence tracking
   m4_questions_asked: boolean;
+
+  // Terminal lock (Step 1): set true once the deal has been written + matched.
+  // While true, every further turn returns one fixed status line and never re-inserts.
+  is_captured?: boolean;
 
   // Phase + turn tracking
   phase: ConversationPhase;

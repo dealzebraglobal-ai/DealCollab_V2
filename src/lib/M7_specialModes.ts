@@ -1,3 +1,21 @@
+/**
+ * DealCollab — M7: Special Modes
+ * ================================
+ * Conditional override modules that fire for specific system states.
+ * These are NOT sector intelligence (M4) or phase rules (M2).
+ * They are state-triggered overrides that replace normal qualification flow.
+ *
+ * Owned by this file:
+ *   ✔ M_INTENT_VALIDATION     — fired when phase=INTENT_VALIDATION (NM7)
+ *   ✔ buildQualityGateFailModule() — fired when quality gate fails (NM7)
+ *   ✔ M_DOCUMENT_INTAKE       — fired when is_document_intake=true (NM6)
+ *
+ * Load rule: CONDITIONAL — exactly ONE per request, mutually exclusive.
+ *   INTENT_VALIDATION phase    → M_INTENT_VALIDATION
+ *   quality_gate_attempted=true && !quality_gate_passed → buildQualityGateFailModule(message)
+ *   is_document_intake=true && !is_complete → M_DOCUMENT_INTAKE
+ */
+
 // ─────────────────────────────────────────────────────────────
 // INTENT VALIDATION — NM7
 // Replaces the closure message. Asks user to confirm genuine mandate.
@@ -37,7 +55,7 @@ Your session is saved. Return when you're ready to submit a confirmed mandate, a
 // ─────────────────────────────────────────────────────────────
 
 export function buildQualityGateFailModule(message: string): string {
-    return `
+  return `
 ## QUALITY GATE — MORE INFORMATION NEEDED
 
 This mandate does not yet meet the minimum threshold to be registered as an active deal.
@@ -63,7 +81,7 @@ Do NOT ask qualification questions.
 1. Extract every field silently.
 2. Produce clean synthesis confirmation:
 "Got it. Here's what I captured:
-[Intent] — [Sector] — [Geography if stated] — [Deal size if stated] — [Structure if stated]
+[Intent] — [Industry] — [Geography if stated] — [Deal size if stated] — [Structure if stated]
 [Any other key details: sectors of interest, investment thesis, revenue criteria]
 Is this accurate? If yes, I'll proceed to matching. If something's off, let me know what to correct."
 3. is_complete=false until user confirms.

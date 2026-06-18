@@ -1,3 +1,16 @@
+/**
+ * DealCollab — M0: Output Schema + Pre-Flight Instructions
+ * =========================================================
+ * The contract between the LLM and the system.
+ * Loaded FIRST in every prompt, every turn.
+ *
+ * Owned by this file:
+ *   ✔ M0_OUTPUT_SCHEMA  — JSON output format + extraction rules
+ *   ✔ PRE_FLIGHT_EXTRACTION — mandatory pre-response checklist
+ *
+ * Load rule: ALWAYS. Both constants. Every request.
+ */
+
 import type { DealIntent, SectorKey } from './types';
 
 // Exported for type usage in promptRouter
@@ -10,9 +23,12 @@ export type { DealIntent, SectorKey };
 export const M0_OUTPUT_SCHEMA = `
 # OUTPUT CONTRACT
 Return ONLY valid JSON. No preamble, no markdown, no fences.
-{ "intent": string|null, "state": { "sector": string|null, "sub_sector": string|null, "geography": string|null, "deal_size": string|null, "revenue": string|null, "structure": string|null, "intent_focus": string|null, "industry_data": {}, "is_intermediary": "owner"|"advisor"|null, "m4_questions_asked": boolean }, "is_complete": boolean, "message": "YOUR RESPONSE" }
+{ "intent": string|null, "intent_rationale": string|null, "intent_confidence": number|null, "state": { "sector": string|null, "industry": string|null, "sub_sector": string|null, "geography": string|null, "deal_size": string|null, "revenue": string|null, "structure": string|null, "intent_focus": string|null, "intent_flavor": "strategic"|"financial"|null, "industry_data": {}, "is_intermediary": "owner"|"advisor"|null, "m4_questions_asked": boolean }, "is_complete": boolean, "message": "YOUR RESPONSE" }
+- INTENT + INTENT_FLAVOR + INTENT_RATIONALE + INTENT_CONFIDENCE: determine these by the rules in the INTENT block (reason about role/direction via the ordered hierarchy; PE/VC deploying = BUY_SIDE/financial; keywords are last resort). intent_rationale is one short line; intent_confidence is 0–100 and, when 49 or below, ask one clarifying question instead of guessing.
 
 # EXTRACTION RULES
+- INDUSTRY (PRIMARY) — Always set "industry" to the SPECIFIC, TRUE industry in your own words, exactly as the business describes itself: e.g. "Freshwater Aquaculture (RAS)", "EV charging infrastructure", "specialty steel trading", "agri-commodity exports". This is the primary industry signal and drives matching. NEVER distort or omit it to fit a preset category.
+- SECTOR (COARSE, optional) — "sector" is only a rough category for legacy filtering. Set it to the closest fit from the preset list ONLY if one genuinely applies; if none fits (e.g. aquaculture, agriculture, mining, media), set sector to "mixed" and rely on "industry". Do NOT force a wrong category — a wrong sector corrupts matching.
 - NEVER ask for anything in # FIELDS ALREADY PROVIDED.
 - REDUNDANCY — FIELD-TO-QUESTION SUPPRESSION (apply before generating ANY question):
   products_services OR capabilities OR company_overview present → NEVER ask "what does the business do?" in any form.
@@ -33,7 +49,7 @@ Return ONLY valid JSON. No preamble, no markdown, no fences.
 
 # DOCUMENT INTAKE MODE (# DOCUMENT_INTAKE_MODE: active)
 → Do NOT ask any questions. Produce synthesis confirmation ONLY.
-→ Format: "Got it. Here's what I captured:\n[Intent] — [Sector] — [Geography] — [Size] — [Structure] — [Key details]\nIs this accurate? If yes, I'll proceed to matching."
+→ Format: "Got it. Here's what I captured:\n[Intent] — [Industry] — [Geography] — [Size] — [Structure] — [Key details]\nIs this accurate? If yes, I'll proceed to matching."
 → is_complete=false until user confirms ("yes", "correct", "proceed", "accurate", "looks good").
 → When user confirms → is_complete=TRUE. Do NOT deliver closure message. Matching begins immediately.
 
@@ -43,8 +59,8 @@ Return ONLY valid JSON. No preamble, no markdown, no fences.
 → IT: "Is this primarily a software product company, or an IT services and delivery business?"
 
 # GEOGRAPHY GATE (# GEOGRAPHY_GATE: active)
-→ Ask ONLY: "Which city, state, or region is this based in?" (sell) or "Which geography are you targeting?" (buy)
-→ No other questions this turn.
+→ Geography is missing. Ask (business model FIRST): (1) what the business does — products/services & business model, then (2) "Which city, state, or region is this based in?" (sell) / "Which geography are you targeting?" (buy).
+→ You may also ask core financials. Do NOT ask sector-specific or capacity questions yet. No M4 this turn.
 
 # SECTOR MAPPING
 - pharma: API · formulations · CRAMS · CDMO · pharma manufacturing (NOT hospitals)

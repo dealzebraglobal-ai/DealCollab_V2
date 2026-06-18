@@ -1,7 +1,6 @@
 // src/app/api/chat/route.ts
 import { auth } from '@/auth';
 import {
-  computeQualityScore,
   normalizeIntent,
   normalizeSize,
   qualityTierFromScore,
@@ -32,6 +31,7 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { executeMatchmaking, type ProposalInput, type MatchCard, type MatchmakingResult } from '@/lib/matchmakingEngine';
 import crypto from 'crypto';
+import { resolveCompletion, type Extraction } from '@/lib/resolveCompletion';
 
 /**
  * DealCollab Chat Route
@@ -108,12 +108,20 @@ export async function GET() {
 // ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  if (!process.env.GROQ_API_KEY) {
-    console.error("❌ CRITICAL: Missing GROQ_API_KEY");
-    throw new Error("GROQ_API_KEY not found in runtime");
+  // Phase 0.1 (deploy safety): the app uses OpenAI as the PRIMARY model; Groq is only a
+  // fallback (intelligenceEngine checks each key lazily at call time). Requiring GROQ_API_KEY
+  // here threw on every request for OpenAI-only deployments. Require the primary key instead,
+  // fail gracefully, and treat Groq as optional.
+  if (!process.env.OPENAI_API_KEY) {
+    console.error("❌ CRITICAL: Missing OPENAI_API_KEY (primary model provider)");
+    return NextResponse.json(
+      { success: false, error: "Server is missing OPENAI_API_KEY. Set it in the environment." },
+      { status: 500 },
+    );
   }
-  const apiKey = process.env.GROQ_API_KEY;
-  console.log("KEY EXISTS:", !!apiKey);
+  if (!process.env.GROQ_API_KEY) {
+    console.warn("[ROUTE] GROQ_API_KEY not set — Groq fallback disabled (OpenAI-only mode).");
+  }
 
   // Declared outside try so it's accessible in the catch block
   let updatedState: RouterState = createBlankState();
@@ -305,9 +313,7 @@ export async function POST(req: NextRequest) {
 
     // ─── MATCHMAKING CONTEXT (LLM prompt enrichment only) ─────
     // NOTE: This is for AI context — real matching runs in executeMatchmaking on closure.
-    // Pass null when no context found so LLM gets the neutral "matching is running" message
-    // instead of generating contradictory "no matches found" text (BUG #3 fix).
-    let matchedMandatesStr: string | null = null;
+    let matchedMandatesStr = "No active mandates found in database yet.";
 
     if (storedState.sector || storedState.intent) {
       try {
@@ -347,8 +353,6 @@ export async function POST(req: NextRequest) {
             return `- [${r.intent}] ${r.sectors?.join(", ") || 'General'} | Size: ${size} | Geography: ${geo}`;
           }).join("\n");
           console.log(`[MATCHMAKING] Found ${results.length} context matches.`);
-        } else {
-          console.log('[MATCHMAKING] No context mandates found — LLM will use neutral matching message.');
         }
       } catch (matchErr) {
         console.error("❌ MATCHMAKING CONTEXT FAILED (isolated):", matchErr);
@@ -359,13 +363,11 @@ export async function POST(req: NextRequest) {
     const candidateState: RouterState = { ...storedState };
     const fullTextForDetection = documentText ? `${message}\n\n${documentText}` : message;
 
-    if (!candidateState.intent) {
-      const detectedIntent = detectIntentFromText(fullTextForDetection);
-      if (detectedIntent) {
-        candidateState.intent = detectedIntent;
-        console.log(`[PRE-DETECT] Intent: ${detectedIntent}`);
-      }
-    }
+    // Intent is NOT pre-seeded from keywords any more. The keyword detector mislabels by
+    // actor/direction ("exit" → sell even for a buyer; "pe fund" → fundraising even for a
+    // deploying fund), and seeding it here made the model anchor on the wrong intent.
+    // The model now reasons intent itself (M_INTENT_REASONING). detectIntentFromText is
+    // retained only as a dormant utility; it no longer feeds the prompt.
 
     if (!candidateState.sector) {
       const detectedSector = detectSectorFromText(fullTextForDetection);
@@ -443,7 +445,22 @@ export async function POST(req: NextRequest) {
         (message.includes('₹') && message.includes('Cr') && message.includes('\n'))
       );
 
-      const isDocumentIntake = message.length > 300 && (preDetectedCount >= 3 || hasStructuralSignals);
+      // Phase 3.1: trigger synthesis when a document is actually present, regardless of
+      // how short the typed note is. Previously this only fired on a long TYPED message
+      // (>300 chars), so an uploaded/loaded file plus "here's my mandate" skipped synthesis
+      // entirely. documentText is already populated by the doc-load step above (inline body
+      // OR a documentId loaded from the DB), so it reliably signals an attached document.
+      const documentPresent = documentText.trim().length > 100;
+      // Step 2: a long, detail-rich message is only a "pasted mandate" when the user
+      // VOLUNTEERS it as their opening move. Once the bot has started asking questions
+      // (turn_count > 0), a long message is an ANSWER to those questions — not a document.
+      // Without this guard, detailed answers tripped synthesis ("here's what I captured,
+      // correct?") mid-questionnaire, colliding with the normal flow. Real uploads
+      // (documentPresent) still trigger synthesis on any turn.
+      const isFirstUserTurn = (candidateState.turn_count ?? 0) === 0;
+      const isLongStructuredPaste =
+        isFirstUserTurn && message.length > 300 && (preDetectedCount >= 3 || hasStructuralSignals);
+      const isDocumentIntake = documentPresent || isLongStructuredPaste;
 
       if (isDocumentIntake) {
         candidateState.is_document_intake = true;
@@ -496,208 +513,23 @@ export async function POST(req: NextRequest) {
     console.log(`[AI] Processing completed in ${duration.toFixed(1)}s`);
     console.log("🧠 FINAL DATA:", aiContent);
 
-    // ─── STATE UPDATE ─────────────────────────────────────────
-    // Update the router state based on extraction results
-    updatedState = updateStateFromExtraction(
-      storedState,
-      extraction as unknown as { intent: DealIntent; state: Partial<RouterState>; is_complete: boolean },
+    // ─── STATE UPDATE + COMPLETION (consolidated · wiring) ────────────────────
+    // All completion logic — friction layers, RC8 auto-close, the M4 guard, the
+    // quality gate, and intent validation — now lives in ONE tested function,
+    // resolveCompletion(). It calls updateStateFromExtraction internally and applies
+    // the candidate-state persistence, reproducing the prior inline behaviour PLUS the
+    // Phase 2/3 fixes (negation-aware confirmation incl. "absolutely not", the document
+    // fast-lane, tightened friction). The regression harness covers this function.
+    const completion = resolveCompletion({
+      storedState,            // may already be friction-patched above (layer 2)
+      extraction: extraction as Extraction,
       message,
+      candidateState,
       modulesLoaded,
-    );
-
-    // Persist pre-detected values the LLM may not have re-extracted
-    if (updatedState.is_intermediary === null && candidateState.is_intermediary !== null) {
-      updatedState.is_intermediary = candidateState.is_intermediary;
-    }
-    if (!updatedState.sub_sector && candidateState.sub_sector) {
-      updatedState.sub_sector = candidateState.sub_sector;
-    }
-    if (!updatedState.structure && candidateState.structure) updatedState.structure = candidateState.structure;
-    if (!updatedState.deal_size && candidateState.deal_size) updatedState.deal_size = candidateState.deal_size;
-    if (!updatedState.revenue && candidateState.revenue) updatedState.revenue = candidateState.revenue;
-
-    // Persist NM3/NM5/NM6 state
-    if (candidateState.gateway_clarifier !== null && updatedState.gateway_clarifier === null) {
-      updatedState.gateway_clarifier = candidateState.gateway_clarifier;
-    }
-    if (candidateState.is_document_intake && !updatedState.is_document_intake) {
-      updatedState.is_document_intake = true;
-    }
-    if (candidateState.is_shell_query && !updatedState.is_shell_query) {
-      updatedState.is_shell_query = true;
-    }
-
-    // NM7: Persist quality gate state if set externally
-    if (candidateState.quality_gate_passed && !updatedState.quality_gate_passed) {
-      updatedState.quality_gate_passed = true;
-    }
-    if (candidateState.quality_gate_attempted && !updatedState.quality_gate_attempted) {
-      updatedState.quality_gate_attempted = true;
-    }
-    if (candidateState.intent_validated !== null && updatedState.intent_validated === null) {
-      updatedState.intent_validated = candidateState.intent_validated;
-    }
-
-    // RC3: Friction hard override (layer 3)
-    if (hasFriction) {
-      updatedState.is_complete = true;
-      updatedState.phase = 'CLOSURE';
-      (extraction as Record<string, unknown>).is_complete = true;
-      console.log('[ROUTE] Friction override applied: is_complete=true, phase=CLOSURE');
-    }
-
-    // RC8: 4-turn auto-close
-    if (
-      updatedState.turn_count >= 4 &&
-      (updatedState.intent || updatedState.sector) &&
-      !updatedState.is_complete
-    ) {
-      updatedState.is_complete = true;
-      updatedState.phase = 'CLOSURE';
-      (extraction as Record<string, unknown>).is_complete = true;
-      console.log(`[ROUTE] 4-turn auto-close at turn ${updatedState.turn_count}`);
-    }
-
-    // Phase lock: stay in MOMENTUM unless complete
-    if (storedState.phase === 'MOMENTUM' && updatedState.phase !== 'CLOSURE' && !updatedState.is_complete) {
-      updatedState.phase = 'MOMENTUM';
-      updatedState.is_sufficient = true;
-    }
-
-    // ── Document-intake auto-clear: if stuck in doc-intake mode for 3+ turns ──
-    // without the user confirming, exit doc-intake so M4 can load normally.
-    if (updatedState.is_document_intake && !updatedState.is_complete && updatedState.turn_count > 3) {
-      updatedState.is_document_intake = false;
-      console.log('[ROUTE] Document-intake: auto-cleared after 3 turns without confirmation');
-    }
-
-    // ── M4 Guard: prevent early completion before M4 questions are asked AND answered ──
-    //
-    // Two cases handled:
-    //   A) m4_questions_asked=false: M4 was never asked. Block + patch message.
-    //   B) m4JustAsked: M4 was asked THIS SAME TURN (first time). Block same-turn closure
-    //      so user gets one turn to answer. Message is kept (LLM already asked questions).
-    //
-    // RC3 (friction) bypasses this guard — user explicitly asked to proceed.
-    // quality_gate_passed bypasses this guard — user has confirmed mandate via intent validation.
-    // Gives up at turn 9 to prevent infinite loops.
-
-    // true when M4 questions were asked for the first time in THIS turn's LLM response
-    const m4JustAsked = !storedState.m4_questions_asked && updatedState.m4_questions_asked;
-
-    const m4GuardShouldFire =
-      updatedState.is_complete &&
-      !hasFriction &&
-      !!updatedState.sector &&
-      (!updatedState.m4_questions_asked || m4JustAsked) &&
-      updatedState.turn_count <= 9 &&
-      !updatedState.quality_gate_passed; // BUG #1 fix: don't block after quality gate validated
-
-    console.log('[ROUTE] Current State:', JSON.stringify({
-      phase: updatedState.phase,
-      quality_gate_passed: updatedState.quality_gate_passed,
-      intent_validated: updatedState.intent_validated,
-      is_complete: updatedState.is_complete,
-      m4_questions_asked: updatedState.m4_questions_asked,
-    }));
-    if (updatedState.intent_validated === true) {
-      console.log('[ROUTE] Confirmation Detected: true — user validated mandate');
-    }
-
-    if (m4GuardShouldFire) {
-      updatedState.is_complete = false;
-      updatedState.phase = 'QUALIFICATION';
-
-      // Clear document-intake so M4 loads normally on next turn
-      if (updatedState.is_document_intake) {
-        updatedState.is_document_intake = false;
-        console.log('[ROUTE] M4 guard: document-intake cleared — M4 will load next turn');
-      }
-
-      // Bump round_count so the geo gate (round_count===0) doesn't block M4 next turn
-      if (!updatedState.geography && updatedState.round_count === 0) {
-        updatedState.round_count = 1;
-        console.log('[ROUTE] M4 guard: round_count bumped to bypass geo gate next turn');
-      }
-
-      (extraction as Record<string, unknown>).is_complete = false;
-
-      if (!updatedState.m4_questions_asked) {
-        // Case A: M4 was never asked — LLM wrote a premature closure/summary message.
-        // Replace with a natural bridge so the user isn't confused by a closure that reverts.
-        const sectorLabel = (updatedState.sector || 'target').replace(/_/g, ' ');
-        const bridgeMsg =
-          `Before I finalise this mandate, I need a few sector-specific details ` +
-          `about the ${sectorLabel} target to find the most aligned counterparties.`;
-        (extraction as Record<string, unknown>).message = bridgeMsg;
-        console.log(`[ROUTE] M4 guard (A): message patched — M4 not yet asked, sector=${updatedState.sector}`);
-      } else {
-        // Case B: m4JustAsked — LLM correctly asked M4 questions this turn.
-        // Don't touch the message (it already has M4 questions). Just block same-turn closure.
-        console.log(`[ROUTE] M4 guard (B): m4JustAsked — prevented same-turn completion, turn=${updatedState.turn_count}`);
-      }
-    }
-
-    // STEP A: Server-side intent validation detection
-    // Runs before everything — if user is responding to the intent validation question
-    if (updatedState.quality_gate_passed && updatedState.intent_validated === null) {
-      const lower = message.toLowerCase().trim();
-      const yesSignals = ['yes', 'confirm', 'genuine', 'correct', 'proceed', 'real',
-        'absolutely', 'yes it is', 'yes this is', 'register it',
-        'go ahead', 'activate'];
-      const noSignals = ['no', 'not yet', 'exploring', 'just looking', 'not genuine',
-        'cancel', 'no not yet', 'not real', 'not ready'];
-
-      if (yesSignals.some(p => lower.includes(p))) {
-        updatedState.intent_validated = true;
-        updatedState.is_complete = true;
-        (extraction as Record<string, unknown>).is_complete = true;
-        console.log('[NM7] Intent validated: YES — proceeding to DB insert');
-      } else if (noSignals.some(p => lower.includes(p))) {
-        updatedState.intent_validated = false;
-        updatedState.is_complete = false;
-        console.log('[NM7] Intent validated: NO — soft consequence, no DB insert');
-      }
-    }
-
-    // STEP B: Quality gate evaluation
-    // Fires when is_complete=true but quality gate not yet passed
-    if (updatedState.is_complete && !updatedState.quality_gate_passed &&
-      updatedState.intent_validated !== true) {
-
-      const qualityResult: QualityGateResult = computeQualityGate(updatedState);
-      console.log(`[NM7] Quality gate: score ${qualityResult.score}/10 | passed: ${qualityResult.passed}`);
-
-      if (!qualityResult.passed) {
-        console.log(`[NM7] Gate FAIL — missing: ${qualityResult.missing.join(', ')}`);
-
-        if (updatedState.quality_gate_attempted) {
-          // Second failure — hard close without DB insert
-          // Bot will re-ask via M_quality_gate_fail, but we don't reset round_count again
-          console.log('[NM7] Second gate failure — hard close, no extension');
-          updatedState.is_complete = false;
-          updatedState.quality_gate_passed = false;
-        } else {
-          // First failure — give user one extension
-          updatedState.quality_gate_attempted = true;
-          updatedState.quality_score = qualityResult.score;
-          updatedState.is_complete = false;
-          updatedState.quality_gate_passed = false;
-          updatedState.round_count = 0; // Reset for extension turns
-          console.log('[NM7] First gate failure — extending conversation (round_count reset)');
-        }
-
-      } else {
-        // Gate passes — move to intent validation
-        console.log('[NM7] Gate PASS — awaiting intent validation');
-        updatedState.quality_gate_passed = true;
-        updatedState.quality_score = qualityResult.score;
-        updatedState.is_complete = false; // Not yet — need Yes/No
-        updatedState.intent_validated = null;
-        // Phase resolves to INTENT_VALIDATION in resolvePhase()
-        updatedState.phase = 'INTENT_VALIDATION';
-      }
-    }
+    });
+    updatedState = completion.state;
+    extraction = completion.extraction as typeof extraction;
+    const m4GuardShouldFire = completion.m4GuardFired; // used by the enrichment diagnostic below
 
     // ─── ENRICHMENT COMPLETENESS DIAGNOSTIC ──────────────────
     // Logs extracted industry_data, missing M3 fields, and finalization reason.
@@ -766,20 +598,22 @@ export async function POST(req: NextRequest) {
     let matchResult: MatchmakingResult | null = null;
     let resolvedProposalId: string | null = null;
 
-    // STEP C: DB insert — runs when the mandate structuring is complete
-    const shouldInsert = updatedState.is_complete;
+    // STEP C: DB insert — runs when the mandate structuring is complete.
+    // Step 1: use the engine's gate, which inserts ONCE and never re-inserts a captured deal.
+    const shouldInsert = completion.shouldInsert;
 
     if (shouldInsert) {
+      const qTier = qualityTierFromScore(updatedState.quality_score ?? 0);
       console.log("✅ REQUIREMENT COMPLETE — INSERTING INTO DB AND MATCHING");
+      console.log(`[NM7] Quality tier: ${qTier} | score: ${updatedState.quality_score ?? 0}/10`);
 
       try {
+        // normalizeSize() replaces ad-hoc parseRange — handles Cr / lakh / USD M / INR M
         const parseRange = (val: string | null) => {
           if (!val) return { min: null, max: null };
-          const rangeMatch = val.match(/(\d+(?:\.\d+)?)\s*(?:to|-)\s*(\d+(?:\.\d+)?)/i);
-          if (rangeMatch) return { min: rangeMatch[1], max: rangeMatch[2] };
-          const singleMatch = val.match(/~?(\d+(?:\.\d+)?)/);
-          if (singleMatch) return { min: singleMatch[1], max: singleMatch[1] };
-          return { min: null, max: null };
+          const n = normalizeSize(val);
+          if (!n || n.min_cr == null) return { min: null, max: null };
+          return { min: String(n.min_cr), max: String(n.max_cr ?? n.min_cr) };
         };
 
         const resolvedDealSize =
@@ -799,7 +633,7 @@ export async function POST(req: NextRequest) {
             user_id: userId,
             raw_text: message,
             normalised_text: JSON.stringify(extraction),
-            intent: extraction.intent,
+            intent: normalizeIntent(extraction.intent) ?? extraction.intent,
             sectors: s.sector ? [s.sector] : [],
             geographies: s.geography ? [s.geography] : [],
             deal_size_min_cr: size.min,
@@ -849,13 +683,14 @@ export async function POST(req: NextRequest) {
             intent: extraction.intent,
             raw_text: message,
             sector: s.sector ?? null,
+            industry: updatedState.industry ?? s.industry ?? null,
             sub_sector: s.sub_sector ?? null,
             geography: s.geography ?? null,
             deal_size: s.deal_size ?? null,
             revenue: s.revenue ?? null,
             structure: s.structure ?? null,
             intent_focus: s.intent_focus ?? null,
-            industry_data: (s.industry_data as Record<string, unknown>) ?? {},
+            industry_data: { ...((s.industry_data as Record<string, unknown>) ?? {}), ...((updatedState.industry ?? s.industry) ? { industry: updatedState.industry ?? s.industry } : {}) },
             special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
             deal_size_min: size.min,
             deal_size_max: size.max,
@@ -870,14 +705,8 @@ export async function POST(req: NextRequest) {
           if (matchResult?.cards?.length) {
             matchCards = matchResult.cards;
             matchSummary = matchResult.summary;
-            console.log('[ROUTE] Mandate Activated');
-            console.log('[ROUTE] Matching Started');
-            console.log(`[ROUTE] Matches Returned: ${matchResult.matchCount}`);
             console.log(`[M5] ${matchResult.matchCount} match cards. Top score: ${matchResult.topScore}`);
           } else {
-            console.log('[ROUTE] Mandate Activated');
-            console.log('[ROUTE] Matching Started (async — no immediate results within 12s)');
-            console.log('[ROUTE] Matches Returned: 0 (will surface via /api/matches polling)');
             console.log("[M5] No immediate matches — will surface via /api/matches");
           }
 

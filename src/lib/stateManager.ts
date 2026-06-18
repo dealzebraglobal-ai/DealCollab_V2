@@ -1,3 +1,22 @@
+/**
+ * DealCollab — State Manager
+ * ===========================
+ * Layer 3: State CRUD + phase resolution. Pure functions.
+ * Reads detection results and extraction outputs to produce new state.
+ *
+ * Owned by this file:
+ *   ✔ createBlankState()
+ *   ✔ updateStateFromExtraction()
+ *   ✔ initializeStateFromDocument()
+ *   ✔ resolvePhase()
+ *   ✔ computeMissingM3Fields()
+ *
+ * NOT owned:
+ *   ✘ Text detection          → detectors.ts
+ *   ✘ Quality scoring         → qualityGate.ts
+ *   ✘ Prompt construction     → promptRouter.ts
+ */
+
 import { normalizeSize } from './dataQuality';
 import type { RouterState, DealIntent, SectorKey, ConversationPhase } from './types';
 import { VALID_SECTOR_KEYS } from './detectors';
@@ -9,6 +28,8 @@ import {
     detectShellCompanyFromText,
     detectFrictionSignal,
     detectStructureFromText,
+    detectTradingDistribution,
+    detectConfirmation,
 } from './detectors';
 
 // ─────────────────────────────────────────────────────────────
@@ -18,7 +39,9 @@ import {
 export function createBlankState(): RouterState {
     return {
         intent: null,
+        intent_flavor: null,
         sector: null,
+        industry: null,
         sub_sector: null,
         geography: null,
         deal_size: null,
@@ -38,6 +61,7 @@ export function createBlankState(): RouterState {
         quality_gate_attempted: false,
         intent_validated: null,
         m4_questions_asked: false,
+        is_captured: false,
         phase: 'ENTRY',
         turn_count: 0,
         refinement_count: 0,
@@ -106,6 +130,13 @@ export function updateStateFromExtraction(
 
     // Intent
     if (extraction.intent) updated.intent = extraction.intent;
+    // Intent flavor (BUY_SIDE strategic vs financial) — set by the intent-reasoning step
+    const extractedFlavor = (extraction.state as Record<string, unknown>).intent_flavor as string | undefined;
+    if (extractedFlavor === 'strategic' || extractedFlavor === 'financial') {
+        updated.intent_flavor = extractedFlavor;
+    } else if (extraction.intent && extraction.intent !== 'BUY_SIDE') {
+        updated.intent_flavor = null;  // flavor only applies to BUY_SIDE
+    }
 
     // Sector — validate against VALID_SECTOR_KEYS before accepting
     if (extraction.state.sector) {
@@ -119,6 +150,7 @@ export function updateStateFromExtraction(
     }
 
     // Core deal fields
+    if (extraction.state.industry) updated.industry = extraction.state.industry as string;
     if (extraction.state.sub_sector) updated.sub_sector = extraction.state.sub_sector as string;
     if (extraction.state.geography) updated.geography = extraction.state.geography as string;
     if (extraction.state.deal_size) updated.deal_size = extraction.state.deal_size as string;
@@ -161,15 +193,23 @@ export function updateStateFromExtraction(
         const detected = detectSectorFromText(currentMessage);
         if (detected) updated.sector = detected;
     }
-    if (!updated.intent) {
-        const detected = detectIntentFromText(currentMessage);
-        if (detected) updated.intent = detected;
-    }
+    // Intent is no longer guessed from keywords. It is set only by the model's reasoning
+    // (M_INTENT_REASONING). If the model cannot determine it, intent stays null and the
+    // intent-status line instructs the model to ask one short clarifying question — we do
+    // NOT fall back to substring matching, which mislabels by actor/direction.
 
     // RC9: Shell company → set sub_sector
     if (updated.sub_sector === null && detectShellCompanyFromText(currentMessage)) {
         updated.sub_sector = 'shell_company';
         console.log('[DETECTOR] Shell company — sub_sector=shell_company');
+    }
+
+    // B3: Trading/distribution is NOT manufacturing. Flag the sub_sector so M4 asks trade
+    // questions (suppliers, product range, customers, margins) instead of plant/capacity questions.
+    if (updated.sector === 'manufacturing' && updated.sub_sector === null &&
+        detectTradingDistribution(currentMessage)) {
+        updated.sub_sector = 'trading_distribution';
+        console.log('[DETECTOR] Manufacturing sub_sector: trading_distribution');
     }
 
     // RC16 (updated for NM1): Healthcare sub_sector auto-detection
@@ -193,15 +233,11 @@ export function updateStateFromExtraction(
         console.log('[STATE] Gateway clarifier cleared — user responded');
     }
 
-    // NM6: Document intake confirmation detection
-    if (current.is_document_intake && !updated.is_complete) {
-        const confirmSignals = ['yes', 'correct', 'accurate', 'proceed', 'looks good',
-            'that is right', 'confirmed', 'right', 'go ahead', "that's right"];
-        if (confirmSignals.some(s => currentMessage.toLowerCase().trim().includes(s))) {
-            updated.is_complete = true;
-            console.log('[STATE] Document intake confirmed — is_complete=true');
-        }
-    }
+    // NM6 / Phase 3.2: detect document confirmation with the shared negation-aware
+    // detector. Decided here but APPLIED in the completion block below, so it is no
+    // longer clobbered by the friction else-branch (the old bug where "yes" did nothing).
+    const documentConfirmed =
+        !!current.is_document_intake && detectConfirmation(currentMessage) === 'yes';
 
     // Sufficiency calculation
     const hasIndustrySignal = !!(updated.sector || updated.sub_sector);
@@ -226,6 +262,9 @@ export function updateStateFromExtraction(
     } else if (isFrictionSignal) {
         console.warn('[STATE] Friction signal ignored — minimum fields not met.');
         updated.is_complete = false;
+    } else if (documentConfirmed) {
+        updated.is_complete = true; // Phase 3.2: a confirmed document completes (no longer clobbered)
+        console.log('[STATE] Document confirmed — is_complete=true');
     } else {
         updated.is_complete = extraction.is_complete;
     }
@@ -253,23 +292,10 @@ export function updateStateFromExtraction(
         updated.phase = current.phase;
     }
 
-    // NM7: Intent validation yes/no detection (belt-and-suspenders — primary is in route.ts)
-    if (updated.quality_gate_passed && updated.intent_validated === null) {
-        const lower = currentMessage.toLowerCase().trim();
-        const yesSignals = ['yes', 'confirm', 'genuine', 'correct', 'proceed', 'real',
-            'absolutely', 'yes it is', 'yes this is'];
-        const noSignals = ['no', 'not yet', 'exploring', 'just looking', 'not genuine',
-            'cancel', 'no not yet'];
-        if (yesSignals.some(s => lower.includes(s))) {
-            updated.intent_validated = true;
-            updated.is_complete = true;
-            console.log('[STATE] Intent validated: YES');
-        } else if (noSignals.some(s => lower.includes(s))) {
-            updated.intent_validated = false;
-            updated.is_complete = false;
-            console.log('[STATE] Intent validated: NO');
-        }
-    }
+    // NM7 / Phase 2.5: intent-validation yes/no detection now lives in ONE place —
+    // resolveCompletion's confirmation resolver (negation-aware, AI-field-primary).
+    // Removed from here to kill the duplicated, yes-first/substring logic that read
+    // "absolutely not" as a yes.
 
     // Persist quality gate state from candidateState (set by route.ts pre-detection)
     if ((current as RouterState & { quality_gate_passed?: boolean }).quality_gate_passed === true &&
@@ -301,6 +327,7 @@ export function initializeStateFromDocument(structuredData: Record<string, unkno
         state.sector = validKey || detectSectorFromText(sectorStr);
     }
     if (location) state.geography = location;
+    if (structuredData.industry) state.industry = String(structuredData.industry);
     if (structuredData.sub_sector) state.sub_sector = String(structuredData.sub_sector);
     if (structuredData.deal_size) state.deal_size = String(structuredData.deal_size);
     if (structuredData.revenue) state.revenue = String(structuredData.revenue);
@@ -394,6 +421,29 @@ export function initializeStateFromDocument(structuredData: Record<string, unkno
 // ─────────────────────────────────────────────────────────────
 // RESOLVE PHASE — pure function, state → phase
 // ─────────────────────────────────────────────────────────────
+
+// B1: Geography must be asked upfront when missing. The OLD gate also required
+// phase === 'QUALIFICATION', but on the first user turn the phase can still read 'ENTRY',
+// so the gate never fired and geography was skipped until the very end. This deterministic
+// check fires on the opening round whenever geography is missing and we already know enough
+// to be qualifying (intent or sector).
+export function shouldAskGeographyFirst(state: RouterState): boolean {
+    return !state.geography && state.round_count === 0 && !!(state.intent || state.sector);
+}
+
+// B2: business-model gate. Fires when we still don't understand WHAT the business does — i.e. no
+// true industry captured AND the coarse sector is unset or the catch-all "mixed" — even if
+// geography is already known. Bounded to early rounds to avoid loops, and suppressed when the
+// geography gate (B1) is already handling the "what does the business do" ask this turn.
+export function shouldAskBusinessModelFirst(state: RouterState): boolean {
+    const modelUnclear = !state.industry && (!state.sector || state.sector === 'mixed');
+    return (
+        modelUnclear &&
+        !!state.intent &&
+        state.round_count < 2 &&
+        !shouldAskGeographyFirst(state)
+    );
+}
 
 export function resolvePhase(state: RouterState): ConversationPhase {
     if (state.is_profile_search) return 'PROFILE_SEARCH';

@@ -1,3 +1,15 @@
+/**
+ * DealCollab — M4: Sector Intelligence
+ * ======================================
+ * 16 sector modules. Loaded conditionally — ONE per request by sector.
+ * NM1: healthcare is a separate sector from pharma.
+ * NM2: cognitive frameworks for high-ambiguity sectors.
+ * RC7: oil_gas + ngo added as dedicated sectors.
+ *
+ * Load rule: CONDITIONAL — ONE sub-module per request, by state.sector.
+ * M4 loads ONCE per session (m4_questions_asked gate).
+ */
+
 import type { SectorKey } from './types';
 
 // ─────────────────────────────────────────────────────────────
@@ -56,7 +68,16 @@ const M4_MANUFACTURING = `
 ## M4: MANUFACTURING / INDUSTRIAL — Block 2
 Add as SEPARATE bullets after Block 1 in the SAME message.
 
-COGNITIVE INSTRUCTION:
+TRADING / DISTRIBUTION OVERRIDE (if # FIELDS show sub_sector = trading_distribution, OR the business clearly trades/distributes/wholesales rather than manufactures):
+This is NOT a manufacturer. Do NOT ask about installed capacity, utilisation, plant certifications, or production. Ask 2 of:
+\n• What products does it trade, and what are the key supplier relationships — any exclusive distribution rights or authorised-dealer arrangements?
+\n• Who are the main customers and how concentrated is revenue across them?
+\n• What drives margins — volume, exclusivity, value-added services, or after-sales?
+\n• What geographies/territories does it cover?
+CANONICAL industry_data KEYS for trading/distribution: sub_type (trading/distribution/wholesale/dealership) | supplier_relationships (key principals, exclusivity) | customer_concentration (top customers, repeat business) | product_range_territory (product lines and geographic coverage)
+Then STOP — do not also run the manufacturing cognitive block below.
+
+COGNITIVE INSTRUCTION (manufacturers only):
 Infer the sub-type from the user's description. Ask 2 targeted open-ended questions.
 Consumer-facing brand (sells under brand name to end users) → brand equity, distribution, customer loyalty
 B2B/Industrial/OEM (supplies to companies or factories) → capacity, certifications (ISO/IATF/BIS), client concentration

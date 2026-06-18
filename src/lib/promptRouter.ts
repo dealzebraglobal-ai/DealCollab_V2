@@ -1,3 +1,31 @@
+/**
+ * DealCollab — Prompt Router (Thin Orchestrator)
+ * ================================================
+ * This file is the public API consumed by route.ts.
+ * All logic lives in sub-modules. This file only:
+ *   1. Imports from sub-modules
+ *   2. Builds the system prompt (module selection + phaseContext)
+ *   3. Re-exports everything route.ts needs (backward compatibility)
+ *
+ * Sub-module map:
+ *   types.ts              → DealIntent, SectorKey, ConversationPhase, RouterState, RouterOutput
+ *   detectors.ts          → all detect*() functions, VALID_SECTOR_KEYS
+ *   stateManager.ts       → createBlankState, updateStateFromExtraction, initializeStateFromDocument, resolvePhase
+ *   qualityGate.ts        → computeQualityGate, QualityGateResult
+ *   M0_outputSchema.ts    → M0_OUTPUT_SCHEMA, PRE_FLIGHT_EXTRACTION
+ *   M1_coreIdentity.ts    → M1_CORE_IDENTITY
+ *   M2_phaseRules.ts      → M2_PHASE_RULES
+ *   M3_intentFrameworks.ts → M3_MODULES
+ *   M4_sectorIntel.ts     → M4_MODULES, M4_SHELL
+ *   M5_matchingLayer.ts   → buildM5_Matching
+ *   M6_profileIntel.ts    → M6_PROFILE_INTELLIGENCE
+ *   M7_specialModes.ts    → M_INTENT_VALIDATION, buildQualityGateFailModule, M_DOCUMENT_INTAKE
+ */
+
+// ─────────────────────────────────────────────────────────────
+// IMPORTS
+// ─────────────────────────────────────────────────────────────
+
 import type { RouterState, RouterOutput, DealIntent, SectorKey, ConversationPhase } from './types';
 import { VALID_SECTOR_KEYS } from './detectors';
 import {
@@ -19,11 +47,14 @@ import {
   initializeStateFromDocument,
   resolvePhase,
   computeMissingM3Fields,
+  shouldAskGeographyFirst,
+  shouldAskBusinessModelFirst,
 } from './stateManager';
 import { computeQualityGate } from './qualityGate';
 import type { QualityGateResult } from './qualityGate';
 import { M0_OUTPUT_SCHEMA, PRE_FLIGHT_EXTRACTION } from './M0_outputSchema';
 import { M1_CORE_IDENTITY } from './M1_coreIdentity';
+import { M_INTENT_REASONING } from './M_intentReasoning';
 import { M2_PHASE_RULES } from './M2_phaseRules';
 import { M3_MODULES } from './M3_intentFrameworks';
 import { M4_MODULES, M4_SHELL } from './M4_sectorIntel';
@@ -76,6 +107,7 @@ export function buildSystemPrompt(
   // M0 + M1 + M2 load always
   modules.push({ key: 'M0_output_schema', content: M0_OUTPUT_SCHEMA });
   modules.push({ key: 'M1_core_identity', content: M1_CORE_IDENTITY });
+  modules.push({ key: 'M_intent_reasoning', content: M_INTENT_REASONING });
   modules.push({ key: 'M2_phase_rules', content: M2_PHASE_RULES });
 
   // ── Special modes (mutually exclusive, highest priority) ───
@@ -106,12 +138,14 @@ export function buildSystemPrompt(
     }
 
     // NM4: Geography gate — suspend M4 on first turn if no geography
-    const geoGateActive = !state.geography && state.round_count === 0 && state.phase === 'QUALIFICATION';
+    const geoGateActive = shouldAskGeographyFirst(state);
+    // B2: Business-model gate — suspend M4 until we know what the business actually does
+    const businessModelGateActive = shouldAskBusinessModelFirst(state);
     // NM3: Gateway clarifier active — suspend M4
     const gatewayActive = !!state.gateway_clarifier;
 
     // M4 loads ONCE per session (m4_questions_asked gate)
-    if (!state.m4_questions_asked && !geoGateActive && !gatewayActive) {
+    if (!state.m4_questions_asked && !geoGateActive && !businessModelGateActive && !gatewayActive) {
       if (state.sub_sector === 'shell_company') {
         modules.push({ key: 'M4_shell', content: M4_SHELL });
       } else if (state.sector && M4_MODULES[state.sector]) {
@@ -156,9 +190,17 @@ export function buildSystemPrompt(
     ? `# GATEWAY_CLARIFIER: active (${state.gateway_clarifier}) — ONE clarifying question ONLY. M4 suspended.`
     : `# GATEWAY_CLARIFIER: inactive`;
 
-  const geoGateLine = (!state.geography && state.round_count === 0 && state.phase === 'QUALIFICATION')
-    ? `# GEOGRAPHY_GATE: active — ask ONLY geography question. M4 suspended.`
+  const geoGateLine = shouldAskGeographyFirst(state)
+    ? `# GEOGRAPHY_GATE: active — geography is missing. This turn FIRST ask what the business does (products/services and business model), THEN ask which city, state, or region it is in (sell-side) / which geography is being targeted (buy-side). You may also ask the core financials (revenue/EBITDA or budget, and transaction type). Do NOT ask any sector-specific or capacity/plant questions yet. M4 suspended.`
     : `# GEOGRAPHY_GATE: clear`;
+
+  // B2: business-model gate — geography may be known, but we still don't know what the business does.
+  const businessModelGateLine = shouldAskBusinessModelFirst(state)
+    ? `# BUSINESS_MODEL_GATE: active — the business model is still unclear (we do not yet know what the company actually does or how it earns money). This turn, ask plainly what the company does — its main products or services, who its customers are, and how it makes money. Do NOT ask sector-specific, capacity, or plant questions yet. M4 suspended.`
+    : `# BUSINESS_MODEL_GATE: clear`;
+
+  // B4: hard cap on questions per message — never dump a checklist.
+  const questionLimitLine = `# QUESTION_LIMIT: Ask at most 2–3 questions in a single message, grouped into one natural paragraph. NEVER present a long list of questions or more than 3 at once. If more than 3 things are missing, ask the 2–3 most important now and the rest on the next turn.`;
 
   const shellQueryLine = state.is_shell_query
     ? `# SHELL_QUERY: true — include shell proposals in matches.`
@@ -182,6 +224,7 @@ export function buildSystemPrompt(
   const knownFields: string[] = [];
   if (state.intent) knownFields.push(`intent:${state.intent}`);
   if (state.sector) knownFields.push(`sector:${state.sector}`);
+  if (state.industry) knownFields.push(`industry:${state.industry}`);
   if (state.sub_sector) knownFields.push(`sub_sector:${state.sub_sector}`);
   if (state.geography) knownFields.push(`geography:${state.geography}`);
   if (state.deal_size) knownFields.push(`deal_size:${state.deal_size}`);
@@ -199,7 +242,9 @@ export function buildSystemPrompt(
 
   const phaseContext = [
     `\n# CURRENT CONVERSATION PHASE: ${state.phase}`,
-    `# CURRENT INTENT: ${state.intent ?? 'unknown'}`,
+    !state.intent
+      ? `# INTENT_STATUS: NOT YET DETERMINED — reason about it using the INTENT block. Do NOT use any intent-specific opening line (e.g. "To position this correctly for relevant buyers") while intent is unknown. If the mandate is clear, commit the intent this turn; only ask one short clarifying question if the direction is truly ambiguous.`
+      : `# INTENT_STATUS: ${state.intent}${state.intent_flavor ? ` (${state.intent_flavor})` : ''} — ESTABLISHED. Keep it stable; change only on an explicit goal change by the user.`,
     `# TURN: ${state.turn_count + 1} | REFINEMENTS USED: ${state.refinement_count}/3`,
     `# M4 QUESTIONS ASKED THIS SESSION: ${state.m4_questions_asked}`,
     `# MODULES IN THIS PROMPT: ${modules.map(m => m.key).join(', ')}`,
@@ -211,6 +256,8 @@ export function buildSystemPrompt(
     documentIntakeLine,
     gatewayLine,
     geoGateLine,
+    businessModelGateLine,
+    questionLimitLine,
     shellQueryLine,
     qualityGateLine,
     intentValidatedLine,

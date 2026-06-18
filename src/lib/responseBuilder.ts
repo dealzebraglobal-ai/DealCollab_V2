@@ -11,47 +11,26 @@ export function buildFinalMessage(extraction: Partial<IntelligenceState>): strin
   const aiMessage = extraction.message;
   const isComplete = extraction.is_complete;
 
-  const isSufficient = s?.sector && (
-    (s.revenue || s.deal_size ? 1 : 0) + 
-    (intent ? 1 : 0) + 
-    (s.geography ? 1 : 0) >= 2
-  );
-
   // 1. TRUST AI MESSAGE FIRST (if valid)
   if (aiMessage && aiMessage.length > 30 && !isPlaceholderMessage(aiMessage)) {
     return aiMessage;
   }
 
-  // 2. CLOSURE OVERRIDE
+  // 2. CLOSURE FALLBACK — only on genuine completion (is_complete is reliable now that the
+  // engine controls it). On a normal capture turn the engine already supplies the capture
+  // confirmation, so this is only a deep fallback for a weak/empty AI message at completion.
   if (isComplete) {
-    return `Your requirement has been structured successfully.
+    return `Your mandate is active and secure with us.
 
-Your intent is secure and confidential with us.
-This is not deal distribution — this is deal resolution.
+This is deal resolution, not deal distribution. We identify aligned counterparties, validate their intent, and surface only relevant opportunities for your approval.
 
-I will now work to identify the right counterparty for you and surface only relevant aligned opportunities.
-
-If alignment is confirmed and only after your approval, you will be connected.
-
-This process runs continuously in the background, and you'll be notified as relevant matches emerge.`;
+Aligned counterparties now appear in your Deal Log. We work continuously across the network and will notify you via WhatsApp or email as new matches emerge.`;
   }
 
-  // 3. MOMENTUM SYNTHESIZER (Guard against empty AI output in Momentum Mode)
-  if (isSufficient) {
-    const intentStr = intent?.replace('_', ' ').toLowerCase() || "transaction";
-    const sectorStr = s.sector || "your sector";
-    const sizeStr = s.deal_size || s.revenue || "undisclosed size";
-    const geoStr = s.geography || "India";
-
-    return `Got it — you are looking for a ${intentStr} in the ${sectorStr} sector, with a deal size of ~${sizeStr} across ${geoStr}.
-
-This is sufficient to begin identifying relevant opportunities.
-
-I’ll start mapping suitable counterparties.
-
-One quick refinement:
-Are you primarily targeting strategic operators or financial investors for this requirement?`;
-  }
+  // 3. (REMOVED) The old "momentum synthesizer" fallback used to emit a phase-wrong line
+  // ("…strategic operators or financial investors?") from a loose checklist whenever the AI
+  // returned an empty message. That produced out-of-stage replies, so it is gone. A weak
+  // message now falls through to the safe re-prompt below instead.
 
   // 4. QUALIFICATION FALLBACK (If AI fails during intake)
   if (intent || s?.sector) {

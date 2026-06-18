@@ -39,6 +39,7 @@ export interface ProposalInput {
   intent: string;
   raw_text: string;
   sector: string | null;
+  industry?: string | null;   // hybrid: TRUE free-text industry (primary signal for matching)
   sub_sector: string | null;
   geography: string | null;
   deal_size: string | null;
@@ -126,9 +127,13 @@ const COUNTERPARTY_INTENTS: Record<string, string[]> = {
 // V2 SCORING WEIGHTS
 // ─────────────────────────────────────────────────────────────
 
+// Hybrid rebalance: the TRUE industry is now embedded, so semantic similarity carries the
+// real industry signal. Lean on it more and treat the coarse sector-compatibility as a lighter
+// sanity signal. These are the single tuning point — adjust after live validation if needed.
+// (Previously SEMANTIC 0.45 / INDUSTRY 0.35.)
 const W = {
-  SEMANTIC: 0.45,
-  INDUSTRY: 0.35,
+  SEMANTIC: 0.55,
+  INDUSTRY: 0.25,
   FINANCIAL: 0.10,
   GEOGRAPHY: 0.05,
   FRESHNESS: 0.05,
@@ -150,6 +155,10 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
     parts.push(canonical);
     if (canonical !== input.sector.toUpperCase()) parts.push(input.sector);
   }
+
+  // Hybrid: the TRUE free-text industry is the primary signal — embed it so semantic
+  // matching keys on the real industry (e.g. "Freshwater Aquaculture"), not the coarse bucket.
+  if (input.industry) parts.push(input.industry);
 
   if (input.sub_sector) parts.push(input.sub_sector);
   if (input.geography) parts.push(input.geography);
@@ -239,9 +248,13 @@ function applyHardRejections(
     }
   }
 
-  // HR-4: Sector hard incompatibility
-  if (source.sector && candidate.sectors?.[0]) {
-    const comp = getSectorCompatibility(source.sector, candidate.sectors[0]);
+  // HR-4: Sector hard incompatibility — compare the TRUE industry when present, so an
+  // out-of-taxonomy business (e.g. aquaculture) is never force-mapped into a bucket that
+  // triggers a false hard-reject. Unknown industries fall to NARROW; only the explicit
+  // incompatible pairs hard-reject.
+  const sourceIndustryHR = source.industry ?? source.sector;
+  if (sourceIndustryHR && candidate.sectors?.[0]) {
+    const comp = getSectorCompatibility(sourceIndustryHR, candidate.sectors[0]);
     if (comp.level === 'INCOMPATIBLE') {
       return { rejected: true, reason: `HR-4: ${comp.reason}` };
     }
@@ -281,9 +294,9 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
   // SEMANTIC (45%) — raw cosine similarity from pgvector
   const semanticScore = Math.max(0, Math.min(1, candidate.similarity));
 
-  // INDUSTRY ALIGNMENT (35%) — sector compatibility via DC-KB-003
+  // INDUSTRY ALIGNMENT — sector compatibility via DC-KB-003, on the TRUE industry when present
   const comp = getSectorCompatibility(
-    source.sector ?? '',
+    (source.industry ?? source.sector) ?? '',
     candidate.sectors?.[0] ?? '',
   );
   let industryScore = 0;
@@ -348,9 +361,9 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
 
   // ARCHETYPE
   let archetype: string = MATCH_ARCHETYPES.CROSS_SECTOR;
-  const srcNorm = normalizeSector(source.sector ?? '');
+  const srcNorm = normalizeSector((source.industry ?? source.sector) ?? '');
   const cndNorm = normalizeSector(candidate.sectors?.[0] ?? '');
-  if (!source.sector || srcNorm === cndNorm) {
+  if (!(source.industry ?? source.sector) || srcNorm === cndNorm) {
     archetype = MATCH_ARCHETYPES.BOLT_ON;
   } else if (comp.reason.includes('licence') || comp.reason.includes('Licence')) {
     archetype = MATCH_ARCHETYPES.LICENSE;

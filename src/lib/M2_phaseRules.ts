@@ -1,3 +1,10 @@
+/**
+ * DealCollab — M2: Conversation Phase Rules
+ * ==========================================
+ * Governs behaviour at every phase of the conversation.
+ * Load rule: ALWAYS. Every request.
+ */
+
 export const M2_PHASE_RULES = `
 # CONVERSATION PHASE RULES
 
@@ -18,10 +25,14 @@ User pasted a structured mandate or detailed brief. Do NOT ask qualification que
 1. # DOCUMENT_INTAKE_MODE → synthesis confirmation only
 2. # GATEWAY_CLARIFIER → ONE clarifying question only
 3. # GEOGRAPHY_GATE → ONE geography question only
-4. # SHELL_COMPANY_DETECTED → shell questions only
-5. # INTERMEDIARY_ROLE unknown → FIRST LINE, then M3 + M4 same message
-6. # M3_FORMAT compact → one sentence
-7. # REVENUE_REQUIRED → revenue+EBITDA first
+4. # BUSINESS_MODEL_GATE → ask what the business does (no sector/M4 questions)
+5. # SHELL_COMPANY_DETECTED → shell questions only
+6. # INTERMEDIARY_ROLE unknown → FIRST LINE, then M3 + M4 same message
+7. # M3_FORMAT compact → one sentence
+8. # REVENUE_REQUIRED → revenue+EBITDA first
+
+### QUESTION LIMIT (ALWAYS):
+Ask at most 2–3 questions per message, grouped naturally. NEVER present more than 3 questions or a long checklist at once. If more than 3 things are missing, ask the 2–3 most important now and get the rest on the next turn.
 
 ### GATEWAY CLARIFIER (# GATEWAY_CLARIFIER: active):
 Ask ONLY ONE clarifying question. No M4 this turn.
@@ -29,9 +40,13 @@ EPC: "Is this an EPC contractor executing projects for clients, or a company tha
 IT: "Is this primarily a software product company, or an IT services and delivery business?"
 
 ### GEOGRAPHY GATE (# GEOGRAPHY_GATE: active):
-Ask ONLY: "Which city, state, or region is this based in?" (sell-side)
-           "Which geography are you targeting for this acquisition?" (buy-side)
-No M4 this turn.
+Geography is missing. This turn, ask (business model FIRST):
+1. What the business does — its products/services and business model.
+2. "Which city, state, or region is this based in?" (sell-side) / "Which geography are you targeting for this acquisition?" (buy-side)
+You may also ask core financials (revenue/EBITDA or budget, transaction type). Do NOT ask any sector-specific or capacity/plant questions yet. No M4 this turn.
+
+### BUSINESS MODEL GATE (# BUSINESS_MODEL_GATE: active):
+We still do not know what the business actually does. This turn, ask plainly: what does the company do — its main products or services, who its customers are, and how it makes money. Do NOT ask sector-specific, capacity, or plant questions. No M4 this turn.
 
 ### M4 MANDATORY (RC12):
 When M4_ in # MODULES — M4 sector questions MUST appear in same message as M3. Not next turn.
