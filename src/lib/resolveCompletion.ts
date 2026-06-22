@@ -46,6 +46,10 @@ export interface Extraction {
   message: string;
   /** Phase 2.5: the AI's structured confirmation signal for the genuine-mandate question. */
   intent_validation?: 'yes' | 'no' | 'unclear' | string | null;
+  /** Piece 1: 0–100 confidence in the inferred intent (drives the lock + the ask gate). */
+  intent_confidence?: number | null;
+  /** Piece 3: true ONLY when the user explicitly states a different goal — unlocks an intent change. */
+  intent_changed?: boolean;
 }
 
 export interface ResolveCompletionInput {
@@ -74,17 +78,17 @@ export interface ResolveCompletionResult {
   hasFriction: boolean;
   m4GuardFired: boolean;
   reason:
-  | 'friction'
-  | 'rc8-4turn-autoclose'
-  | 'llm-extraction'
-  | 'blocked-by-m4-guard'
-  | 'quality-gate-extend'
-  | 'quality-gate-hardclose'
-  | 'quality-gate-pass-await-validation'
-  | 'intent-validated-yes'
-  | 'intent-validated-no'
-  | 'already-captured'
-  | 'not-finalized';
+    | 'friction'
+    | 'rc8-4turn-autoclose'
+    | 'llm-extraction'
+    | 'blocked-by-m4-guard'
+    | 'quality-gate-extend'
+    | 'quality-gate-hardclose'
+    | 'quality-gate-pass-await-validation'
+    | 'intent-validated-yes'
+    | 'intent-validated-no'
+    | 'already-captured'
+    | 'not-finalized';
 }
 
 // Phase 3.2: confirmation logic moved to detectors.detectConfirmation (one shared,
@@ -102,10 +106,10 @@ export const TERMINAL_STATUS_LINE =
 // Question-asking stages keep the AI's message (it carries the actual questions).
 
 export const GENUINE_MANDATE_QUESTION =
-  'Your mandate has been structured. Before we register this as an active requirement in our network, one confirmation:\n\n' +
-  'This is a genuine mandate — your interest is real, the information shared is accurate, and you are prepared to engage with counterparties who respond.\n\n' +
-  'DealCollab operates on trust. Providing misleading information affects how counterparties engage with you, and may impact your visibility on the platform.\n\n' +
-  'Is this a genuine mandate? Reply Yes to activate matching, or No if you are currently exploring.';
+  'One confirmation before this goes live.\n\n' +
+  'Is this a real, active mandate you are ready to act on? Only confirmed mandates enter the network — ' +
+  'inaccurate or exploratory entries reduce your standing with counterparties.\n\n' +
+  'Reply YES to activate matching now, or NO if you are still exploring.';
 
 export const INTENT_DECLINED_MESSAGE =
   'Understood. Exploratory queries are welcome — this is how many deals begin.\n' +
@@ -160,7 +164,7 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
   // ── updateStateFromExtraction (route L496–501) ─────────────────────────────
   const updatedState: RouterState = updateStateFromExtraction(
     storedState,
-    extraction as unknown as { intent: DealIntent; state: Partial<RouterState>; is_complete: boolean },
+    extraction as unknown as { intent: DealIntent; state: Partial<RouterState>; is_complete: boolean; intent_confidence?: number | null; intent_changed?: boolean },
     message,
     modulesLoaded,
   );
@@ -199,7 +203,9 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
   // ── Friction layer 3 (L536–542) ────────────────────────────────────────────
   if (hasFriction) {
     updatedState.is_complete = true;
-    updatedState.phase = 'CLOSURE';
+    // Part 2: do NOT stamp CLOSURE. Friction means "wrap up", not "skip the confirmation".
+    // The gates below route a sufficient mandate to the single genuine-mandate confirmation
+    // (or to a quality-gate extension if it is not yet sufficient).
     extraction.is_complete = true;
   }
 
@@ -210,7 +216,8 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
     !updatedState.is_complete
   ) {
     updatedState.is_complete = true;
-    updatedState.phase = 'CLOSURE';
+    // Part 2: do NOT stamp CLOSURE. Hitting the round limit must still go through the single
+    // confirmation gate (or a quality-gate extension), never straight to a closure message.
     extraction.is_complete = true;
   }
 

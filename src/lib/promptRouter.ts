@@ -53,12 +53,14 @@ import {
 import { computeQualityGate } from './qualityGate';
 import type { QualityGateResult } from './qualityGate';
 import { M0_OUTPUT_SCHEMA, PRE_FLIGHT_EXTRACTION } from './M0_outputSchema';
-import { M1_CORE_IDENTITY } from './M1_coreIdentity';
-import { M_INTENT_REASONING } from './M_intentReasoning';
-import { M2_PHASE_RULES } from './M2_phaseRules';
-import { M3_MODULES } from './M3_intentFrameworks';
-import { M4_MODULES, M4_SHELL } from './M4_sectorIntel';
-import { buildM5_Matching } from './M5_matchingLayer';
+import { M1_CORE_IDENTITY }      from './M1_coreIdentity';
+import { M_INTENT_REASONING }    from './M_intentReasoning';
+import { M_COGNITIVE_QUALIFICATION } from './M_cognitiveQualification';
+import { buildIntentFraming }    from './intentFraming';
+import { M2_PHASE_RULES }        from './M2_phaseRules';
+import { M3_MODULES }            from './M3_intentFrameworks';
+import { M4_MODULES, M4_SHELL }  from './M4_sectorIntel';
+import { buildM5_Matching }      from './M5_matchingLayer';
 import { M6_PROFILE_INTELLIGENCE } from './M6_profileIntel';
 import {
   M_INTENT_VALIDATION,
@@ -99,8 +101,8 @@ export {
 // ─────────────────────────────────────────────────────────────
 
 export function buildSystemPrompt(
-  state: RouterState,
-  matchedMandates: string | null,
+  state:            RouterState,
+  matchedMandates:  string | null,
 ): RouterOutput {
   const modules: Array<{ key: string; content: string }> = [];
 
@@ -108,7 +110,7 @@ export function buildSystemPrompt(
   modules.push({ key: 'M0_output_schema', content: M0_OUTPUT_SCHEMA });
   modules.push({ key: 'M1_core_identity', content: M1_CORE_IDENTITY });
   modules.push({ key: 'M_intent_reasoning', content: M_INTENT_REASONING });
-  modules.push({ key: 'M2_phase_rules', content: M2_PHASE_RULES });
+  modules.push({ key: 'M2_phase_rules',   content: M2_PHASE_RULES });
 
   // ── Special modes (mutually exclusive, highest priority) ───
   if (state.is_profile_search || state.phase === 'PROFILE_SEARCH') {
@@ -132,6 +134,10 @@ export function buildSystemPrompt(
 
   } else {
     // ── Standard qualification flow ──────────────────────────
+
+    // Part 1: the gap-analysis brain governs HOW M3/M4 are used. Loads first so it overrides
+    // the rigid "ask these / MANDATORY" framing those modules still carry.
+    modules.push({ key: 'M_cognitive_qualification', content: M_COGNITIVE_QUALIFICATION });
 
     if (state.intent && M3_MODULES[state.intent]) {
       modules.push({ key: `M3_${state.intent}`, content: M3_MODULES[state.intent] });
@@ -170,7 +176,7 @@ export function buildSystemPrompt(
     : `# QUALIFICATION_ROUNDS: ${state.round_count}/4`;
 
   const missingCount = computeMissingM3Fields(state);
-  const compactLine = (missingCount > 0 && missingCount < 3)
+  const compactLine  = (missingCount > 0 && missingCount < 3)
     ? `# M3_FORMAT: compact — ${missingCount} field(s) missing. ONE natural sentence, NOT bullets.`
     : `# M3_FORMAT: standard`;
 
@@ -222,15 +228,15 @@ export function buildSystemPrompt(
 
   // Known fields — prevents re-asking
   const knownFields: string[] = [];
-  if (state.intent) knownFields.push(`intent:${state.intent}`);
-  if (state.sector) knownFields.push(`sector:${state.sector}`);
-  if (state.industry) knownFields.push(`industry:${state.industry}`);
-  if (state.sub_sector) knownFields.push(`sub_sector:${state.sub_sector}`);
-  if (state.geography) knownFields.push(`geography:${state.geography}`);
-  if (state.deal_size) knownFields.push(`deal_size:${state.deal_size}`);
-  if (state.revenue) knownFields.push(`revenue:${state.revenue}`);
-  if (state.structure) knownFields.push(`structure:${state.structure}`);
-  if (state.intent_focus) knownFields.push(`rationale:${state.intent_focus}`);
+  if (state.intent)          knownFields.push(`intent:${state.intent}`);
+  if (state.sector)          knownFields.push(`sector:${state.sector}`);
+  if (state.industry)        knownFields.push(`industry:${state.industry}`);
+  if (state.sub_sector)      knownFields.push(`sub_sector:${state.sub_sector}`);
+  if (state.geography)       knownFields.push(`geography:${state.geography}`);
+  if (state.deal_size)       knownFields.push(`deal_size:${state.deal_size}`);
+  if (state.revenue)         knownFields.push(`revenue:${state.revenue}`);
+  if (state.structure)       knownFields.push(`structure:${state.structure}`);
+  if (state.intent_focus)    knownFields.push(`rationale:${state.intent_focus}`);
   if (state.is_intermediary) knownFields.push(`role:${state.is_intermediary}`);
 
   // RC15: industry_data keys prevent M4 re-asking
@@ -245,6 +251,18 @@ export function buildSystemPrompt(
     !state.intent
       ? `# INTENT_STATUS: NOT YET DETERMINED — reason about it using the INTENT block. Do NOT use any intent-specific opening line (e.g. "To position this correctly for relevant buyers") while intent is unknown. If the mandate is clear, commit the intent this turn; only ask one short clarifying question if the direction is truly ambiguous.`
       : `# INTENT_STATUS: ${state.intent}${state.intent_flavor ? ` (${state.intent_flavor})` : ''} — ESTABLISHED. Keep it stable; change only on an explicit goal change by the user.`,
+    (() => {
+      const f = buildIntentFraming(state.intent, state.intent_flavor);
+      return f.opener
+        ? [
+            `# ██ OPENING LINE — MANDATORY. When you open a qualification message, use EXACTLY this line, word for word:`,
+            `#    "${f.opener}"`,
+            `# ██ If this message asks ONLY sector (Block 2) questions, open instead with EXACTLY:`,
+            `#    "${f.m4Intro}"`,
+            `# ██ This OVERRIDES any opener shown in the modules below. Never use a buyer-framed opener for a non-buyer, or an investor-framed opener for a non-investor.`,
+          ].join('\n')
+        : `# OPENING LINE: intent not yet set — use a neutral opener, no intent-specific framing.`;
+    })(),
     `# TURN: ${state.turn_count + 1} | REFINEMENTS USED: ${state.refinement_count}/3`,
     `# M4 QUESTIONS ASKED THIS SESSION: ${state.m4_questions_asked}`,
     `# MODULES IN THIS PROMPT: ${modules.map(m => m.key).join(', ')}`,
@@ -266,16 +284,15 @@ export function buildSystemPrompt(
       : `# NO FIELDS EXTRACTED YET`,
     m4Loaded
       ? [
-        `# ██ M4 IS LOADED — ASK SECTOR QUESTIONS NOW. MANDATORY IN THIS RESPONSE.`,
-        `# ██ Sub-type: infer from context (e.g. "digital marketing" → Digital Marketing/Performance Marketing Agency).`,
-        `# ██ Ask 2 targeted open-ended questions for that sub-type. Include AFTER M3 fields in same message.`,
-        `# ██ HONESTY RULE: Only set m4_questions_asked=true if M4 questions PHYSICALLY APPEAR in your "message".`,
-        `# ██ COMPLETION GATE: Set is_complete=false THIS TURN. User must answer M4 questions before finalising.`,
-        `# ██ Flow: M3 compact sentence → blank line → M4 intro → M4 bullet questions → JSON: m4_questions_asked=true, is_complete=false.`,
+        `# M4 REFERENCE LOADED for this sector. The cognitive qualification rules govern HOW to use it.`,
+        `# Reason the sub-type from context FIRST. Then ask ONLY the 1–2 sector-specific details that matter`,
+        `#   most for THIS deal and are still missing — skip anything already stated in any phrasing.`,
+        `#   No bullet recital, no option lists, no generic "what drives value" question.`,
+        `# COMPLETION GATE: set is_complete=false THIS turn so the user can answer before the mandate finalises.`,
       ].join('\n')
       : state.m4_questions_asked
-        ? `# M4 PREVIOUSLY ASKED (prior turn) — extract user's answers into industry_data. is_complete=true is now ALLOWED if all key info is gathered.`
-        : `# M4 NOT LOADED THIS TURN. Do NOT set m4_questions_asked=true. Do NOT set is_complete=true — sector enrichment questions have not been asked yet.`,
+        ? `# M4 already surfaced (prior turn) — extract the user's answers into industry_data under the canonical keys. is_complete=true is now allowed once the floor is met.`
+        : `# M4 NOT LOADED THIS TURN. Do NOT set is_complete=true — the crucial sector details have not been surfaced yet.`,
   ].join('\n');
 
   const systemPrompt = [
@@ -286,7 +303,7 @@ export function buildSystemPrompt(
 
   return {
     systemPrompt,
-    phase: state.phase,
+    phase:         state.phase,
     modulesLoaded: modules.map(m => m.key),
     tokenEstimate: Math.round(systemPrompt.length / 4),
   };

@@ -75,38 +75,39 @@ export type ConversationPhase =
 
 export interface RouterState {
   // Core deal fields
-  intent: DealIntent;
-  intent_flavor: 'strategic' | 'financial' | null;  // BUY_SIDE only: strategic acquirer vs financial sponsor
-  sector: SectorKey | null;
+  intent:           DealIntent;
+  intent_flavor:    'strategic' | 'financial' | null;  // BUY_SIDE only: strategic acquirer vs financial sponsor
+  intent_locked:    boolean;                            // Piece 3: once set with confidence, intent only changes on explicit user pivot
+  sector:           SectorKey | null;
   // Hybrid taxonomy: the TRUE industry in the model's own words (e.g. "Freshwater
   // Aquaculture (RAS)", "EV charging infrastructure", "specialty steel trading"). This is the
   // PRIMARY industry signal — never forced into the preset list. `sector` above is now only a
   // coarse category for legacy filtering; `industry` is what should drive matching/embeddings.
-  industry: string | null;
-  sub_sector: string | null;
-  geography: string | null;
-  deal_size: string | null;
-  revenue: string | null;
-  structure: string | null;
-  intent_focus: string | null;
-  industry_data: Record<string, unknown>;
+  industry:         string | null;
+  sub_sector:       string | null;
+  geography:        string | null;
+  deal_size:        string | null;
+  revenue:          string | null;
+  structure:        string | null;
+  intent_focus:     string | null;
+  industry_data:    Record<string, unknown>;
 
   // Conversation state flags
-  is_sufficient: boolean;
-  is_complete: boolean;
+  is_sufficient:    boolean;
+  is_complete:      boolean;
   is_profile_search: boolean;
-  is_intermediary: 'owner' | 'advisor' | null;  // RC1
+  is_intermediary:  'owner' | 'advisor' | null;  // RC1
   is_document_intake: boolean;                    // NM6
-  is_shell_query: boolean;                      // NM5
+  is_shell_query:   boolean;                      // NM5
 
   // Special mode flags
   gateway_clarifier: string | null;               // NM3
 
   // Quality gate (NM7)
-  quality_score: number;
-  quality_gate_passed: boolean;
+  quality_score:          number;
+  quality_gate_passed:    boolean;
   quality_gate_attempted: boolean;
-  intent_validated: boolean | null;         // null=not asked, true=yes, false=no
+  intent_validated:       boolean | null;         // null=not asked, true=yes, false=no
 
   // M4 sector intelligence tracking
   m4_questions_asked: boolean;
@@ -116,15 +117,15 @@ export interface RouterState {
   is_captured?: boolean;
 
   // Phase + turn tracking
-  phase: ConversationPhase;
-  turn_count: number;
+  phase:            ConversationPhase;
+  turn_count:       number;
   refinement_count: number;
-  round_count: number;                       // RC8
+  round_count:      number;                       // RC8
 
   // Extended fields
   special_conditions: string[];
-  strategic_intent: string | null;
-  proposal_id?: string | null;
+  strategic_intent:   string | null;
+  proposal_id?:       string | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -133,8 +134,8 @@ export interface RouterState {
 // ─────────────────────────────────────────────────────────────
 
 export interface RouterOutput {
-  systemPrompt: string;
-  phase: ConversationPhase;
+  systemPrompt:  string;
+  phase:         ConversationPhase;
   modulesLoaded: string[];
   tokenEstimate: number;
 }

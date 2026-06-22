@@ -18,7 +18,7 @@ import type { SectorKey } from './types';
 
 const M4_PHARMA = `
 ## M4: PHARMA / PHARMACEUTICAL MANUFACTURING — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 Covers: API · bulk drug · formulations · CRAMS · CDMO · pharma plant. NOT hospitals.
 
 COGNITIVE INSTRUCTION:
@@ -41,7 +41,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_HEALTHCARE = `
 ## M4: HEALTHCARE (DELIVERY & SERVICES) — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 Covers: hospitals · clinics · diagnostics · medical devices · digital health · healthtech.
 
 STRICT SKIP RULE: If sub_sector or scale already in # FIELDS ALREADY PROVIDED, skip that bullet.
@@ -66,7 +66,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_MANUFACTURING = `
 ## M4: MANUFACTURING / INDUSTRIAL — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 TRADING / DISTRIBUTION OVERRIDE (if # FIELDS show sub_sector = trading_distribution, OR the business clearly trades/distributes/wholesales rather than manufactures):
 This is NOT a manufacturer. Do NOT ask about installed capacity, utilisation, plant certifications, or production. Ask 2 of:
@@ -97,7 +97,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_SAAS = `
 ## M4: TECHNOLOGY / SAAS / DIGITAL SERVICES — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 If # GATEWAY_CLARIFIER was answered → use confirmed type. If sub_sector set, don't ask sub-type again.
 
 SECTOR MAPPING REMINDER (critical for sub-type detection):
@@ -135,7 +135,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_FINSERV = `
 ## M4: FINANCIAL SERVICES / NBFC / FINTECH — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 COGNITIVE INSTRUCTION:
 Infer the sub-type from the user's description. Ask 2 targeted open-ended questions.
@@ -158,7 +158,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_CONSUMER = `
 ## M4: CONSUMER BRAND / RETAIL / D2C — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 IF INTENT = BUY_SIDE or FUNDRAISING:
 \n• What sub-type are you looking for — FMCG brand, D2C, retail chain, or personal care?
@@ -183,7 +183,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_REALESTATE = `
 ## M4: REAL ESTATE / INFRASTRUCTURE — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 IF INTENT = BUY_SIDE or FUNDRAISING:
 \n• What type of asset — land, development project, or completed income-generating property?
@@ -208,7 +208,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_LOGISTICS = `
 ## M4: LOGISTICS / SUPPLY CHAIN — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 IF INTENT = BUY_SIDE or FUNDRAISING:
 \n• What type — warehousing, fleet, cold chain, freight forwarding, or 3PL?
@@ -233,7 +233,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_EDUCATION = `
 ## M4: EDUCATION / EDTECH — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 IF INTENT = BUY_SIDE or FUNDRAISING:
 \n• What type — K12 school, higher education, edtech platform, or B2B skilling?
@@ -258,7 +258,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_CHEMICALS = `
 ## M4: SPECIALTY CHEMICALS — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 IF INTENT = BUY_SIDE or FUNDRAISING:
 \n• What type — specialty, agrochemical, fine chemicals, or polymers?
@@ -281,7 +281,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_HOSPITALITY = `
 ## M4: HOSPITALITY / FOOD / RESTAURANTS — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 IF INTENT = BUY_SIDE or FUNDRAISING:
 \n• What type — hotel, resort, restaurant chain, or QSR?
@@ -304,7 +304,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_RENEWABLE = `
 ## M4: RENEWABLE ENERGY — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 If # GATEWAY_CLARIFIER was answered (epc_type) → use confirmed type for questions.
 
 COGNITIVE INSTRUCTION:
@@ -339,7 +339,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_DEFENCE = `
 ## M4: DEFENCE / AEROSPACE — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 COGNITIVE INSTRUCTION:
 Infer the sub-type. Ask 2 targeted open-ended questions.
@@ -361,7 +361,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_OIL_GAS = `
 ## M4: OIL & GAS / DOWNSTREAM — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 
 IF INTENT = BUY_SIDE or FUNDRAISING:
 \n• What asset type — refinery, storage terminal, topping unit, petrochemical, or gas processing?
@@ -386,7 +386,7 @@ Covered = do NOT ask again if already in # FIELDS ALREADY PROVIDED.
 
 const M4_NGO = `
 ## M4: NGO / SECTION 8 / TRUST — Block 2
-Add as SEPARATE bullets after Block 1 in the SAME message.
+(Reference for this sector — the cognitive qualification rules decide which of these to ask.)
 \n• What registrations — 12A, 80G, FCRA, DARPAN — are active and transferable?
 \n• Is the entity operationally active, or primarily a compliance / dormant entity?
 \n• Are there any statutory dues, pending regulatory notices, or RBI issues?
@@ -425,20 +425,20 @@ const M4_MIXED = `
 // ─────────────────────────────────────────────────────────────
 
 export const M4_MODULES: Record<SectorKey, string> = {
-  pharma: M4_PHARMA,
-  healthcare: M4_HEALTHCARE,
+  pharma:        M4_PHARMA,
+  healthcare:    M4_HEALTHCARE,
   manufacturing: M4_MANUFACTURING,
-  saas: M4_SAAS,
-  finserv: M4_FINSERV,
-  consumer: M4_CONSUMER,
-  realestate: M4_REALESTATE,
-  logistics: M4_LOGISTICS,
-  education: M4_EDUCATION,
-  chemicals: M4_CHEMICALS,
-  hospitality: M4_HOSPITALITY,
-  renewable: M4_RENEWABLE,
-  defence: M4_DEFENCE,
-  oil_gas: M4_OIL_GAS,
-  ngo: M4_NGO,
-  mixed: M4_MIXED,
+  saas:          M4_SAAS,
+  finserv:       M4_FINSERV,
+  consumer:      M4_CONSUMER,
+  realestate:    M4_REALESTATE,
+  logistics:     M4_LOGISTICS,
+  education:     M4_EDUCATION,
+  chemicals:     M4_CHEMICALS,
+  hospitality:   M4_HOSPITALITY,
+  renewable:     M4_RENEWABLE,
+  defence:       M4_DEFENCE,
+  oil_gas:       M4_OIL_GAS,
+  ngo:           M4_NGO,
+  mixed:         M4_MIXED,
 };

@@ -73,5 +73,6 @@ and direction you inferred. Set intent = null only for a bare greeting with no s
 ## Stability
 Once intent is set, PRESERVE it. Do not change it because the user later adds financials or business
 detail. Change it ONLY when the user EXPLICITLY states a different objective
-(e.g. "actually, I want to sell, not buy").
+(e.g. "actually, I want to sell, not buy") — and when you do, set intent_changed = true. Any change
+without intent_changed = true will be treated as drift and ignored.
 `.trim();

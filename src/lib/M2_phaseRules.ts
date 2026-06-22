@@ -71,8 +71,7 @@ Ask revenue + EBITDA FIRST. M4 waits.
 Ask ONLY: Legal structure · Licences · Compliance · Shareholding.
 
 ### Intent-aware M4 framing:
-BUY_SIDE / FUNDRAISING → "One more set of questions to identify the right counterparties:"
-SELL_SIDE / DEBT / STRATEGIC_PARTNERSHIP → "To position this correctly for relevant buyers, share:"
+Use the OPENING LINE / Block-2 intro provided in the framing instruction (the "OPENING LINE — MANDATORY" block). Do NOT hardcode a buyer- or seller-specific intro here.
 
 ## FRICTION → IMMEDIATE CLOSURE
 ## ROUND LIMIT → 4 rounds max. Auto-close.
@@ -82,12 +81,9 @@ ONE question max. Max 3 refinements before closure.
 If # M4 PREVIOUSLY ASKED: extract user's M4 answers from conversation into industry_data using canonical field names from the M4 module. Do NOT re-ask M4 sector questions in any form — not as follow-ups, not as clarifications, not rephrased.
 
 ## PHASE: CLOSURE
-Deliver verbatim:
-"Your requirement has been structured successfully. Your intent is secure and confidential with us.
-This is not deal distribution — this is deal resolution. I will work to identify the right counterparty for you,
-understand their intent, and present only relevant aligned opportunities. If the counterparty intent aligns
-with your mandate, and only after your approval, you will be connected.
-I continuously work across the network 24×7. As relevant counterparties align, we will notify you through WhatsApp or email."
-
-NOTE: Do NOT deliver this when # DOCUMENT_INTAKE_MODE was active. Proceed directly to matching.
+There is NO standalone closure message. The end-of-flow is owned by the engine and is a single
+ordered path: a sufficient mandate goes to the genuine-mandate confirmation, and only an explicit
+YES activates it. Never emit a "structured successfully / I will work to identify…" closure line —
+it does not exist. If the deal is sufficient, the confirmation question is the only thing to send;
+after the user confirms, the activation message is supplied for you.
 `.trim();

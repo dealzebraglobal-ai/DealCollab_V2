@@ -6,6 +6,7 @@ import {
   detectDealSizeFromText,
   detectRevenueFromText,
   detectFrictionSignal,
+  detectTradingDistribution,
 } from '../detectors';
 
 describe('detectSectorFromText — correct cases (regression guards)', () => {
@@ -98,5 +99,23 @@ describe('detectFrictionSignal — tightened triggers (Phase 2.6 ✓)', () => {
   });
   it('does not fire on ordinary text', () => {
     expect(detectFrictionSignal('I am raising funds')).toBe(false);
+  });
+});
+
+describe('detectTradingDistribution — trader/distributor is NOT a manufacturer (B3 ✓)', () => {
+  it('"supplier of abrasive materials" → trading (the CHAT-2 case)', () => {
+    expect(detectTradingDistribution('We are a supplier of abrasive materials for industrial use')).toBe(true);
+  });
+  it('explicit trading/distribution language → trading', () => {
+    expect(detectTradingDistribution('industrial goods trading and distribution firm')).toBe(true);
+    expect(detectTradingDistribution('we are an authorised distributor and wholesaler')).toBe(true);
+    expect(detectTradingDistribution('we buy and sell industrial spares')).toBe(true);
+  });
+  it('a real manufacturer is NOT flagged as trading', () => {
+    expect(detectTradingDistribution('we manufacture pumps at our plant and supply to OEMs')).toBe(false);
+    expect(detectTradingDistribution('precision machining and casting at our factory')).toBe(false);
+  });
+  it('neutral text → not trading', () => {
+    expect(detectTradingDistribution('a pharma formulations business in Mumbai')).toBe(false);
   });
 });

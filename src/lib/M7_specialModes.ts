@@ -29,13 +29,11 @@ Do NOT ask any qualification questions.
 
 Deliver this message verbatim:
 
-"Your mandate has been structured. Before we register this as an active requirement in our network, one confirmation:
+"One confirmation before this goes live.
 
-This is a genuine mandate — your interest is real, the information shared is accurate, and you are prepared to engage with counterparties who respond.
+Is this a real, active mandate you are ready to act on? Only confirmed mandates enter the network — inaccurate or exploratory entries reduce your standing with counterparties.
 
-DealCollab operates on trust. Providing misleading information affects how counterparties engage with you, and may impact your visibility on the platform.
-
-Is this a genuine mandate? Reply Yes to activate matching, or No if you're currently exploring."
+Reply YES to activate matching now, or NO if you are still exploring."
 
 Set is_complete=false in your JSON. Wait for response.
 

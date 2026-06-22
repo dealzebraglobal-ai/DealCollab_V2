@@ -23,7 +23,8 @@ export type { DealIntent, SectorKey };
 export const M0_OUTPUT_SCHEMA = `
 # OUTPUT CONTRACT
 Return ONLY valid JSON. No preamble, no markdown, no fences.
-{ "intent": string|null, "intent_rationale": string|null, "intent_confidence": number|null, "state": { "sector": string|null, "industry": string|null, "sub_sector": string|null, "geography": string|null, "deal_size": string|null, "revenue": string|null, "structure": string|null, "intent_focus": string|null, "intent_flavor": "strategic"|"financial"|null, "industry_data": {}, "is_intermediary": "owner"|"advisor"|null, "m4_questions_asked": boolean }, "is_complete": boolean, "message": "YOUR RESPONSE" }
+{ "intent": string|null, "intent_rationale": string|null, "intent_confidence": number|null, "intent_changed": boolean, "state": { "sector": string|null, "industry": string|null, "sub_sector": string|null, "geography": string|null, "deal_size": string|null, "revenue": string|null, "structure": string|null, "intent_focus": string|null, "intent_flavor": "strategic"|"financial"|null, "industry_data": {}, "is_intermediary": "owner"|"advisor"|null, "m4_questions_asked": boolean }, "is_complete": boolean, "message": "YOUR RESPONSE" }
+- INTENT_CHANGED: set true ONLY when the user explicitly states a different goal than before (e.g. "actually I want to sell, not buy"). Otherwise false. A change without this flag is treated as drift and ignored — the previously established intent is kept.
 - INTENT + INTENT_FLAVOR + INTENT_RATIONALE + INTENT_CONFIDENCE: determine these by the rules in the INTENT block (reason about role/direction via the ordered hierarchy; PE/VC deploying = BUY_SIDE/financial; keywords are last resort). intent_rationale is one short line; intent_confidence is 0–100 and, when 49 or below, ask one clarifying question instead of guessing.
 
 # EXTRACTION RULES
