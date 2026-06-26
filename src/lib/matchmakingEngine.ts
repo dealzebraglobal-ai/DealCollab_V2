@@ -28,6 +28,7 @@
 import OpenAI from 'openai';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { getSectorCompatibility, normalizeSector, MATCH_ARCHETYPES, detectFraudSignals } from './M5_sectorMatrix';
+import { buildReciprocalRow, buildBlindNotification, buildSavedSearchRecord, type MatchRow, type NotificationRecord } from './M5_persistence';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -249,10 +250,10 @@ function applyHardRejections(
   }
 
   // HR-4: Sector hard incompatibility — compare the TRUE industry when present, so an
-  // out-of-taxonomy business (e.g. aquaculture) is never force-mapped into a bucket that
-  // triggers a false hard-reject. Unknown industries fall to NARROW; only the explicit
-  // incompatible pairs hard-reject.
-  const sourceIndustryHR = source.industry ?? source.sector;
+  // ENUM-FIRST: HR-4 compares the COARSE ENUM (source.sector), not the free-text industry.
+  // Only explicit HARD_INCOMPATIBLE enum pairs hard-reject; unknown/GENERAL buckets never do.
+  // Fall back to free-text industry only when no sector enum is present.
+  const sourceIndustryHR = source.sector ?? source.industry;
   if (sourceIndustryHR && candidate.sectors?.[0]) {
     const comp = getSectorCompatibility(sourceIndustryHR, candidate.sectors[0]);
     if (comp.level === 'INCOMPATIBLE') {
@@ -294,9 +295,12 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
   // SEMANTIC (45%) — raw cosine similarity from pgvector
   const semanticScore = Math.max(0, Math.min(1, candidate.similarity));
 
-  // INDUSTRY ALIGNMENT — sector compatibility via DC-KB-003, on the TRUE industry when present
+  // INDUSTRY ALIGNMENT — sector compatibility via DC-KB-003 on the COARSE ENUM (source.sector),
+  // NOT the free-text industry. Free-text drives the embedding/semantic side only; feeding it here
+  // made every out-of-enum industry (e.g. "packaged healthy snacks") default to NARROW, collapsing
+  // the 25% industry signal for legitimate same-sector pairs. Fall back to industry only if no enum.
   const comp = getSectorCompatibility(
-    (source.industry ?? source.sector) ?? '',
+    (source.sector ?? source.industry) ?? '',
     candidate.sectors?.[0] ?? '',
   );
   let industryScore = 0;
@@ -361,9 +365,9 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
 
   // ARCHETYPE
   let archetype: string = MATCH_ARCHETYPES.CROSS_SECTOR;
-  const srcNorm = normalizeSector((source.industry ?? source.sector) ?? '');
+  const srcNorm = normalizeSector((source.sector ?? source.industry) ?? '');
   const cndNorm = normalizeSector(candidate.sectors?.[0] ?? '');
-  if (!(source.industry ?? source.sector) || srcNorm === cndNorm) {
+  if (!(source.sector ?? source.industry) || srcNorm === cndNorm) {
     archetype = MATCH_ARCHETYPES.BOLT_ON;
   } else if (comp.reason.includes('licence') || comp.reason.includes('Licence')) {
     archetype = MATCH_ARCHETYPES.LICENSE;
@@ -571,30 +575,11 @@ function cap(s: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ASYNC RE-MATCH: save to saved_searches when no matches found
+// ASYNC RE-MATCH: superseded by registerWatch() inside executeMatchmaking.
+// The old saveForAsyncRematch was removed: it omitted the NOT-NULL query_object (so its insert
+// always threw and was swallowed) and only fired on zero-match. registerWatch writes a proper
+// ACTIVE watch row for EVERY proposal via buildSavedSearchRecord.
 // ─────────────────────────────────────────────────────────────
-
-async function saveForAsyncRematch(
-  supabase: ReturnType<typeof createServerSupabaseClient>,
-  proposalId: string,
-  input: ProposalInput,
-  embedding: number[],
-): Promise<void> {
-  try {
-    await supabase!.from('saved_searches').insert([{
-      user_id: input.userId,
-      proposal_id: proposalId,
-      intent: input.intent,
-      sectors: input.sector ? [normalizeSector(input.sector)] : [],
-      geographies: input.geography ? [input.geography] : [],
-      query_embedding: embedding,
-      status: 'PENDING',
-    }]);
-    console.log('[M5] Saved to saved_searches for 90-day async re-match');
-  } catch (e) {
-    console.warn('[M5] saved_searches insert failed (non-blocking):', e);
-  }
-}
 
 // ─────────────────────────────────────────────────────────────
 // MAIN EXECUTION ENGINE
@@ -691,6 +676,25 @@ export async function executeMatchmaking(
     if (embErr) console.warn('[M5] Embedding RPC failed (non-blocking):', embErr.message);
     else console.log('[M5] Storage embedding stored');
 
+    // Always-on watch registrar (idempotent on proposal_id). Defined once, called on EVERY exit
+    // path so a watch row exists for every proposal — not only zero-match ones (old behaviour).
+    // Writes query_object (the NOT-NULL the old saveForAsyncRematch omitted) + the reversed-intent
+    // search embedding + status ACTIVE.
+    const registerWatch = async (matchCount: number, notified: boolean) => {
+      const watch = buildSavedSearchRecord(
+        {
+          userId: input.userId, intent: input.intent, sector: input.sector, industry: input.industry ?? null,
+          geography: input.geography, structure: input.structure, sub_sector: input.sub_sector,
+          deal_size_min: input.deal_size_min, deal_size_max: input.deal_size_max,
+          revenue_min: input.revenue_min, revenue_max: input.revenue_max, special_conditions: input.special_conditions
+        },
+        proposal.id, searchEmbedding, matchCount, notified,
+      );
+      const { error: ssErr } = await supabase.from('saved_searches').upsert([watch], { onConflict: 'proposal_id' });
+      if (ssErr) console.warn('[M5] saved_searches upsert failed (non-blocking):', ssErr.message);
+      else console.log(`[M5] Always-on watch registered (matches=${matchCount})`);
+    };
+
     // ── Phase 6: pgvector ANN search ─────────────────────────
     // FIX: parameter names updated to match current SQL function signature
     // (match_proposals was changed in 20260515 + 20260521 migrations):
@@ -710,7 +714,7 @@ export async function executeMatchmaking(
 
     if (searchErr) {
       console.error('[M5] pgvector search failed:', searchErr);
-      await saveForAsyncRematch(supabase, proposal.id, input, searchEmbedding);
+      await registerWatch(0, false);
       return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'Searching for counterparties...' };
     }
 
@@ -718,7 +722,7 @@ export async function executeMatchmaking(
     console.log('[M5] Candidates from pgvector:', candidates.length);
 
     if (candidates.length === 0) {
-      await saveForAsyncRematch(supabase, proposal.id, input, searchEmbedding);
+      await registerWatch(0, false);
       return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'No immediate matches. Your mandate runs continuously for 90 days.' };
     }
 
@@ -754,7 +758,7 @@ export async function executeMatchmaking(
       const scored = calculateV2Score(input, cand);
       console.log(`[M5] SCORE ${cand.id.slice(-8)}: ${scored.finalScore} (${scored.archetype})`);
 
-      if (scored.finalScore >= 40) {
+      if (scored.finalScore >= 60) {
         scoredRows.push({
           proposal_id: proposal.id,
           matched_proposal_id: cand.id,
@@ -775,14 +779,51 @@ export async function executeMatchmaking(
     scoredRows.sort((a, b) => b.final_score - a.final_score);
     const topRows = scoredRows.slice(0, 10);
 
-    // ── Phase 9: Store matches ────────────────────────────────
+    // ── Phase 9: forward (NEW->OLD) + reciprocal (OLD->NEW) + blind notify OLD ──
+    let notifiedCount = 0;
     if (topRows.length > 0) {
-      const { error: insertErr } = await supabase.from('proposal_matches').insert(topRows);
-      if (insertErr) console.error('[M5] Match insert error:', insertErr);
-      else console.log(`[M5] ${topRows.length} matches stored`);
-    } else {
-      await saveForAsyncRematch(supabase, proposal.id, input, searchEmbedding);
+      // 9a. Forward upsert (idempotent on the pair; needs uq_proposal_matches_pair index).
+      const { error: fwdErr } = await supabase
+        .from('proposal_matches')
+        .upsert(topRows, { onConflict: 'proposal_id,matched_proposal_id' });
+      if (fwdErr) console.error('[M5] Forward match upsert error:', fwdErr);
+      else console.log(`[M5] ${topRows.length} forward matches upserted`);
+
+      // 9b. Reciprocal upsert — old user benefits from new deal flow. Reason is written from the
+      // SOURCE mandate's descriptor so the old user reads about the NEW proposal, not their own.
+      const revSector = input.sector ? normalizeSector(input.sector) : null;
+      const reverseReason = `${revSector ?? 'counterparty'}${input.geography ? ` in ${input.geography}` : ''}. New counterparty mandate aligned with your active position.`;
+      const reciprocalRows = topRows.map((r) => buildReciprocalRow(r as MatchRow, reverseReason));
+      const { data: recipIns, error: recErr } = await supabase
+        .from('proposal_matches')
+        .upsert(reciprocalRows, { onConflict: 'proposal_id,matched_proposal_id' })
+        .select('id, proposal_id, final_score');
+      if (recErr) console.error('[M5] Reciprocal match upsert error:', recErr);
+      else console.log(`[M5] ${reciprocalRows.length} reciprocal matches upserted`);
+
+      // 9c. Blind notifications to OLD users (reciprocal direction: proposal_id = OLD, matched = NEW).
+      const notifRows = (recipIns ?? [])
+        .map((row: { id: string; proposal_id: string; final_score: number | string }) => {
+          const cand = candidates.find((c) => c.id === row.proposal_id); // OLD proposal (recipient)
+          if (!cand || !cand.user_id) return null;                       // can't notify an anonymous owner
+          return buildBlindNotification({
+            oldUserId: cand.user_id, subjectProposalId: row.proposal_id, matchId: row.id,
+            sectorLabel: cand.sectors?.[0] ?? null, geographyLabel: cand.geographies?.[0] ?? null,
+            finalScore: Number(row.final_score),
+          });
+        })
+        .filter((n: NotificationRecord | null): n is NotificationRecord => n !== null);
+      if (notifRows.length > 0) {
+        const { error: notifErr } = await supabase
+          .from('notifications')
+          .upsert(notifRows, { onConflict: 'match_id', ignoreDuplicates: true });
+        if (notifErr) console.error('[M5] Notification insert error:', notifErr);
+        else { notifiedCount = notifRows.length; console.log(`[M5] ${notifiedCount} blind notifications stored`); }
+      }
     }
+
+    // 9d. ALWAYS register the always-on watch (every active proposal, match or no match).
+    await registerWatch(topRows.length, notifiedCount > 0);
 
     // ── Phase 10: Build match cards for frontend ──────────────
     const cards: MatchCard[] = topRows.slice(0, 3).map(row => {
