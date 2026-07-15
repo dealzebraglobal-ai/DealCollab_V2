@@ -616,15 +616,43 @@ export async function POST(req: NextRequest) {
           return { min: String(n.min_cr), max: String(n.max_cr ?? n.min_cr) };
         };
 
-        const resolvedDealSize =
-          s.deal_size ||
-          s.revenue ||
-          (s.industry_data?.capacity as string) ||
-          (s.industry_data?.installed_capacity as string) ||
-          null;
+        const normalizedIntentForSave = normalizeIntent(extraction.intent) ?? extraction.intent;
 
-        const size = parseRange(resolvedDealSize);
-        const revenue = parseRange((s.revenue || s.deal_size) ?? null);
+        /**
+         * Revenue and deal size must stay separate.
+         *
+         * Example:
+         * "₹40 Cr revenue with 15% EBITDA; full sale"
+         * should become:
+         *   revenue_min_cr = 40
+         *   revenue_max_cr = 40
+         *   deal_size_min_cr = null
+         *   deal_size_max_cr = null
+         *
+         * It should NOT become:
+         *   deal_size_min_cr = 40
+         */
+        const sameFinancialValue =
+          !!s.deal_size &&
+          !!s.revenue &&
+          String(s.deal_size).trim().toLowerCase() === String(s.revenue).trim().toLowerCase();
+
+        /**
+         * For sell-side mandates, if the same value was captured as both revenue and deal size,
+         * trust it as revenue and clear deal size.
+         *
+         * This protects against the common mistake:
+         * "40 cr revenue" → deal_size also becomes 40.
+         */
+        const dealSizeSource =
+          normalizedIntentForSave === 'SELL_SIDE' && sameFinancialValue
+            ? null
+            : s.deal_size ?? null;
+
+        const revenueSource = s.revenue ?? null;
+
+        const size = parseRange(dealSizeSource);
+        const revenue = parseRange(revenueSource);
 
         // Mandate insert
         const { data: mandateData, error: mandateErr } = await supabase
@@ -633,7 +661,7 @@ export async function POST(req: NextRequest) {
             user_id: userId,
             raw_text: message,
             normalised_text: JSON.stringify(extraction),
-            intent: normalizeIntent(extraction.intent) ?? extraction.intent,
+            intent: normalizedIntentForSave,
             sectors: s.sector ? [s.sector] : [],
             geographies: s.geography ? [s.geography] : [],
             deal_size_min_cr: size.min,

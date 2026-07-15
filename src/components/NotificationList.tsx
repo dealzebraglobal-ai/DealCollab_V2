@@ -4,7 +4,7 @@ import NotificationCard, { Notification } from './NotificationCard';
 
 interface NotificationListProps {
   notifications: Notification[];
-  onMarkAsRead: (id: number) => void;
+  onMarkAsRead: (id: number | string) => void;
 }
 
 export default function NotificationList({ notifications, onMarkAsRead }: NotificationListProps) {
@@ -20,9 +20,9 @@ export default function NotificationList({ notifications, onMarkAsRead }: Notifi
   return (
     <div className="flex flex-col gap-4">
       {notifications.map((notification) => (
-        <NotificationCard 
-          key={notification.id} 
-          notification={notification} 
+        <NotificationCard
+          key={notification.id}
+          notification={notification}
           onMarkAsRead={onMarkAsRead}
         />
       ))}

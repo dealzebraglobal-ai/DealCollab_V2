@@ -5,7 +5,7 @@ import { Notification } from '@/components/NotificationCard';
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  markAsRead: (id: number) => void;
+  markAsRead: (id: number | string) => void;
   markAllAsRead: () => void;
   addNotification: (notif: Omit<Notification, 'id' | 'isRead'>) => void;
   refreshNotifications: () => Promise<void>;
@@ -38,20 +38,24 @@ function formatRelativeTime(dateString: string): string {
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const { data: apiNotifications, mutate } = useSWR('/api/notifications', fetcher, { 
-    refreshInterval: 15000 
+  const { data: apiNotifications, mutate } = useSWR('/api/notifications', fetcher, {
+    refreshInterval: 15000
   });
-  
+
   const [localNotifs, setLocalNotifs] = useState<Notification[]>([]);
 
   useEffect(() => {
     if (apiNotifications && Array.isArray(apiNotifications)) {
       const mapped = apiNotifications.map((n: Record<string, unknown>) => ({
-        id: n.id as number,
+        id: n.id as string | number,
         type: String(n.type).toLowerCase() as Notification['type'],
         message: String(n.message),
         time: n.created_at ? formatRelativeTime(String(n.created_at)) : 'Just now',
-        isRead: n.is_read === 'true'
+        // is_read is a BOOLEAN column. The old `=== 'true'` string compare was always false,
+        // so everything showed unread. Accept boolean true (and legacy string just in case).
+        isRead: n.is_read === true || n.is_read === 'true',
+        // carry match_id through so NEW_COUNTERPARTY cards can deep-link to /matches/[matchId]
+        matchId: (n.match_id as string | null) ?? null,
       }));
       // Delay state update to avoid synchronous cascading render warnings in React 19
       Promise.resolve().then(() => setLocalNotifs(mapped));
@@ -64,7 +68,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     const channel = supabase.channel('realtime-notifications')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => {
-         mutate(); // Re-fetch immediately when DB changes
+        mutate(); // Re-fetch immediately when DB changes
       })
       .subscribe();
 
@@ -77,7 +81,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const markAsRead = async (id: number) => {
+  const markAsRead = async (id: number | string) => {
     setLocalNotifs(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     await fetch('/api/notifications', {
       method: 'PATCH',

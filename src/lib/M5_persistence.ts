@@ -158,11 +158,15 @@ export function buildSavedSearchRecord(
 // ─────────────────────────────────────────────────────────────
 
 export interface BlindNotificationInput {
-    oldUserId: string;          // recipient (older user)
-    subjectProposalId: string;  // the recipient's OWN proposal this alert is about
-    matchId: string | null;     // reciprocal match row id — dedup key + UI lookup
-    sectorLabel: string | null; // NEW counterparty's coarse sector only (no identity)
-    geographyLabel: string | null;
+    oldUserId: string;             // recipient (older user)
+    subjectProposalId: string;     // the recipient's OWN proposal this alert is about
+    subjectRef: string;            // short human ref for the recipient's own proposal (e.g. "#A1B2C3")
+    subjectIntent: string;         // recipient proposal intent  — names WHICH of their mandates this is for
+    subjectSector: string | null;  // recipient proposal sector
+    subjectGeography: string | null;// recipient proposal geography
+    matchId: string | null;        // reciprocal match row id — dedup key + UI lookup
+    cpSectorLabel: string | null;  // NEW counterparty's coarse sector only (no identity)
+    cpGeographyLabel: string | null;
     finalScore: number;
 }
 
@@ -185,13 +189,29 @@ function band(score: number): string {
     return 'a potential';
 }
 
+const INTENT_LABEL: Record<string, string> = {
+    SELL_SIDE: 'Sell-side',
+    BUY_SIDE: 'Buy-side',
+    FUNDRAISING: 'Fundraising',
+    DEBT: 'Debt',
+    STRATEGIC_PARTNERSHIP: 'Partnership',
+};
+
 export function buildBlindNotification(p: BlindNotificationInput): NotificationRecord {
-    const what = p.sectorLabel ? ` ${p.sectorLabel}` : '';
-    const where = p.geographyLabel ? ` in ${p.geographyLabel}` : '';
-    // IDENTITY-SAFE: coarse sector + region + band only. No name, company, phone, email, exact score.
+    // Counterparty side (NEW proposal): coarse sector + region ONLY. No identity.
+    const what = p.cpSectorLabel ? ` ${p.cpSectorLabel}` : '';
+    const where = p.cpGeographyLabel ? ` in ${p.cpGeographyLabel}` : '';
+
+    // Recipient side (their OWN proposal): safe to name in full — it's their deal. This is what
+    // lets a user with several mandates tell WHICH one the match is for.
+    const mine = [INTENT_LABEL[p.subjectIntent] ?? p.subjectIntent, p.subjectSector, p.subjectGeography]
+        .filter(Boolean)
+        .join(' · ');
+    const mandateLabel = mine ? `${p.subjectRef} (${mine})` : p.subjectRef;
+
     const message =
-        `A new counterparty representing${what} demand${where} has entered the network and is ${band(p.finalScore)} ` +
-        `match for your active mandate. Identity stays hidden until an Expression of Interest is exchanged.`;
+        `A new counterparty representing${what} demand${where} is ${band(p.finalScore)} match for your mandate ${mandateLabel}. ` +
+        `Identity stays hidden until an Expression of Interest is exchanged.`;
 
     return {
         user_id: p.oldUserId,
@@ -201,6 +221,6 @@ export function buildBlindNotification(p: BlindNotificationInput): NotificationR
         proposal_id: p.subjectProposalId,
         match_id: p.matchId,
         delivery_channels: ['in_app'], // email/whatsapp deferred — v1 stores the record only
-        metadata: { final_score: p.finalScore, blind: true },
+        metadata: { final_score: p.finalScore, blind: true, subject_ref: p.subjectRef },
     };
 }

@@ -166,23 +166,79 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
   if (input.structure) parts.push(input.structure);
   if (input.intent_focus) parts.push(input.intent_focus);
 
+  /**
+   * Financial signal formatting.
+   *
+   * Why this exists:
+   * - If min and max are same, show a single value.
+   * - If min and max are different, show a range.
+   *
+   * Examples:
+   * - min=30, max=30   → "revenue 30 crore"
+   * - min=30, max=50   → "revenue 30 to 50 crore"
+   * - min=150, max=150 → "deal size 150 crore"
+   * - min=150, max=200 → "deal size 150 to 200 crore"
+   */
+  const formatCrSignal = (
+    label: 'deal size' | 'revenue',
+    min: number | null,
+    max: number | null,
+  ): string | null => {
+    if (min === null && max === null) return null;
+
+    const onlyValue = min ?? max;
+    if (min === null || max === null || min === max) {
+      return `${label} ${onlyValue} crore`;
+    }
+
+    return `${label} ${min} to ${max} crore`;
+  };
+
+  /**
+   * Fallback for raw text values.
+   *
+   * Example:
+   * input.revenue = "₹30 Cr"
+   * → "revenue 30 crore"
+   *
+   * input.deal_size = "₹150-200 Cr"
+   * → "deal size 150 to 200 crore"
+   */
+  const formatRawFinancialSignal = (
+    label: 'deal size' | 'revenue',
+    raw: string | null,
+  ): string | null => {
+    if (!raw) return null;
+
+    const nums = raw.match(/\d+(?:\.\d+)?/g);
+    if (!nums || nums.length === 0) return null;
+
+    if (nums.length === 1 || nums[0] === nums[1]) {
+      return `${label} ${nums[0]} crore`;
+    }
+
+    return `${label} ${nums[0]} to ${nums[1]} crore`;
+  };
+
   // Financial signals as clean tokens
   const sMin = parseNum(input.deal_size_min);
   const sMax = parseNum(input.deal_size_max);
-  if (sMin !== null || sMax !== null) {
-    parts.push(`deal size ${sMin ?? '?'} to ${sMax ?? '?'} crore`);
-  } else if (input.deal_size) {
-    const nums = input.deal_size.match(/\d+/g);
-    if (nums) parts.push(`deal size ${nums.join(' to ')} crore`);
+  const dealSizeSignal =
+    formatCrSignal('deal size', sMin, sMax) ||
+    formatRawFinancialSignal('deal size', input.deal_size);
+
+  if (dealSizeSignal) {
+    parts.push(dealSizeSignal);
   }
 
   const rMin = parseNum(input.revenue_min);
   const rMax = parseNum(input.revenue_max);
-  if (rMin !== null || rMax !== null) {
-    parts.push(`revenue ${rMin ?? '?'} to ${rMax ?? '?'} crore`);
-  } else if (input.revenue) {
-    const nums = input.revenue.match(/\d+/g);
-    if (nums) parts.push(`revenue ${nums.join(' to ')} crore`);
+  const revenueSignal =
+    formatCrSignal('revenue', rMin, rMax) ||
+    formatRawFinancialSignal('revenue', input.revenue);
+
+  if (revenueSignal) {
+    parts.push(revenueSignal);
   }
 
   // Structured industry_data only (skip narrative fields)
@@ -807,8 +863,15 @@ export async function executeMatchmaking(
           const cand = candidates.find((c) => c.id === row.proposal_id); // OLD proposal (recipient)
           if (!cand || !cand.user_id) return null;                       // can't notify an anonymous owner
           return buildBlindNotification({
-            oldUserId: cand.user_id, subjectProposalId: row.proposal_id, matchId: row.id,
-            sectorLabel: cand.sectors?.[0] ?? null, geographyLabel: cand.geographies?.[0] ?? null,
+            oldUserId: cand.user_id,
+            subjectProposalId: row.proposal_id,
+            subjectRef: `#${String(row.proposal_id).slice(-6).toUpperCase()}`,
+            subjectIntent: cand.intent,                                   // recipient's OWN proposal (safe to name)
+            subjectSector: cand.sectors?.[0] ?? null,
+            subjectGeography: cand.geographies?.[0] ?? null,
+            matchId: row.id,
+            cpSectorLabel: input.sector ? normalizeSector(input.sector) : null,  // the NEW counterparty (input)
+            cpGeographyLabel: input.geography ?? null,
             finalScore: Number(row.final_score),
           });
         })

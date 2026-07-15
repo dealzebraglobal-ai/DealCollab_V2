@@ -1,6 +1,9 @@
+// src/app/api/matches/detail/[matchId]/route.ts
 import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { buildBlindCounterparty, type CounterpartyProposalRow } from '@/lib/M5_blindCard';
+import { buildSynergyReview, type SynergySide } from '@/lib/M5_synergy';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,7 +26,6 @@ export async function GET(
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error('Supabase client failed to initialize');
 
-    // Get current user id
     const { data: dbUser } = await supabase
       .from('users')
       .select('id, tokens')
@@ -34,18 +36,10 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Fetch the match from proposal_matches
+    // Fetch the match
     const { data: match, error: matchErr } = await supabase
       .from('proposal_matches')
-      .select(`
-        id,
-        proposal_id,
-        matched_proposal_id,
-        final_score,
-        match_reason,
-        match_archetype,
-        status
-      `)
+      .select('id, proposal_id, matched_proposal_id, final_score, match_reason, match_archetype, status')
       .eq('id', matchId)
       .single();
 
@@ -53,10 +47,12 @@ export async function GET(
       return NextResponse.json({ error: 'Match not found' }, { status: 404 });
     }
 
-    // Verify user owns the source proposal
+    // Authz: the requesting user must own the SOURCE proposal of this match row.
+    // (Works for the reciprocal direction too: a notification's match_id has proposal_id = the
+    // recipient's own proposal, so the older user passes this check for their blind alert.)
     const { data: userProposal } = await supabase
       .from('proposals')
-      .select('id, user_id, intent, sectors, geographies')
+      .select('id, user_id, intent, sectors, geographies, deal_size_min_cr, deal_size_max_cr, revenue_min_cr, revenue_max_cr, metadata')
       .eq('id', match.proposal_id)
       .single();
 
@@ -64,6 +60,8 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Fetch the counterparty proposal. We SELECT identity columns here, but they only ever
+    // reach the client when isConnected — buildBlindCounterparty decides what crosses the wire.
     const { data: counterpartyProposal } = await supabase
       .from('proposals')
       .select(`
@@ -79,7 +77,7 @@ export async function GET(
       return NextResponse.json({ error: 'Counterparty proposal not found' }, { status: 404 });
     }
 
-    // Check if an EOI already exists for this match
+    // Connection state gates ALL identity-bearing data.
     const { data: existingEoi } = await supabase
       .from('eois')
       .select('id, status, sender_id, receiver_id')
@@ -88,71 +86,37 @@ export async function GET(
 
     const isConnected = existingEoi?.status === 'approved';
 
-    // Build the anonymized preview from the counterparty's STRUCTURED PROPOSAL FIELDS.
-    // These are the actual extracted deal intelligence columns — NOT chat messages.
-    // Previous attempts used mandates.extraction.message which is an AI acknowledgment
-    // ("Your requirement has been structured successfully."), not the deal data.
-    const buildTeaser = (): string => {
-      const intentLabel: Record<string, string> = {
-        SELL_SIDE: 'Sell-side divestment',
-        BUY_SIDE: 'Buy-side acquisition',
-        FUNDRAISING: 'Equity fundraising',
-        DEBT: 'Debt financing',
-        STRATEGIC_PARTNERSHIP: 'Strategic partnership',
-      };
+    // Single source of truth for what the client may see (pure, harness-tested).
+    const counterparty = buildBlindCounterparty(
+      counterpartyProposal as CounterpartyProposalRow,
+      isConnected,
+    );
 
-      const parts: string[] = [];
-
-      const label = intentLabel[counterpartyProposal.intent] || counterpartyProposal.intent;
-      const sectors = (counterpartyProposal.sectors || []).join(', ');
-      const geos = (counterpartyProposal.geographies || []).join(', ');
-
-      let headline = label;
-      if (sectors) headline += ` — ${sectors}`;
-      if (geos) headline += ` (${geos})`;
-      parts.push(headline);
-
-      if (counterpartyProposal.deal_structure) {
-        parts.push(`Structure: ${counterpartyProposal.deal_structure}`);
-      }
-
-      const sMin = counterpartyProposal.deal_size_min_cr ? Number(counterpartyProposal.deal_size_min_cr) : null;
-      const sMax = counterpartyProposal.deal_size_max_cr ? Number(counterpartyProposal.deal_size_max_cr) : null;
-      if (sMin || sMax) {
-        const sizeStr = sMin && sMax && sMin !== sMax ? `₹${sMin}–${sMax} Cr` : `₹${sMax ?? sMin} Cr`;
-        parts.push(`Deal size: ${sizeStr}`);
-      }
-
-      const rMin = counterpartyProposal.revenue_min_cr ? Number(counterpartyProposal.revenue_min_cr) : null;
-      const rMax = counterpartyProposal.revenue_max_cr ? Number(counterpartyProposal.revenue_max_cr) : null;
-      if (rMin || rMax) {
-        const revStr = rMin && rMax && rMin !== rMax ? `₹${rMin}–${rMax} Cr` : `₹${rMax ?? rMin} Cr`;
-        parts.push(`Revenue: ${revStr}`);
-      }
-
-      // Use canonical normalised_text as a last-resort enrichment if structured fields are sparse
-      if (parts.length <= 1 && counterpartyProposal.normalised_text) {
-        return counterpartyProposal.normalised_text.trim();
-      }
-
-      return parts.join('. ') + '.';
+    // Deterministic, identity-safe synergy summary (sector/geo/bands/industry only; band, not score).
+    const numOf = (v: unknown): number | null => {
+      if (v == null) return null;
+      const n = Number(v);
+      return isNaN(n) ? null : n;
     };
-
-    const matchExplanation = match.match_reason || '';
-
-    const templateTeaser = buildTeaser();
-
-    // Use summary_text as single source of truth; fall back to raw_text, then unavailable
-    const anonymizedPreview: string =
-      counterpartyProposal.summary_text?.trim() ||
-      counterpartyProposal.raw_text?.trim() ||
-      'Deal summary unavailable';
-    const previewSource: string =
-      counterpartyProposal.summary_text?.trim() ? 'summary_text' :
-      counterpartyProposal.raw_text?.trim() ? 'raw_text' : 'fallback';
-
-    console.log('[MatchDetails] matchExplanation:', matchExplanation);
-    console.log('[MatchDetails] anonymizedPreview source:', previewSource);
+    const industryOf = (m: unknown): string | null =>
+      m && typeof (m as Record<string, unknown>).industry === 'string'
+        ? ((m as Record<string, unknown>).industry as string)
+        : null;
+    const toSide = (p: Record<string, unknown>): SynergySide => ({
+      intent: String(p.intent ?? ''),
+      sector: (p.sectors as string[] | null)?.[0] ?? null,
+      industry: industryOf(p.metadata),
+      geography: (p.geographies as string[] | null)?.[0] ?? null,
+      dealMin: numOf(p.deal_size_min_cr),
+      dealMax: numOf(p.deal_size_max_cr),
+      revMin: numOf(p.revenue_min_cr),
+      revMax: numOf(p.revenue_max_cr),
+    });
+    const synergy = buildSynergyReview(
+      toSide(userProposal as Record<string, unknown>),
+      toSide(counterpartyProposal as Record<string, unknown>),
+      Number(match.final_score),
+    );
 
     return NextResponse.json({
       success: true,
@@ -161,31 +125,12 @@ export async function GET(
         proposalId: match.proposal_id,
         matchedProposalId: match.matched_proposal_id,
         finalScore: Number(match.final_score),
-        matchReason: matchExplanation,
+        matchReason: match.match_reason || '',
         matchArchetype: match.match_archetype,
         status: match.status,
       },
-      counterparty: {
-        id: counterpartyProposal.id,
-        userId: counterpartyProposal.user_id,
-        intent: counterpartyProposal.intent,
-        sectors: counterpartyProposal.sectors || [],
-        geographies: counterpartyProposal.geographies || [],
-        dealSizeMinCr: counterpartyProposal.deal_size_min_cr,
-        dealSizeMaxCr: counterpartyProposal.deal_size_max_cr,
-        revenueMinCr: counterpartyProposal.revenue_min_cr,
-        revenueMaxCr: counterpartyProposal.revenue_max_cr,
-        dealStructure: counterpartyProposal.deal_structure,
-        specialConditions: counterpartyProposal.special_conditions || [],
-        qualityTier: counterpartyProposal.quality_tier,
-        teaser: templateTeaser,
-        anonymizedPreview,
-        previewSource,
-        revealedContact: isConnected ? {
-          phone: counterpartyProposal.contact_phone,
-          advisor: counterpartyProposal.advisor_name,
-        } : null,
-      },
+      counterparty,
+      synergy,
       eoi: existingEoi ? {
         id: existingEoi.id,
         status: existingEoi.status,
@@ -193,8 +138,11 @@ export async function GET(
       } : null,
       userTokens: dbUser.tokens ?? 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('🔥 GET /api/matches/detail/[matchId] ERROR:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }

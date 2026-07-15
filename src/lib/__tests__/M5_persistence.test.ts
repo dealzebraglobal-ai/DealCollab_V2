@@ -51,8 +51,9 @@ ok(ss0.no_match_reason === 'NO_CANDIDATE_ABOVE_MIN_SCORE' && ss0.notification_st
 
 // ── 3. blind notification ──
 const nIn: BlindNotificationInput = {
-    oldUserId: 'old-user', subjectProposalId: 'OLDPROP', matchId: 'M1',
-    sectorLabel: 'TECHNOLOGY', geographyLabel: 'Mumbai', finalScore: 82,
+    oldUserId: 'old-user', subjectProposalId: 'OLDPROP', subjectRef: '#A1B2C3',
+    subjectIntent: 'SELL_SIDE', subjectSector: 'MANUFACTURING', subjectGeography: 'Pune',
+    matchId: 'M1', cpSectorLabel: 'TECHNOLOGY', cpGeographyLabel: 'Mumbai', finalScore: 82,
 };
 const n = buildBlindNotification(nIn);
 ok(n.user_id === 'old-user', 'notification targets OLD user');
@@ -62,10 +63,16 @@ ok(n.match_id === 'M1', 'match_id passthrough (dedup key)');
 ok(n.proposal_id === 'OLDPROP', 'proposal_id = recipient own proposal');
 ok(Array.isArray(n.delivery_channels) && n.delivery_channels.includes('in_app'), 'delivery_channels in_app');
 ok((n.metadata as any).blind === true, 'metadata flagged blind');
+ok((n.metadata as any).subject_ref === '#A1B2C3', 'metadata carries subject_ref');
 ok(!/\d{10}/.test(n.message), 'no phone-like sequence in message');
 ok(!/ltd|pvt|advisor|@/i.test(n.message), 'no identity tokens in message');
 ok(/strong/.test(n.message), 'band word present for score 82');
-ok(n.message.includes('TECHNOLOGY') && n.message.includes('Mumbai'), 'coarse sector+geo present');
+// counterparty side = TECHNOLOGY/Mumbai (the NEW proposal), NOT the recipient's own sector
+ok(n.message.includes('TECHNOLOGY') && n.message.includes('Mumbai'), 'counterparty coarse sector+geo present');
+// recipient side names WHICH mandate: ref + own descriptor
+ok(n.message.includes('#A1B2C3'), 'message names the recipient proposal ref');
+ok(n.message.includes('Sell-side') && n.message.includes('MANUFACTURING') && n.message.includes('Pune'),
+    'message names the recipient own mandate descriptor');
 ok(/potential/.test(buildBlindNotification({ ...nIn, finalScore: 61 }).message) === false, 'score 61 is not "potential"');
 
 console.log(`\n${pass} passed, ${fail} failed`);

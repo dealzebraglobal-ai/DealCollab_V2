@@ -46,7 +46,6 @@ interface MatchWindowProps {
   status: DealStatus;
   matches?: Match[];
   onViewMatch: (match: Match) => void;
-  onConnectMatch: (match: Match) => void;
   isOpen: boolean;
 }
 
@@ -57,7 +56,7 @@ interface MatchWindowProps {
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
     : score >= 60 ? 'text-amber-700 bg-amber-50 border-amber-100'
-    : 'text-gray-600 bg-gray-50 border-gray-100';
+      : 'text-gray-600 bg-gray-50 border-gray-100';
 
   const label = score >= 80 ? 'Strong' : score >= 60 ? 'Good' : 'Moderate';
 
@@ -73,7 +72,7 @@ function ScoreBadge({ score }: { score: number }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────
 
-export default function MatchWindow({ status, matches: propMatches, onViewMatch, onConnectMatch, isOpen }: MatchWindowProps) {
+export default function MatchWindow({ status, matches: propMatches, onViewMatch, isOpen }: MatchWindowProps) {
   const { isEOIApproved } = useUser();
   const [fetchedMatches, setFetchedMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,17 +110,15 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
 
   return (
     <div
-      className={`grid transition-[grid-template-rows,margin,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
-        isOpen ? 'grid-rows-[1fr] mt-3 opacity-100' : 'grid-rows-[0fr] mt-0 opacity-0'
-      }`}
+      className={`grid transition-[grid-template-rows,margin,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isOpen ? 'grid-rows-[1fr] mt-3 opacity-100' : 'grid-rows-[0fr] mt-0 opacity-0'
+        }`}
     >
       <div className="min-h-0">
         <div
-          className={`bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-5 shadow-sm transition-all duration-200 ease-out transform ${
-            isOpen
+          className={`bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-5 shadow-sm transition-all duration-200 ease-out transform ${isOpen
               ? 'opacity-100 scale-100 translate-y-0 visible'
               : 'opacity-0 scale-[0.985] translate-y-1.5 invisible'
-          }`}
+            }`}
         >
           {loading ? (
             <div className="flex flex-col items-center text-center py-6">
@@ -202,7 +199,6 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
 
                       <ActionButtons
                         onView={() => onViewMatch(match)}
-                        onConnect={() => onConnectMatch(match)}
                         label={match.label || `P${index + 1}`}
                         variant="match"
                       />

@@ -361,32 +361,147 @@ export function detectStructureFromText(text: string): string | null {
   return null;
 }
 
-// RC2: Pre-detect deal size using normalizeSize
-export function detectDealSizeFromText(text: string): string | null {
-  // Phase 2.1: require a money cue before trusting a number as a deal size.
-  // Without this, normalizeSize defaults bare numbers to Crores, so "250 employees"
-  // → ₹250 Cr and "12 trucks" → ₹12 Cr. Cue = a currency marker anywhere, OR a
-  // magnitude unit (cr/lakh/mn/bn/...) sitting next to a digit. Mirrors the money-cue
-  // guard that detectRevenueFromText already has.
-  const hasMoneyCue =
-    /₹|\$|€|£|\b(?:rs|inr|usd|eur|gbp)\b/i.test(text) ||
-    /\d\s*(?:cr\b|crores?\b|lakhs?\b|lacs?\b|mn\b|million\b|bn\b|billion\b)/i.test(text);
-  if (!hasMoneyCue) return null;
+// ─────────────────────────────────────────────────────────────
+// RC2: Financial pre-detection helpers
+// ─────────────────────────────────────────────────────────────
 
+const MONEY_UNIT_PATTERN =
+  String.raw`(?:₹|\$|€|£|\b(?:rs|inr|usd|eur|gbp)\b)?\s*\d+(?:\.\d+)?\s*(?:-|–|to)?\s*(?:₹|\$|€|£|\b(?:rs|inr|usd|eur|gbp)\b)?\s*\d*(?:\.\d+)?\s*(?:cr\b|crores?\b|lakhs?\b|lacs?\b|mn\b|million\b|bn\b|billion\b)?`;
+
+const REVENUE_KEYWORDS =
+  /\b(?:revenue|turnover|t\/o|topline|sales|arr|mrr|annual recurring revenue|annual sales)\b/i;
+
+const DEAL_SIZE_KEYWORDS =
+  /\b(?:deal size|transaction value|transaction size|valuation|enterprise value|ev\b|asking price|ask price|expected valuation|expected value|ticket size|investment size|investment amount|acquisition budget|buyout value|consideration)\b/i;
+
+const PROFITABILITY_KEYWORDS =
+  /\b(?:ebitda|profit|profitability|margin|pat|pbt)\b/i;
+
+function hasMoneyCue(text: string): boolean {
+  return (
+    /₹|\$|€|£|\b(?:rs|inr|usd|eur|gbp)\b/i.test(text) ||
+    /\d\s*(?:cr\b|crores?\b|lakhs?\b|lacs?\b|mn\b|million\b|bn\b|billion\b)/i.test(text)
+  );
+}
+
+function formatNormalizedSize(text: string): string | null {
   const n = normalizeSize(text);
   if (!n || n.min_cr == null) return null;
   if (n.min_cr === n.max_cr) return `₹${n.min_cr} Cr`;
   return `₹${n.min_cr}–${n.max_cr} Cr`;
 }
 
-// RC2: Pre-detect revenue — only fires if revenue keyword nearby
-export function detectRevenueFromText(text: string): string | null {
+/**
+ * Finds a money phrase near a keyword.
+ *
+ * Handles both:
+ * - "revenue of 40 cr"
+ * - "40 cr revenue"
+ * - "valuation is 80 cr"
+ * - "80 cr valuation"
+ */
+function extractMoneyNearKeyword(text: string, keyword: RegExp): string | null {
+  const money = MONEY_UNIT_PATTERN;
+
+  const keywordThenMoney = new RegExp(
+    `${keyword.source}[\\s\\S]{0,60}?(${money})`,
+    'i',
+  );
+
+  const moneyThenKeyword = new RegExp(
+    `(${money})[\\s\\S]{0,60}?${keyword.source}`,
+    'i',
+  );
+
+  const after = text.match(keywordThenMoney);
+  if (after?.[1]) return after[1];
+
+  const before = text.match(moneyThenKeyword);
+  if (before?.[1]) return before[1];
+
+  return null;
+}
+
+// RC2: Pre-detect deal size / transaction value.
+// Important: deal size is NOT revenue.
+// For sell-side M&A, "₹40 Cr revenue" must not become "₹40 Cr deal size".
+export function detectDealSizeFromText(text: string): string | null {
+  if (!text || typeof text !== 'string') return null;
+
   const lower = text.toLowerCase();
-  if (!/revenue|turnover|t\/o|topline|sales/i.test(lower)) return null;
-  const n = normalizeSize(text);
-  if (!n || n.min_cr == null) return null;
-  if (n.min_cr === n.max_cr) return `₹${n.min_cr} Cr`;
-  return `₹${n.min_cr}–${n.max_cr} Cr`;
+  if (!hasMoneyCue(lower)) return null;
+
+  /**
+   * If the text clearly talks about revenue/profitability and does NOT contain
+   * deal-size language, do not treat the money value as deal size.
+   *
+   * Example:
+   * "40 cr revenue with EBITDA of 15%; full sale"
+   * → deal_size should be null
+   * → revenue should be ₹40 Cr
+   */
+  const hasRevenueContext = REVENUE_KEYWORDS.test(lower) || PROFITABILITY_KEYWORDS.test(lower);
+  const hasDealSizeContext = DEAL_SIZE_KEYWORDS.test(lower);
+
+  if (hasRevenueContext && !hasDealSizeContext) {
+    return null;
+  }
+
+  /**
+   * Preferred path:
+   * Only extract deal size when the money value is near deal-size words.
+   *
+   * Examples:
+   * - "valuation is 80 cr"
+   * - "transaction value around 100 cr"
+   * - "ticket size ₹25-50 cr"
+   */
+  const explicitDealMoney = extractMoneyNearKeyword(text, DEAL_SIZE_KEYWORDS);
+  if (explicitDealMoney) {
+    return formatNormalizedSize(explicitDealMoney);
+  }
+
+  /**
+   * Conservative fallback:
+   * If there is money but no revenue/profitability context, allow extraction.
+   *
+   * This keeps short buyer responses working when the previous assistant question
+   * already asked for budget/ticket size.
+   *
+   * Example:
+   * "around 50 cr"
+   * → can be treated as deal_size only if no revenue words are present.
+   */
+  if (!hasRevenueContext) {
+    return formatNormalizedSize(text);
+  }
+
+  return null;
+}
+
+// RC2: Pre-detect revenue.
+// Important: revenue must have revenue language.
+// "valuation is ₹80 Cr" should not become revenue.
+export function detectRevenueFromText(text: string): string | null {
+  if (!text || typeof text !== 'string') return null;
+
+  const lower = text.toLowerCase();
+  if (!hasMoneyCue(lower)) return null;
+
+  /**
+   * Revenue must have revenue language.
+   *
+   * Examples:
+   * - "40 cr revenue"
+   * - "revenue of 40 cr"
+   * - "turnover around 25-30 cr"
+   */
+  if (!REVENUE_KEYWORDS.test(lower)) return null;
+
+  const explicitRevenueMoney = extractMoneyNearKeyword(text, REVENUE_KEYWORDS);
+  if (!explicitRevenueMoney) return null;
+
+  return formatNormalizedSize(explicitRevenueMoney);
 }
 
 // NM5: Shell QUERY detection — is the user LOOKING FOR a shell?
@@ -454,6 +569,7 @@ const MANUFACTURING_NEGATION = [
   'manufactur', 'we make', 'we produce', 'production line', 'our plant', 'our factory',
   'our facility', 'assembly line', 'fabricat', 'machining', 'casting', 'forging', 'foundry',
 ];
+
 export function detectTradingDistribution(text: string): boolean {
   const lower = text.toLowerCase();
   const hasTrading = TRADING_DISTRIBUTION_SIGNALS.some(s => lower.includes(s));

@@ -57,7 +57,8 @@ export async function PATCH(req: NextRequest) {
 
     const { data: notification, error: updateErr } = await supabase
       .from('notifications')
-      .update({ is_read: 'true' })
+      // is_read is a BOOLEAN column — write a boolean, not the string 'true'.
+      .update({ is_read: true })
       .eq('id', id)
       .eq('user_id', dbUser.id)
       .select()
