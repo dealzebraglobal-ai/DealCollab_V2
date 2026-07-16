@@ -57,6 +57,7 @@ export interface ProposalInput {
   document_url?: string | null;   // URL of uploaded PDF/doc (if any)
   document_text?: string | null;  // Extracted text from uploaded document
   id?: string;
+  source?: string;   // proposals.source — defaults to 'WEB' when omitted (chat flow)
 }
 
 interface Candidate {
@@ -683,9 +684,14 @@ export async function executeMatchmaking(
     const safeDocText = input.document_text || null;
     const safeDocUrl = input.document_url || null;
 
+    // upsert (not insert) so that passing an existing `input.id` updates that
+    // proposal in place instead of erroring on the primary-key conflict —
+    // needed for "search for matches" re-runs against an already-created
+    // proposal (e.g. bulk-uploaded mandates). When id is omitted this behaves
+    // identically to a plain insert (Postgres assigns the default uuid).
     const { data: proposal, error: propErr } = await supabase
       .from('proposals')
-      .insert([{
+      .upsert([{
         id: input.id || undefined,
         user_id: input.userId,
         mandate_id: input.mandateId,
@@ -711,8 +717,8 @@ export async function executeMatchmaking(
         quality_tier: computeQualityTier(input),
         embedding_status: 'GENERATING',
         status: 'ACTIVE',
-        source: 'WEB',
-      }])
+        source: input.source ?? 'WEB',
+      }], { onConflict: 'id' })
       .select('id')
       .single();
 
