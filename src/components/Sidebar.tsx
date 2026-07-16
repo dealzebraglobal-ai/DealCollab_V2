@@ -33,8 +33,8 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
 
   const menuItems = [
     { name: 'Home', icon: MessageSquare, href: '/home' },
-    { name: 'Deal Dashboard', icon: LayoutDashboard, href: '/deal-dashboard' },
     { name: 'Deal Log', icon: FileText, href: '/deal-log' },
+    { name: 'Deal Dashboard', icon: LayoutDashboard, href: '/deal-dashboard' },
     { name: 'Intelligence', icon: Sparkles, href: '/deal-intelligence' },
     { name: 'Notifications', icon: Bell, href: '/notifications', badge: unreadCount },
   ];
