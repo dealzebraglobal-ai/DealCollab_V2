@@ -19,7 +19,7 @@ interface DealLogCardProps {
   onToggle: () => void;
   onDelete: () => void;
   onViewMatch: (match: Match) => void;
-
+  onConnectMatch?: (match: Match) => void;
 }
 
 export default function DealLogCard({
@@ -28,6 +28,7 @@ export default function DealLogCard({
   onToggle,
   onDelete,
   onViewMatch,
+  onConnectMatch,
 }: DealLogCardProps) {
   return (
     <div className="w-full flex flex-col group">

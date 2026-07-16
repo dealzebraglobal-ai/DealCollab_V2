@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-
+import { useRouter } from 'next/navigation';
 interface Match {
     rank: string;            // P1, P2, P3
     matchId: string;
@@ -40,6 +40,7 @@ interface MatchesResponse {
 type View = 'list' | 'detail' | 'connected';
 
 export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; onStartOver: () => void }) {
+    const router = useRouter();
     const [data, setData] = useState<MatchesResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<View>('list');
@@ -74,7 +75,7 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
         const doFetch = async () => {
             if (!isMounted) return;
             await fetchMatches();
-            
+
             // Re-read data via state isn't synchronous, so we just poll based on count
             // We'll rely on the next render's data value to decide whether to continue
         };
@@ -90,10 +91,10 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
     useEffect(() => {
         let timerId: NodeJS.Timeout;
         if (data && data.matchCount === 0 && pollsCount < 20) {
-             timerId = setTimeout(() => {
-                 setPollsCount(p => p + 1);
-                 fetchMatches();
-             }, 3000);
+            timerId = setTimeout(() => {
+                setPollsCount(p => p + 1);
+                fetchMatches();
+            }, 3000);
         }
         return () => clearTimeout(timerId);
     }, [data, pollsCount, fetchMatches]);
@@ -167,9 +168,7 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold">Aligned counterparties</h3>
-                    <span className="text-xs text-gray-500">
-                        {data.userTokens} tokens · {data.tokensRequired} per connect
-                    </span>
+
                 </div>
                 {data.matches.map((m) => {
                     const isVerified = m.label === 'VERIFIED_MATCH';
@@ -271,17 +270,26 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
                     <p className="text-sm font-medium text-amber-700 mb-4 text-center">
                         To see the matches with detail you can go to Deal Log
                     </p>
-                    <div className="flex justify-center">
+                    <div className="flex flex-wrap items-center justify-center gap-3">
                         <button
-                            onClick={() => { setSelected(null); setView('list'); setError(null); }}
-                            className="px-6 py-2 rounded border text-sm hover:bg-gray-50 w-full"
+                            onClick={() => {
+                                setSelected(null);
+                                setView("list");
+                                setError(null);
+                            }}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-sm transition-all"
                         >
-                            Back to list
+                            Back to List
+                        </button>
+
+                        <button
+                            onClick={() => router.push(`/deal-log/${selected.matchId}`)}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-sm transition-all"
+                        >
+                            Connect to Match
                         </button>
                     </div>
-                    <button onClick={onStartOver} className="mt-3 text-xs text-gray-500 underline w-full">
-                        Start over
-                    </button>
+
                 </div>
             </div>
         );
