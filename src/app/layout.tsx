@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "DealCollab AI",
   description: "AI-powered proposal analysis",
+  icons: {
+    icon: "/earth-poster.png",
+    apple: "/earth-poster.png",
+  },
 };
 
 import { NotificationProvider } from '@/components/NotificationProvider';

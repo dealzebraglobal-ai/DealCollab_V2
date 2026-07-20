@@ -40,7 +40,8 @@ export async function GET() {
         raw_text,
         normalised_text,
         summary_text,
-        metadata
+        metadata,
+        source
       `)
       .eq('user_id', dbUser.id)
       .eq('status', 'ACTIVE')
