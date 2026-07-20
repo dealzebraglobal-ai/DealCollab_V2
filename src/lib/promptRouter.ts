@@ -40,6 +40,7 @@ import {
   detectRevenueFromText,
   detectShellQuery,
   detectGatewaySector,
+  detectHelpQuery,
 } from './detectors';
 import {
   createBlankState,
@@ -67,6 +68,7 @@ import {
   buildQualityGateFailModule,
   M_DOCUMENT_INTAKE,
 } from './M7_specialModes';
+import { M8_HELP_CONTENT } from './M8_helpContent';
 
 // ─────────────────────────────────────────────────────────────
 // RE-EXPORTS — route.ts imports from '@/lib/promptRouter'
@@ -87,6 +89,7 @@ export {
   detectRevenueFromText,
   detectShellQuery,
   detectGatewaySector,
+  detectHelpQuery,
   createBlankState,
   updateStateFromExtraction,
   initializeStateFromDocument,
@@ -101,8 +104,9 @@ export {
 // ─────────────────────────────────────────────────────────────
 
 export function buildSystemPrompt(
-  state:            RouterState,
-  matchedMandates:  string | null,
+  state:             RouterState,
+  matchedMandates:   string | null,
+  helpQueryDetected: boolean = false,
 ): RouterOutput {
   const modules: Array<{ key: string; content: string }> = [];
 
@@ -162,6 +166,12 @@ export function buildSystemPrompt(
     if (state.is_sufficient) {
       modules.push({ key: 'M5_matching', content: buildM5_Matching(matchedMandates) });
     }
+  }
+
+  // M8: contextual help — additive, loads alongside any mode,
+  // never replaces the active flow
+  if (helpQueryDetected) {
+    modules.push({ key: 'M8_help_content', content: M8_HELP_CONTENT });
   }
 
   // ── Phase context — injected before all modules ──────────

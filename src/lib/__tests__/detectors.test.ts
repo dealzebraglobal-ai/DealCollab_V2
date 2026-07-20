@@ -7,6 +7,7 @@ import {
   detectRevenueFromText,
   detectFrictionSignal,
   detectTradingDistribution,
+  detectHelpQuery,
 } from '../detectors';
 
 describe('detectSectorFromText — correct cases (regression guards)', () => {
@@ -117,5 +118,19 @@ describe('detectTradingDistribution — trader/distributor is NOT a manufacturer
   });
   it('neutral text → not trading', () => {
     expect(detectTradingDistribution('a pharma formulations business in Mumbai')).toBe(false);
+  });
+});
+
+describe('detectHelpQuery — platform mechanics, pricing, or privacy (M8 ✓)', () => {
+  it('detects help queries correctly', () => {
+    expect(detectHelpQuery('do you charge anything?')).toBe(true);
+    expect(detectHelpQuery('what does it cost?')).toBe(true);
+    expect(detectHelpQuery('how do matches work?')).toBe(true);
+    expect(detectHelpQuery('is my data secure?')).toBe(true);
+  });
+  it('avoids false positives (spot checks)', () => {
+    expect(detectHelpQuery('we manufacture DC fast chargers')).toBe(false);
+    expect(detectHelpQuery('open to a secondary sale')).toBe(false);
+    expect(detectHelpQuery('looking to buy a pharma plant')).toBe(false);
   });
 });

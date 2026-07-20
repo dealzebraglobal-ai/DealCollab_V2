@@ -20,6 +20,7 @@ import {
   detectStructureFromText,
   detectShellQuery,
   detectGatewaySector,
+  detectHelpQuery,
   updateStateFromExtraction,
   computeQualityGate,
   type QualityGateResult,
@@ -469,9 +470,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── BUILD SYSTEM PROMPT ──────────────────────────────────
+    const helpQueryDetected = detectHelpQuery(message);
     const { systemPrompt, modulesLoaded, tokenEstimate } = buildSystemPrompt(
       candidateState,
       matchedMandatesStr,
+      helpQueryDetected,
     );
     console.log(`[ROUTER] Modules: ${modulesLoaded.join(', ')} | ~${tokenEstimate} tokens`);
 
