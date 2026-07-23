@@ -10,7 +10,8 @@ import {
   MessageSquare, 
   Trash2,
   User,
-  LayoutDashboard
+  LayoutDashboard,
+  BookOpen
 } from 'lucide-react';
 import { useNotifications } from './NotificationProvider';
 import { useChat } from './ChatProvider';
@@ -37,6 +38,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
     { name: 'Deal Dashboard', icon: LayoutDashboard, href: '/deal-dashboard' },
     { name: 'Intelligence', icon: Sparkles, href: '/deal-intelligence' },
     { name: 'Notifications', icon: Bell, href: '/notifications', badge: unreadCount },
+    { name: 'Guide & Trust', icon: BookOpen, href: '/guide' },
   ];
 
   const handleChatClick = async (id: string) => {
