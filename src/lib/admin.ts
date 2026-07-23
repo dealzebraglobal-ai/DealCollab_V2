@@ -4,6 +4,12 @@ export type AdminAccess = {
     allowed: boolean;
     email: string | null;
     configured: boolean;
+    diagnostics: {
+        environment: string;
+        allowlistCount: number;
+        /** True if the raw env value looks wrapped in quotes — a common Vercel paste mistake. */
+        looksQuoted: boolean;
+    };
 };
 
 /**
@@ -24,6 +30,12 @@ export function getAdminEmails(): string[] {
         .split(',')
         .map((email) => email.trim().toLowerCase())
         .filter(Boolean);
+}
+
+function rawLooksQuoted(): boolean {
+    const raw = process.env.ADMIN_EMAILS || '';
+    const trimmed = raw.trim();
+    return (trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"));
 }
 
 /**
@@ -55,6 +67,11 @@ export async function getAdminAccess(): Promise<AdminAccess> {
         allowed,
         email,
         configured: adminEmails.length > 0,
+        diagnostics: {
+            environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
+            allowlistCount: adminEmails.length,
+            looksQuoted: rawLooksQuoted(),
+        },
     };
 }
 

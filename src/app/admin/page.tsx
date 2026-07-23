@@ -158,10 +158,22 @@ type DashboardPayload = {
     incompleteUsers: IncompleteUser[];
 };
 
+class AdminAccessError extends Error {
+    email?: string | null;
+    diagnostics?: { environment: string; allowlistCount: number; looksQuoted: boolean };
+    constructor(message: string, email?: string | null, diagnostics?: AdminAccessError['diagnostics']) {
+        super(message);
+        this.email = email;
+        this.diagnostics = diagnostics;
+    }
+}
+
 const fetcher = async (url: string) => {
     const res = await fetch(url);
     const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || data?.error || 'Failed to load admin dashboard');
+    if (!res.ok) {
+        throw new AdminAccessError(data?.message || data?.error || 'Failed to load admin dashboard', data?.email, data?.diagnostics);
+    }
     return data as DashboardPayload;
 };
 
@@ -325,6 +337,7 @@ export default function AdminPage() {
     }
 
     if (error) {
+        const accessError = error instanceof AdminAccessError ? error : null;
         return (
             <main className="min-h-screen bg-[#F7F7F5] p-6 sm:p-10">
                 <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center">
@@ -333,6 +346,16 @@ export default function AdminPage() {
                         <h1 className="text-2xl font-black text-gray-950">Admin access blocked</h1>
                         <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-500">{error.message}</p>
                         <p className="mt-4 rounded-2xl bg-gray-50 p-4 text-xs font-bold text-gray-500">Set ADMIN_EMAILS to a comma-separated allowlist, then sign in with one of those emails.</p>
+                        {accessError && (
+                            <div className="mt-4 space-y-1 rounded-2xl border border-gray-100 bg-gray-50 p-4 text-left text-xs font-bold text-gray-500">
+                                <p>Signed in as: <span className="font-mono text-gray-700">{accessError.email || 'no email on session'}</span></p>
+                                <p>Deployment environment: <span className="font-mono text-gray-700">{accessError.diagnostics?.environment ?? 'unknown'}</span></p>
+                                <p>ADMIN_EMAILS entries loaded: <span className="font-mono text-gray-700">{accessError.diagnostics?.allowlistCount ?? 0}</span></p>
+                                {accessError.diagnostics?.looksQuoted && (
+                                    <p className="text-red-600">⚠ ADMIN_EMAILS looks wrapped in quote characters — remove them in Vercel (no quotes around the value).</p>
+                                )}
+                            </div>
+                        )}
                         <Link href="/" className="mt-6 inline-flex rounded-2xl bg-[#1F2937] px-5 py-3 text-sm font-black text-white transition-colors hover:bg-[#F97316]">Back to login</Link>
                     </div>
                 </div>
