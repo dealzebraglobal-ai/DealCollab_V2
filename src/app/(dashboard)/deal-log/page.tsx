@@ -11,7 +11,18 @@ import { BulkMandate } from '@/components/BulkMandateCard';
 import BulkUploadModal from '@/components/BulkUploadModal';
 import { Search, X, Layers } from 'lucide-react';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  // If the API returned an error shape (or a non-array), treat it as an error
+  // so SWR populates `error` instead of `data`, and the page shows ErrorState
+  // rather than crashing with ".map is not a function".
+  if (!res.ok || !Array.isArray(data)) {
+    const msg = (data as { error?: string })?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+};
 
 interface DBMatch {
   id: string;
@@ -82,7 +93,7 @@ export default function DealLogPage() {
   const [activeTab, setActiveTab] = useState<'chat' | 'bulk'>('chat');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  const deals: Deal[] = (rawDeals || []).map((dbDeal: DBDeal) => ({
+  const deals: Deal[] = (Array.isArray(rawDeals) ? rawDeals : []).map((dbDeal: DBDeal) => ({
     id: dbDeal.id,
     deal: `${dbDeal.intent || 'Deal'}: ${dbDeal.sectors?.[0] || 'Unknown Sector'}`,
     sector: dbDeal.sectors?.[0] || 'Unknown',
@@ -99,15 +110,26 @@ export default function DealLogPage() {
       proposalId: dbDeal.id,
       finalScore: parseFloat(m.score) * 100,
       confidenceScore: parseFloat(m.similarity) * 100,
+      // scores: MatchScores — derive from available data; breakdown not stored in this endpoint
+      scores: {
+        intent: parseFloat(m.score) * 100,
+        industry: parseFloat(m.score) * 100,
+        financial: parseFloat(m.score) * 100,
+        niche: 0,
+        geography: 0,
+        similarity: parseFloat(m.similarity) * 100,
+      },
       matchReason: m.reason || 'AI alignment detected.',
       counterparty: {
         sector: m.counterparty?.sector || 'Unknown',
+        subSector: null,
         geography: m.counterparty?.geography || 'Global',
         intent: m.counterparty?.intent || 'UNKNOWN',
-        summary: m.counterparty?.summary_text || m.counterparty?.raw_text || 'Deal summary unavailable'
+        structure: null,
+        summary: m.counterparty?.summary_text || m.counterparty?.raw_text || 'Deal summary unavailable',
       },
       status: 'ACTIVE',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     }))
   }));
 
@@ -128,8 +150,10 @@ export default function DealLogPage() {
   }));
 
   const handleDelete = async (id: string | number) => {
-    // Optimistic UI updates can be added here
-    mutate(rawDeals.filter((d: DBDeal) => d.id !== id), false);
+    // Optimistic UI update — guard against rawDeals not being an array
+    if (Array.isArray(rawDeals)) {
+      mutate(rawDeals.filter((d: DBDeal) => d.id !== id), false);
+    }
     if (expandedDealId === id) setExpandedDealId(null);
   };
 
@@ -141,9 +165,6 @@ export default function DealLogPage() {
     router.push(`/deal-log/${match.id}`);
   };
 
-  const handleConnect = (match: Match) => {
-    router.push(`/deal-dashboard?match=${match.id}`);
-  };
 
   const filteredDeals = chatDeals.filter(deal => {
     const searchStr = searchQuery.toLowerCase();
