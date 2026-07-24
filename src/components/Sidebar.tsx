@@ -83,7 +83,10 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
       <div className="flex-1 overflow-hidden flex flex-col">
         <nav className="flex flex-col gap-1.5 px-4 mb-8">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              item.href === '/guide'
+                ? pathname === '/guide' || pathname.startsWith('/guide/')
+                : pathname === item.href;
             return (
               <Link
                 key={item.href}

@@ -1,58 +1,17 @@
 /**
- * DealCollab — Guide & Trust manifest + loader
+ * DealCollab — Guide & Trust markdown loader
  * =============================================
- * Single source of truth for the guide section: slugs, titles, order.
- * Content lives in /content/guide/<slug>.md — read at build time
- * (server components only; never import this into a client component).
+ * Content lives in /content/guide/<slug>.md — read at build/request time.
+ * SERVER-ONLY (uses `fs`) — never import this into a client component.
+ * Client components should import from '@/lib/guideData' instead.
  */
 
 import fs from 'fs';
 import path from 'path';
+import { GUIDE_DOCS, type GuideDoc } from './guideData';
 
-export interface GuideDoc {
-  slug: string;
-  title: string;
-  description: string;
-}
-
-/** Order here = card order on /guide. New-user reading order, then legal. */
-export const GUIDE_DOCS: GuideDoc[] = [
-  {
-    slug: 'get-matched-faster',
-    title: 'Get Matched Faster',
-    description: 'How to answer the intake chat and submit a complete mandate in one message.',
-  },
-  {
-    slug: 'how-it-works',
-    title: 'How DealCollab Works',
-    description: 'The full flow — mandate to match to connection — and the one privacy rule that governs it.',
-  },
-  {
-    slug: 'tokens-and-payments',
-    title: 'Tokens & Payments',
-    description: 'What is always free, the one action that costs tokens, and exactly when they are deducted.',
-  },
-  {
-    slug: 'what-we-do-and-dont',
-    title: "What We Do — and Don't",
-    description: 'Our boundaries, published plainly so you can rely on them before your first EOI.',
-  },
-  {
-    slug: 'faq',
-    title: 'FAQ',
-    description: 'Straight answers on pricing, matching, confidentiality, and governance.',
-  },
-  {
-    slug: 'privacy-policy',
-    title: 'Privacy & Data',
-    description: 'What we collect, who sees what, and your rights under the DPDP Act.',
-  },
-  {
-    slug: 'terms-of-service',
-    title: 'Terms of Service',
-    description: 'The legal terms governing your use of the platform.',
-  },
-];
+export { GUIDE_CATEGORIES, GUIDE_DOCS } from './guideData';
+export type { GuideCategoryId, GuideCategoryMeta, GuideDoc } from './guideData';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'guide');
 
