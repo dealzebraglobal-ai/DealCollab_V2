@@ -253,13 +253,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      // Server looks up the cost for 'connect' itself (DEBIT_ACTIONS in
+      // /api/profile/tokens) — the amount here is display-only and never
+      // trusted; sending it would do nothing.
       const res = await fetch('/api/profile/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'debit',
-          action: 'Connection with Deal',
-          amount: 50
+          action: 'connect'
         })
       });
 

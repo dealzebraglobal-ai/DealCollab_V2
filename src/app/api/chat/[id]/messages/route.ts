@@ -32,19 +32,25 @@ export async function GET(
       if (dbUser) userId = dbUser.id;
     }
 
-    // 2. Verify session ownership (if userId available)
-    if (userId) {
-      const { data: chatSession, error: sessionErr } = await supabase
-        .from("chat_sessions")
-        .select("id")
-        .eq("id", id)
-        .eq("user_id", userId)
-        .single();
+    // 2. Verify session ownership — fails CLOSED. Previously this was
+    // `if (userId)`, which meant a failure to resolve userId silently
+    // skipped the ownership check entirely and returned messages for any
+    // chat id. There is no legitimate case where userId is unresolvable
+    // for an authenticated session, so treat that as denied, not skipped.
+    if (!userId) {
+      return NextResponse.json({ error: 'Unable to resolve user identity' }, { status: 401 });
+    }
 
-      if (sessionErr || !chatSession) {
-        console.warn(`[CHAT_MESSAGES] Session ${id} not found for user ${userId}`);
-        return NextResponse.json({ error: 'Chat not found or access denied' }, { status: 404 });
-      }
+    const { data: chatSession, error: sessionErr } = await supabase
+      .from("chat_sessions")
+      .select("id")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single();
+
+    if (sessionErr || !chatSession) {
+      console.warn(`[CHAT_MESSAGES] Session ${id} not found for user ${userId}`);
+      return NextResponse.json({ error: 'Chat not found or access denied' }, { status: 404 });
     }
 
     // 3. Fetch messages

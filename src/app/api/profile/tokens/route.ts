@@ -2,7 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { users, tokenTransactions } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, gte, sql } from 'drizzle-orm';
+
+/**
+ * Server-side action → cost map. Previously this endpoint took `type`,
+ * `action`, and `amount` straight from the request body — any authenticated
+ * user could POST {type:'credit', amount:999999} and mint unlimited tokens.
+ * Now the client can only name a known action; the cost is always looked up
+ * here, and only debits are possible through this endpoint at all — credits
+ * (e.g. profile-completion rewards) happen exclusively in server-internal
+ * flows that never take client input for the amount.
+ */
+const DEBIT_ACTIONS: Record<string, number> = {
+  connect: 50,
+};
 
 export async function GET() {
   const session = await auth();
@@ -66,42 +79,46 @@ export async function POST(req: NextRequest) {
 
     const userId = dbUser.id;
     const body = await req.json();
-    const { type, action, amount } = body;
+    const { action } = body;
 
-    if (!type || !action || typeof amount !== 'number') {
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    const cost = typeof action === 'string' ? DEBIT_ACTIONS[action] : undefined;
+    if (cost === undefined) {
+      return NextResponse.json({ error: 'Unknown or unsupported action' }, { status: 400 });
     }
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Single conditional UPDATE — atomic, no read-then-write race window.
+    // The WHERE clause enforces the balance check and the deduction in the
+    // same statement, so two concurrent requests can't both pass a balance
+    // check based on stale data (double-spend). Wrapped with the ledger
+    // insert in one transaction so a log-write failure can't leave the
+    // balance changed with no record of why.
+    const finalBalance = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(users)
+        .set({ tokens: sql`${users.tokens} - ${cost}` })
+        .where(and(eq(users.id, userId), gte(users.tokens, cost)))
+        .returning({ tokens: users.tokens });
 
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      if (!updated) return null;
 
-    let finalTokens = user.tokens || 0;
-    
-    if (type === 'debit') {
-      if (finalTokens < amount) {
-        return NextResponse.json({ error: 'Insufficient tokens' }, { status: 400 });
-      }
-      finalTokens -= amount;
-    } else {
-      finalTokens += amount;
-    }
+      const balanceAfter = updated.tokens ?? 0;
 
-    // Atomic update (not strictly atomic here, but okay for this app)
-    await db.transaction(async (tx) => {
-      await tx.update(users).set({ tokens: finalTokens }).where(eq(users.id, userId));
       await tx.insert(tokenTransactions).values({
         userId,
-        type,
+        type: 'debit',
         action,
-        amount: type === 'debit' ? -amount : amount,
-        balanceAfter: finalTokens,
+        amount: -cost,
+        balanceAfter,
       });
+
+      return balanceAfter;
     });
 
-    return NextResponse.json({ success: true, balance: finalTokens });
+    if (finalBalance === null) {
+      return NextResponse.json({ error: 'Insufficient tokens' }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, balance: finalBalance });
   } catch (error: unknown) {
     console.error("FULL ERROR:", error);
     console.error("STRINGIFIED:", JSON.stringify(error, null, 2));

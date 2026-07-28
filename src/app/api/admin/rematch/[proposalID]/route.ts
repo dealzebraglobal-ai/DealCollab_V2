@@ -1,7 +1,9 @@
 // src/app/api/admin/rematch/[proposalId]/route.ts
 // Re-runs executeMatchmaking against a proposal that previously returned 0 matches.
 
+import crypto from 'crypto';
 import { auth } from '@/auth';
+import { isAdmin as isAdminEmail } from '@/lib/admin';
 import { executeMatchmaking } from '@/lib/matchmakingEngine';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,18 +11,28 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-
+function isValidAdminKey(header: string | null): boolean {
+    const expected = process.env.ADMIN_API_KEY;
+    if (!expected || !header) return false;
+    const expectedBuf = Buffer.from(expected);
+    const headerBuf = Buffer.from(header);
+    if (expectedBuf.length !== headerBuf.length) return false;
+    return crypto.timingSafeEqual(expectedBuf, headerBuf);
+}
 
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ proposalID: string }> }
 ) {
     try {
-        const adminKey = req.headers.get('x-admin-key');
         const session = await auth();
-        const isAdmin = process.env.ADMIN_API_KEY && adminKey === process.env.ADMIN_API_KEY;
+        // Previously this only checked "is any session present", not whether that
+        // session belongs to an admin — any logged-in user could trigger rematch
+        // for any proposal. Now requires the ADMIN_EMAILS allowlist (same source
+        // of truth as /api/admin/dashboard) OR the internal admin key.
+        const isAdmin = isValidAdminKey(req.headers.get('x-admin-key')) || isAdminEmail(session?.user?.email);
 
-        if (!isAdmin && !session?.user?.email) {
+        if (!isAdmin) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

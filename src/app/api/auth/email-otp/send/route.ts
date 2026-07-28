@@ -4,6 +4,7 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { isValidEmail } from '@/lib/validation/profile';
 import { generateOtp, hashOtp, sendOtpEmail } from '@/lib/emailOtp';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,13 @@ export async function POST(req: Request) {
 
     if (!email || typeof email !== 'string' || !isValidEmail(email)) {
       return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
+    }
+
+    // Per-IP cap in addition to the existing per-email resend cooldown below —
+    // stops one source from spamming OTP emails across many addresses.
+    const perIp = checkRateLimit(`email-otp-send:ip:${getClientIp(req)}`, 10, 10 * 60 * 1000);
+    if (!perIp.allowed) {
+      return NextResponse.json({ error: 'Too many requests — please wait before requesting another code' }, { status: 429 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();

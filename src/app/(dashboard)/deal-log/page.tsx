@@ -90,7 +90,7 @@ export default function DealLogPage() {
   const [expandedDealId, setExpandedDealId] = useState<string | number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Searching Match' | 'Matched'>('All');
-  const [activeTab, setActiveTab] = useState<'chat' | 'bulk'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'whatsapp' | 'bulk'>('chat');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const deals: Deal[] = (Array.isArray(rawDeals) ? rawDeals : []).map((dbDeal: DBDeal) => ({
@@ -133,10 +133,12 @@ export default function DealLogPage() {
     }))
   }));
 
-  // Chat Mandates and Bulk Uploaded Mandates are two independent sources —
+  // Chat, WhatsApp, and Bulk Uploaded Mandates are three independent sources —
   // split by proposals.source, never merged.
-  const chatDeals = deals.filter(d => d.source !== 'BULK');
+  const webDeals = deals.filter(d => d.source !== 'BULK' && d.source !== 'WHATSAPP');
+  const whatsappDeals = deals.filter(d => d.source === 'WHATSAPP');
   const bulkDeals = deals.filter(d => d.source === 'BULK');
+  const chatDeals = activeTab === 'whatsapp' ? whatsappDeals : webDeals;
 
   const bulkMandates: BulkMandate[] = bulkDeals.map(d => ({
     id: String(d.id),
@@ -213,6 +215,15 @@ export default function DealLogPage() {
               }`}
           >
             Chat Mandates
+          </button>
+          <button
+            onClick={() => setActiveTab('whatsapp')}
+            className={`flex-1 sm:flex-none whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'whatsapp'
+              ? 'bg-white text-[#F97316] shadow-sm ring-1 ring-[#000000]/5'
+              : 'text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            WhatsApp Mandates
           </button>
           <button
             onClick={() => setActiveTab('bulk')}

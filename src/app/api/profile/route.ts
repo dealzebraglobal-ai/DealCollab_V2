@@ -185,7 +185,10 @@ export async function POST(req: NextRequest) {
       profile_completion: currentUser.profile_completion, // Will be updated after this save
       profile_completed_once: currentUser.profile_completed_once,
       is_phone_verified: incomingPhone ? true : currentUser.isPhoneVerified,
-      tokens: (body.tokens !== undefined && body.tokens !== null) ? body.tokens : (currentUser.tokens ?? 0),
+      // Balance is never client-settable — this endpoint is a profile save,
+      // not a token operation. Always carry the current value forward; use
+      // /api/profile/tokens (server-fixed action costs) to change balance.
+      tokens: currentUser.tokens ?? 0,
       // STRICT: Only update profile_image if a value is provided in the request
       // and it is NOT a Google avatar URL (Google avatars are fallbacks, not DB values)
       profile_image: (() => {
