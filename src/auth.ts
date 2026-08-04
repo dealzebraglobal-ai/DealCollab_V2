@@ -5,8 +5,9 @@ import authConfig from "./auth.config";
 import { db } from "./db";
 import { accounts, sessions, users, verificationTokens } from "./db/schema";
 
-// Debug logging for Production/Vercel (Masked)
-if (process.env.NODE_ENV === "production") {
+// Config-presence check only (booleans, never the secret values themselves) —
+// kept to dev/preview so it doesn't add noise to production logs.
+if (process.env.NODE_ENV !== "production") {
   console.log("Auth Configuration Check:", {
     hasSecret: !!(process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET),
     hasGoogleId: !!process.env.GOOGLE_CLIENT_ID,
@@ -31,7 +32,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   basePath: "/api/auth",
   ...authConfig,
   trustHost: true,
-  debug: true, // Enabled for production debugging
+  // NextAuth's debug mode logs full auth flow metadata (tokens, session
+  // internals) — appropriate for diagnosing a dev/preview issue, but a
+  // production information-disclosure risk if left on indefinitely.
+  debug: process.env.NODE_ENV !== "production",
   logger: {
     error(error) {
       console.error("NEXTAUTH ERROR:", error);
@@ -40,7 +44,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       console.warn("NEXTAUTH WARN:", code);
     },
     debug(code, metadata) {
-      console.log("NEXTAUTH DEBUG:", code, metadata);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("NEXTAUTH DEBUG:", code, metadata);
+      }
     },
   },
   providers: [
@@ -60,6 +66,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (user && user.isPhoneVerified) {
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            isPhoneVerified: user.isPhoneVerified,
+          };
+        }
+        return null;
+      },
+    }),
+    Credentials({
+      id: "email-otp",
+      name: "Email OTP",
+      credentials: {
+        email: { label: "Email", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email) return null;
+
+        const user = await db.query.users.findFirst({
+          where: eq(users.email, credentials.email as string),
+        });
+
+        if (user && user.emailVerified) {
           return {
             id: user.id,
             name: user.name,

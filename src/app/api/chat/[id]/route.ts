@@ -30,11 +30,15 @@ export async function GET(
       if (dbUser?.id) dbUserId = dbUser.id;
     }
 
-    // Fetch chat session — plain select, no FK join to avoid PostgREST schema-cache errors
+    // Fetch chat session — plain select, no FK join to avoid PostgREST schema-cache errors.
+    // Filtering by user_id (matching this file's own DELETE handler) is required —
+    // without it, any authenticated user who knows/guesses another user's chat UUID
+    // could read their full transcript and linked document.
     const { data: chat, error: chatErr } = await supabase
       .from('chat_sessions')
       .select('*')
       .eq('id', id)
+      .eq('user_id', dbUserId)
       .maybeSingle();
 
     if (chatErr) {

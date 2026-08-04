@@ -16,6 +16,7 @@
     "canvas-confetti": "^1.9.4",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "framer-motion": "^12.42.2",
     "groq-sdk": "^1.1.2",
     "lucide-react": "^1.8.0",
     "mammoth": "^1.12.0",

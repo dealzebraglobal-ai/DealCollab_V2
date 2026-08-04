@@ -12,7 +12,6 @@ import {
   createBlankState,
   detectDealSizeFromText,
   detectFrictionSignal,
-  detectIntentFromText,
   detectIntermediaryFromText,
   detectRevenueFromText,
   detectSectorFromText,
@@ -21,18 +20,16 @@ import {
   detectShellQuery,
   detectGatewaySector,
   detectHelpQuery,
-  updateStateFromExtraction,
-  computeQualityGate,
-  type QualityGateResult,
   type DealIntent,
   type RouterState
 } from '@/lib/promptRouter';
 import { buildFinalMessage } from '@/lib/responseBuilder';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
-import { NextRequest, NextResponse, after } from 'next/server';
-import { executeMatchmaking, type ProposalInput, type MatchCard, type MatchmakingResult } from '@/lib/matchmakingEngine';
+import { NextRequest, NextResponse } from 'next/server';
+import { type MatchCard, type MatchmakingResult } from '@/lib/matchmakingEngine';
 import crypto from 'crypto';
 import { resolveCompletion, type Extraction } from '@/lib/resolveCompletion';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 /**
  * DealCollab Chat Route
@@ -61,6 +58,17 @@ import { resolveCompletion, type Extraction } from '@/lib/resolveCompletion';
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
+
+function isValidAdminSecret(header: string | null): boolean {
+  const expected = process.env.ADMIN_API_KEY;
+  if (!expected || !header) return false;
+
+  const expectedBuf = Buffer.from(expected);
+  const headerBuf = Buffer.from(header);
+  if (expectedBuf.length !== headerBuf.length) return false;
+
+  return crypto.timingSafeEqual(expectedBuf, headerBuf);
+}
 
 // ─────────────────────────────────────────────────────────────
 // GET — chat history list
@@ -129,12 +137,36 @@ export async function POST(req: NextRequest) {
 
   try {
     const proposalId = crypto.randomUUID();
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json();
+
+    let userId: string;
+
+    // Check for internal webhook delegation (bypass next-auth). Requires
+    // ADMIN_API_KEY to be a non-empty string AND a timing-safe match — a plain
+    // `===` would let an unset env var (undefined) collide with a header sent
+    // as '' by a misconfigured caller if ADMIN_API_KEY were ever set to ''.
+    const isAdmin = isValidAdminSecret(req.headers.get('x-admin-secret'));
+    if (isAdmin && body.userId) {
+      userId = body.userId;
+    } else {
+      const session = await auth();
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      userId = session.user.id;
     }
 
-    const body = await req.json();
+    // Caps LLM-token abuse / spam per user — chat turns call an external LLM
+    // on every request, so an unbounded loop is a real cost/availability risk.
+    // Skipped for admin-delegated (WhatsApp) calls, which are already rate
+    // limited upstream by the WhatsApp OTP/send flow and Meta's own API limits.
+    if (!isAdmin) {
+      const turnLimit = checkRateLimit(`chat:${userId}`, 30, 60 * 1000);
+      if (!turnLimit.allowed) {
+        return NextResponse.json({ error: 'You are sending messages too quickly — please slow down.' }, { status: 429 });
+      }
+    }
+
     const rawMessage = body.message || "";
     const message = normalizeMessage(rawMessage);
 
@@ -142,6 +174,7 @@ export async function POST(req: NextRequest) {
     let documentUrl = body.documentUrl || "";
     const documentId = body.documentId;
     let activeChatId = body.chatId;
+    const source = body.source || body.channel || (isAdmin ? 'WHATSAPP' : 'WEB');
 
     const supabase = await createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
@@ -151,8 +184,6 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── USER RESOLUTION ─────────────────────────────────────
-    let userId = session.user.id;
-
     const { data: dbUser, error: userCheckErr } = await supabase
       .from("users")
       .select("id")
@@ -161,8 +192,10 @@ export async function POST(req: NextRequest) {
 
     if (userCheckErr || !dbUser) {
       console.log("User ID mismatch or missing in public.users, attempting email lookup...");
-      const { data: userByEmail } = await supabase
-        .from("users")
+      const session = await auth(); // Need to fetch session again just for email fallback if we failed here
+      if (!isAdmin && session?.user?.email) {
+        const { data: userByEmail } = await supabase
+          .from("users")
         .select("id")
         .eq("email", session.user.email)
         .single();
@@ -184,7 +217,14 @@ export async function POST(req: NextRequest) {
         if (newUser) userId = newUser.id;
         else throw new Error("Could not resolve valid user_id for chat persistence");
       }
+    } else if (isAdmin && userId) {
+      // Admin request supplied a userId that didn't exist? This shouldn't happen
+      // as the webhook creates the user before calling, but if it does, throw.
+      throw new Error("Admin supplied userId does not exist");
+    } else {
+      throw new Error("Could not resolve valid user_id for chat persistence");
     }
+  }
 
     // ─── STATE LOADING ────────────────────────────────────────
     let storedState: RouterState = createBlankState();
@@ -242,6 +282,7 @@ export async function POST(req: NextRequest) {
           document_id: documentId || null,
           title: message.slice(0, 30) + (message.length > 30 ? "..." : ""),
           state: storedState,
+          source: source.toLowerCase(),
         }])
         .select()
         .single();
@@ -676,7 +717,7 @@ export async function POST(req: NextRequest) {
             urgency: "Medium",
             buyer_type: s.intent_focus || "Strategic",
             status: 'ACTIVE',
-            source: 'WEB',
+            source: source,
             document_url: documentUrl,
             document_text: documentText,
             intent_validated: true,
@@ -728,6 +769,7 @@ export async function POST(req: NextRequest) {
             revenue_min: revenue.min,
             revenue_max: revenue.max,
             is_shell_query: updatedState.is_shell_query ?? false,
+            source: source,
           });
 
           const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 12000));

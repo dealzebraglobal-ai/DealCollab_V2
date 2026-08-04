@@ -12,6 +12,7 @@ import {
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { notifyMatchViaWhatsApp } from '@/lib/whatsappNotify';
 
 const NOTIFICATION_THRESHOLD = 0.70;
 const MAX_PER_RUN = 100;
@@ -102,6 +103,14 @@ export async function GET(req: NextRequest) {
                 message: `A new ${labelFor(bestScore) === 'VERIFIED_MATCH' ? 'verified' : 'high-confidence'} match was found for your mandate.`,
                 is_read: 'false',
             }]);
+
+            if (ss.user_id) {
+                void notifyMatchViaWhatsApp({
+                    userId: ss.user_id,
+                    companySummary: `${bestCandidate.sectors?.[0] || 'General'} • ${bestCandidate.geographies?.[0] || 'Global'}`,
+                    matchScorePercent: bestScore * 100,
+                });
+            }
 
             notified++;
         }

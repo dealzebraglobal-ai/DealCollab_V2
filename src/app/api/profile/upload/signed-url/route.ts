@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 
+// Without an allowlist, `bucket` was taken straight from a query param and
+// passed to createSignedUploadUrl() — any caller could request a signed
+// upload URL into an arbitrary (existing) bucket name, not just the ones
+// this endpoint is meant to serve.
+const ALLOWED_BUCKETS = ['profile-attachments', 'avatars'];
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.email) {
@@ -15,6 +21,10 @@ export async function GET(req: NextRequest) {
 
   if (!fileName || !fileType) {
     return NextResponse.json({ error: 'File name and type are required' }, { status: 400 });
+  }
+
+  if (!ALLOWED_BUCKETS.includes(bucket)) {
+    return NextResponse.json({ error: 'Invalid storage bucket' }, { status: 400 });
   }
 
   const supabase = createServerSupabaseClient();

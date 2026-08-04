@@ -8,8 +8,10 @@ import VideoBackground from '@/components/auth/VideoBackground';
 import VideoLogo from '@/components/auth/VideoLogo';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import PhoneVerification from '@/components/auth/PhoneVerification';
+import EmailVerification from '@/components/auth/EmailVerification';
+import EmailOtpVerification from '@/components/auth/EmailOtpVerification';
 import AuthStepper from '@/components/auth/AuthStepper';
-import { ShieldCheck, Sparkles, MessageSquare, AlertCircle, Info } from 'lucide-react';
+import { ShieldCheck, Sparkles, MessageSquare, AlertCircle, Info, Mail } from 'lucide-react';
 
 const AuthContent = () => {
   const searchParams = useSearchParams();
@@ -23,7 +25,8 @@ const AuthContent = () => {
   const logoutSuccess = searchParams.get('logout') === 'success';
   const isFromWhatsApp = source === 'whatsapp';
   
-  const [step, setStep] = useState<'google' | 'phone' | 'verified'>('google');
+  const [step, setStep] = useState<'google' | 'email' | 'otp' | 'phone' | 'verified'>('google');
+  const [pendingEmail, setPendingEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
@@ -107,6 +110,26 @@ const AuthContent = () => {
     setIsVerified(true);
   };
 
+  const handleEmailSent = (email: string) => {
+    setPendingEmail(email);
+    setStep('otp');
+  };
+
+  const handleEmailOtpSuccess = (hasPhone: boolean) => {
+    // Mirrors handlePhoneSuccess: decide the next step from data we already
+    // know (the verify route just told us), rather than waiting on
+    // useSession() to reflect the new Credentials-provider session, which is
+    // not always immediate on this route.
+    console.log('[Auth] Email OTP verified', { hasPhone });
+    if (hasPhone) {
+      setOnboarding('phoneVerified', true);
+      setStep('verified');
+      setIsVerified(true);
+    } else {
+      setStep('phone');
+    }
+  };
+
   return (
     <main className="min-h-screen w-full flex items-center justify-center px-4 py-10 overflow-y-auto">
       <VideoBackground />
@@ -129,9 +152,9 @@ const AuthContent = () => {
           {/* Top Progress Bar */}
           {step !== 'verified' && (
             <div className="mb-8">
-              <AuthStepper 
-                currentStep={step === 'google' ? 1 : 2} 
-                totalSteps={2} 
+              <AuthStepper
+                currentStep={step === 'google' || step === 'email' ? 1 : 2}
+                totalSteps={2}
                 label={isFromWhatsApp ? "Verified Onboarding" : "Identity Setup"}
               />
             </div>
@@ -190,11 +213,26 @@ const AuthContent = () => {
               )}
 
               <div className="space-y-4">
-                <GoogleAuthButton 
-                  onClick={handleGoogleSignIn} 
-                  isLoading={isLoading} 
+                <GoogleAuthButton
+                  onClick={handleGoogleSignIn}
+                  isLoading={isLoading}
                 />
-                
+
+                <div className="relative flex items-center py-1">
+                  <div className="flex-grow border-t border-border" />
+                  <span className="mx-3 text-[10px] font-bold text-gray-300 uppercase tracking-widest">or</span>
+                  <div className="flex-grow border-t border-border" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setStep('email')}
+                  className="w-full bg-white text-foreground py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-border hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
+                >
+                  <Mail size={18} className="text-gray-400 group-hover:text-primary-hover transition-colors" />
+                  <span className="font-semibold tracking-tight">Sign in with Email</span>
+                </button>
+
                 <p className="text-[10px] text-center text-gray-300 font-bold uppercase tracking-[0.2em] pt-2">
                   Secured by Google Identity
                 </p>
@@ -213,6 +251,24 @@ const AuthContent = () => {
                 </a>
               </div>
             </div>
+          )}
+
+          {/* Step 1b: Email Address */}
+          {step === 'email' && (
+            <EmailVerification
+              initialEmail={pendingEmail}
+              onSent={handleEmailSent}
+              onBack={() => setStep('google')}
+            />
+          )}
+
+          {/* Step 1c: Email OTP */}
+          {step === 'otp' && (
+            <EmailOtpVerification
+              email={pendingEmail}
+              onVerify={handleEmailOtpSuccess}
+              onBack={() => setStep('email')}
+            />
           )}
 
           {/* Step 2: Phone Verification */}

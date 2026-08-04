@@ -261,8 +261,12 @@ export const chatSessions = pgTable('chat_sessions', {
   title: text('title').default('New Deal Intake'),
   state: jsonb('state').default({}),
   stateVersion: integer('state_version').default(0).notNull(),  // ADDED for OCC
+  source: text('source').default('WEB').notNull(),
+  whatsappPhoneNumber: text('whatsapp_phone_number'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  whatsappPhoneIdx: index('idx_chat_sessions_whatsapp_phone').on(table.whatsappPhoneNumber),
+}));
 
 // 10. CHAT MESSAGES
 export const chatMessages = pgTable('chat_messages', {

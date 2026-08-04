@@ -127,7 +127,7 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
         </form>
         
         <p className="text-center text-[10px] text-[#4B5563] mt-4 font-bold uppercase tracking-[0.1em] opacity-60">
-          Deal Intelligence Assistant • High Precision Extraction
+          DealCollab AI can make mistakes. Verify important deal and counterparty information before taking action.
         </p>
       </div>
     </div>

@@ -2,7 +2,9 @@
 // Returns a complete forensic breakdown of why matching succeeded/failed for a proposal.
 // Surface this in your admin UI or hit directly with curl.
 
+import crypto from 'crypto';
 import { auth } from '@/auth';
+import { isAdmin as isAdminEmail } from '@/lib/admin';
 import type { DealIntent } from '@/lib/promptRouter';
 import { getCounterpartyIntents } from '@/lib/scoringEngine';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
@@ -11,16 +13,28 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function isValidAdminKey(header: string | null): boolean {
+    const expected = process.env.ADMIN_API_KEY;
+    if (!expected || !header) return false;
+    const expectedBuf = Buffer.from(expected);
+    const headerBuf = Buffer.from(header);
+    if (expectedBuf.length !== headerBuf.length) return false;
+    return crypto.timingSafeEqual(expectedBuf, headerBuf);
+}
+
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ proposalID: string }> }
 ) {
     try {
-        const adminKey = req.headers.get('x-admin-key');
         const session = await auth();
-        const isAdmin = !!process.env.ADMIN_API_KEY && adminKey === process.env.ADMIN_API_KEY;
+        // Previously this only checked "is any session present" — any logged-in
+        // user could view forensic matching diagnostics for any proposal. Now
+        // requires the ADMIN_EMAILS allowlist (same source of truth as
+        // /api/admin/dashboard) OR the internal admin key.
+        const isAdmin = isValidAdminKey(req.headers.get('x-admin-key')) || isAdminEmail(session?.user?.email);
 
-        if (!isAdmin && !session?.user?.email) {
+        if (!isAdmin) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

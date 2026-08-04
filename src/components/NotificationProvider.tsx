@@ -14,6 +14,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 import { createSupabaseClient } from '@/utils/supabase/client';
+import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -38,6 +39,9 @@ function formatRelativeTime(dateString: string): string {
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+
   const { data: apiNotifications, mutate } = useSWR('/api/notifications', fetcher, {
     refreshInterval: 15000
   });
@@ -63,19 +67,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [apiNotifications]);
 
   useEffect(() => {
+    // Without a filter, this subscribed to INSERTs on the ENTIRE notifications
+    // table with the anon key — the `notifications` table has no RLS, so every
+    // connected browser received every user's notification row payload over
+    // the websocket (the code only used it as a refetch trigger, but the full
+    // row still transited the client). Scoping the filter to this user's own
+    // rows is the practical fix available without adopting Supabase Auth (see
+    // security report — RLS with auth.uid() can't bind to a NextAuth session).
+    if (!userId) return;
+
     const supabase = createSupabaseClient();
     if (!supabase) return;
 
-    const channel = supabase.channel('realtime-notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => {
-        mutate(); // Re-fetch immediately when DB changes
-      })
+    const channel = supabase.channel(`realtime-notifications-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        () => {
+          mutate(); // Re-fetch immediately when DB changes
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [mutate]);
+  }, [mutate, userId]);
 
   const notifications = localNotifs;
 

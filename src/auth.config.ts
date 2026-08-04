@@ -9,7 +9,11 @@ export default {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
+      // false: auto-linking a Google login to any existing account with a
+      // matching email lets an attacker who registers an unverified matching
+      // email elsewhere take over that account. Confirmed with user — no known
+      // flow here depends on this.
+      allowDangerousEmailAccountLinking: false,
     }),
   ],
   pages: {

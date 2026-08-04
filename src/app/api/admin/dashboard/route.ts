@@ -127,6 +127,7 @@ async function requireAdmin() {
                         ? 'Your email is not on the ADMIN_EMAILS allowlist.'
                         : 'ADMIN_EMAILS is not configured.',
                     email: access.email,
+                    diagnostics: access.diagnostics,
                 },
                 { status: access.email ? 403 : 401 }
             ),
