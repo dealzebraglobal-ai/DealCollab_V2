@@ -17,7 +17,11 @@ export function generateStaticParams() {
   return GUIDE_DOCS.map(d => ({ slug: d.slug }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const entry = getGuideDoc(slug);
   if (!entry) return {};

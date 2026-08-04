@@ -2,6 +2,7 @@
 import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { hasAcceptedTerms } from '@/lib/consent';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,14 @@ export async function POST(req: NextRequest) {
 
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        if (!(await hasAcceptedTerms(user.id))) {
+            return NextResponse.json(
+                { error: 'consent_required',
+                  message: 'Please complete your profile' },
+                { status: 403 },
+            );
         }
 
         // Atomic RPC: token check + deduct + ledger + connection record

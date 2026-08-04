@@ -13,6 +13,7 @@ interface ProfileUser {
   expertise_description?: string | null;
   active_mandates?: unknown[] | null;
   co_advisory?: boolean | null;
+  terms_accepted?: boolean | null;
 }
 
 /**
@@ -45,6 +46,9 @@ export function calculateProfileCompletion(user: ProfileUser): number {
     
     // Section 6: Collaboration
     user.co_advisory !== null && user.co_advisory !== undefined,
+
+    // Section 9: Terms and Conditions
+    !!user.terms_accepted,
   ];
 
   const completed = checks.filter(Boolean).length;

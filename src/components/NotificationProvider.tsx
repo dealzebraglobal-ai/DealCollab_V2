@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Notification } from '@/components/NotificationCard';
 
 interface NotificationContextType {
@@ -81,7 +81,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const markAsRead = async (id: number | string) => {
+  const markAsRead = useCallback(async (id: number | string) => {
     setLocalNotifs(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     await fetch('/api/notifications', {
       method: 'PATCH',
@@ -89,28 +89,37 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       body: JSON.stringify({ id })
     });
     mutate();
-  };
+  }, [mutate]);
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     setLocalNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
     // Real implementation would have a mark-all route
-  };
+  }, []);
 
-  const addNotification = (notif: Omit<Notification, 'id' | 'isRead'>) => {
+  const addNotification = useCallback((notif: Omit<Notification, 'id' | 'isRead'>) => {
     const newNotif = {
       ...notif,
       id: Date.now(),
       isRead: false
     };
     setLocalNotifs(prev => [newNotif, ...prev]);
-  };
+  }, []);
 
-  const refreshNotifications = async () => {
+  const refreshNotifications = useCallback(async () => {
     await mutate();
-  };
+  }, [mutate]);
+
+  const contextValue = useMemo(() => ({
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    addNotification,
+    refreshNotifications
+  }), [notifications, unreadCount, markAsRead, markAllAsRead, addNotification, refreshNotifications]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, addNotification, refreshNotifications }}>
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );

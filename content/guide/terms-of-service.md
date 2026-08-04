@@ -114,4 +114,4 @@ exclusive jurisdiction.
 
 ## 15. Contact
 
-[Support email] · Dealzebra Global Intelligence LLP, [Registered address]
+[letsconnect@dealzebra.io] · Dealzebra Global Intelligence LLP

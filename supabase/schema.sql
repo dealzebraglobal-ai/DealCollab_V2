@@ -64,6 +64,23 @@ CREATE TABLE notifications (
     is_read BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+-- 8. NOTIFICATION DELIVERIES
+CREATE TABLE notification_deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    notification_id UUID NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    channel TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'sent', 'failed', 'skipped')),
+    provider TEXT,
+    provider_message_id TEXT,
+    template_name TEXT,
+    retry_count INTEGER DEFAULT 0 NOT NULL CHECK (retry_count >= 0),
+    error_message TEXT,
+    attempted_at TIMESTAMP WITH TIME ZONE,
+    sent_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 
 -- Add indexes for performance
 CREATE INDEX idx_deals_user_id ON deals(user_id);
@@ -73,3 +90,8 @@ CREATE INDEX idx_eois_sender_id ON eois(sender_id);
 CREATE INDEX idx_eois_receiver_id ON eois(receiver_id);
 CREATE INDEX idx_tokens_user_id ON tokens(user_id);
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+
+CREATE INDEX idx_notification_deliveries_notification_id ON notification_deliveries(notification_id);
+CREATE INDEX idx_notification_deliveries_user_id ON notification_deliveries(user_id);
+CREATE INDEX idx_notification_deliveries_status ON notification_deliveries(status);
+CREATE INDEX idx_notification_deliveries_created_at ON notification_deliveries(created_at DESC);

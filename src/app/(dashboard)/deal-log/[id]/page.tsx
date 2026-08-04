@@ -40,7 +40,7 @@ const PREVIEW_TRUNCATE = 400;
 export default function MatchDetailPage() {
    const params = useParams();
    const router = useRouter();
-   const { tokens, refreshProfile } = useUser();
+   const { tokens, onboarding, refreshProfile } = useUser();
    const { addNotification } = useNotifications();
    const id = params.id as string;
 
@@ -75,17 +75,21 @@ export default function MatchDetailPage() {
    console.log('Preview Source:', counterparty?.previewSource ?? 'unknown');
 
    const handleSendEOI = async () => {
+      // 1. Pre-check: Must have completed profile
+      if (!onboarding?.profileCompleted) {
+         setSendError('Please complete your profile');
+         return;
+      }
 
-      // You must be able to fund the connection you're initiating: both parties are charged 50
-      // on approval, so sending requires at least 50 tokens.
+      // 2. Pre-check: Must have at least 50 tokens
       if ((tokens ?? 0) < 50) {
          setSendError('You need at least 50 tokens to send an Expression of Interest.');
          return;
       }
+
       setSendError(null);
       setIsSending(true);
       try {
-         // 1. Create EOI record in database
          const resEoi = await fetch('/api/eois', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -96,14 +100,12 @@ export default function MatchDetailPage() {
             })
          });
 
+         const json = await resEoi.json().catch(() => ({}));
          if (!resEoi.ok) {
-            const err = await resEoi.json();
-            throw new Error(err.error || 'Failed to send Expression of Interest');
+            setSendError(json.message || json.error || 'Please complete your profile');
+            return;
          }
 
-         // Tokens are NOT debited on send — both parties are charged 50 on APPROVAL
-         // (server-side, atomic; see approve_eoi_and_charge). The >= 50 gate above just
-         // prevents sending an EOI the sender can't fund at approval time.
          await refreshProfile();
 
          addNotification({
@@ -115,12 +117,7 @@ export default function MatchDetailPage() {
          mutate();
          router.push('/deal-dashboard');
       } catch (err: any) {
-         console.error(err);
-         addNotification({
-            type: 'error',
-            message: err.message || 'Something went wrong while sending EOI.',
-            time: 'Just now'
-         });
+         setSendError(err?.message || 'Something went wrong while sending EOI.');
       } finally {
          setIsSending(false);
       }
@@ -343,14 +340,23 @@ export default function MatchDetailPage() {
                      )}
 
                      {sendError && (
-                        <div className="mt-1 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-100 w-full sm:max-w-md">
+                        <div className="mt-2 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-100 w-full sm:max-w-md shadow-xs">
                            <p className="text-xs font-bold text-red-600">{sendError}</p>
-                           <Link
-                              href="/profile/billing"
-                              className="shrink-0 text-[11px] font-black text-[#F97316] uppercase tracking-widest hover:underline whitespace-nowrap"
-                           >
-                              Buy Tokens →
-                           </Link>
+                           {sendError.toLowerCase().includes('complete your profile') ? (
+                              <Link
+                                 href="/profile"
+                                 className="shrink-0 text-[11px] font-black text-[#F97316] uppercase tracking-widest hover:underline whitespace-nowrap"
+                              >
+                                 Complete Profile →
+                              </Link>
+                           ) : (
+                              <Link
+                                 href="/profile/billing"
+                                 className="shrink-0 text-[11px] font-black text-[#F97316] uppercase tracking-widest hover:underline whitespace-nowrap"
+                              >
+                                 Buy Tokens →
+                              </Link>
+                           )}
                         </div>
                      )}
                   </div>

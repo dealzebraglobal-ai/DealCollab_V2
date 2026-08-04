@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/UserProvider';
 import { Sparkles, Loader2 } from 'lucide-react';
@@ -77,7 +77,7 @@ export default function ProfilePage() {
          ) : (
             <>
                <HeroSection />
-               <div className="w-full bg-gray-50/50">
+               <div className="w-full bg-gray-50/50 py-8 space-y-8">
                   <ProfileView 
                      data={profile} 
                      onEdit={() => setIsEditing(true)} 

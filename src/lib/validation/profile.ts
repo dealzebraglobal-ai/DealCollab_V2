@@ -151,6 +151,9 @@ export interface ProfileFormData {
   // Section 8: Additional Information
   additionalInfo: string;
 
+  // Section 9: Terms and Conditions
+  termsAccepted: boolean;
+
   // Metadata / Tokens / DB Aliases
   tokens?: number;
   profile_image?: string | null;
@@ -183,6 +186,7 @@ export const INITIAL_FORM_DATA: ProfileFormData = {
   attachmentFile: null,
   attachmentUrl: '',
   additionalInfo: '',
+  termsAccepted: false,
 };
 
 // ─── Step Configuration ─────────────────────────────────────────
@@ -196,6 +200,7 @@ export const STEPS = [
   { id: 6, label: 'Collaboration', section: 'Section 6' },
   { id: 7, label: 'Attachments', section: 'Section 7' },
   { id: 8, label: 'Additional Info', section: 'Section 8' },
+  { id: 9, label: 'Terms and Conditions', section: 'Section 9' },
 ] as const;
 
 export const TOTAL_STEPS = STEPS.length;
@@ -306,6 +311,12 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
 
     case 8: // Additional Information — all optional
       break;
+
+    case 9: // Terms and Conditions
+      if (!data.termsAccepted) {
+        errors.push({ field: 'termsAccepted', message: 'You must accept the Terms of Service & Privacy Policy' });
+      }
+      break;
   }
 
   return errors;
@@ -360,6 +371,8 @@ export function calculateProgress(data: ProfileFormData): number {
     data.activeMandates.length > 0,
     // Section 6: Collaboration
     true, // coAdvisory always has a value
+    // Section 9: Terms and Conditions
+    !!data.termsAccepted,
   ];
 
   const filled = checks.filter(Boolean).length;

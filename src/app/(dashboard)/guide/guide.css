@@ -6,22 +6,17 @@
    ============================================================ */
 
 .guide-root {
-  --g-paper: #f7f5f0;        /* warm ivory */
-  --g-ink: #17181c;          /* near-black */
+  --g-paper: #ffffff;        /* white page background */
+  --g-ink: #111111;          /* near-black */
   --g-ink-soft: #4c4f58;
-  --g-line: #dcd8ce;
-  --g-accent: #7a2e2e;       /* oxblood */
-  --g-accent-ink: #5c2222;
-  --g-card: #fffdf9;
+  --g-line: rgba(17, 17, 17, 0.08);
+  --g-accent: #FF6A00;       /* brand orange */
+  --g-accent-ink: #E65C00;
+  --g-card: #ffffff;
   --g-max: 46rem;
 
-  font-family: var(--guide-font-body), Georgia, serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   background: var(--g-paper);
-  background-image: radial-gradient(
-      circle at 85% -10%,
-      rgba(122, 46, 46, 0.05),
-      transparent 45%
-    );
   color: var(--g-ink);
   min-height: 100vh;
   display: flex;
@@ -40,8 +35,8 @@
 }
 
 .guide-brand {
-  font-family: var(--guide-font-display), Georgia, serif;
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 700;
   font-size: 1.15rem;
   letter-spacing: 0.01em;
   color: var(--g-ink);
@@ -52,7 +47,8 @@
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--g-ink-soft);
+  color: var(--g-accent);
+  font-weight: 700;
 }
 
 .guide-main {
@@ -98,12 +94,13 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--g-accent);
+  font-weight: 700;
   margin: 0 0 0.9rem;
 }
 
 .guide-title {
-  font-family: var(--guide-font-display), Georgia, serif;
-  font-weight: 500;
+  font-family: inherit;
+  font-weight: 700;
   font-size: clamp(2rem, 4.5vw, 3.1rem);
   line-height: 1.12;
   letter-spacing: -0.015em;
@@ -122,28 +119,34 @@
 .guide-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-  gap: 1px;
-  background: var(--g-line);
-  border: 1px solid var(--g-line);
+  gap: 1.25rem;
+  background: transparent;
+  border: none;
 }
 
 .guide-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  background: var(--g-card);
+  gap: 0.65rem;
+  background: #ffffff;
+  border: 1px solid rgba(255, 106, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  border-radius: 1rem;
   padding: 1.6rem 1.5rem 1.4rem;
   text-decoration: none;
   color: var(--g-ink);
   opacity: 0;
   transform: translateY(10px);
   animation: guide-rise 0.5s ease forwards;
-  transition: background 0.25s ease;
+  transition: all 0.25s ease;
 }
 
 .guide-card:hover {
-  background: #fdf6ee;
+  background: #ffffff;
+  border-color: rgba(255, 106, 0, 0.7);
+  box-shadow: 0 8px 25px rgba(255, 106, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .guide-card:hover .guide-card-cta {
@@ -152,17 +155,19 @@
 }
 
 .guide-card-index {
-  font-family: var(--guide-font-display), Georgia, serif;
+  font-family: inherit;
   font-size: 0.8rem;
+  font-weight: 700;
   color: var(--g-accent);
 }
 
 .guide-card h2 {
-  font-family: var(--guide-font-display), Georgia, serif;
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 700;
   font-size: 1.2rem;
   line-height: 1.25;
   margin: 0;
+  color: #111111;
 }
 
 .guide-card p {
@@ -175,7 +180,7 @@
 
 .guide-card-cta {
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--g-accent);
   transition: transform 0.2s ease, color 0.2s ease;
@@ -217,8 +222,8 @@
 }
 
 .guide-prose h1 {
-  font-family: var(--guide-font-display), Georgia, serif;
-  font-weight: 500;
+  font-family: inherit;
+  font-weight: 700;
   font-size: clamp(1.8rem, 3.6vw, 2.5rem);
   line-height: 1.15;
   letter-spacing: -0.01em;
@@ -226,8 +231,8 @@
 }
 
 .guide-prose h2 {
-  font-family: var(--guide-font-display), Georgia, serif;
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 700;
   font-size: 1.35rem;
   line-height: 1.3;
   margin: 2.6rem 0 0.8rem;
@@ -271,7 +276,8 @@
   margin: 1.2rem 0;
   padding: 0.8rem 1.2rem;
   border-left: 3px solid var(--g-accent);
-  background: rgba(122, 46, 46, 0.05);
+  background: rgba(255, 106, 0, 0.06);
+  border-radius: 0 0.5rem 0.5rem 0;
   font-style: italic;
 }
 
@@ -311,15 +317,19 @@
   gap: 0.25rem;
   margin-top: 3.5rem;
   padding: 1.3rem 1.5rem;
-  border: 1px solid var(--g-line);
+  border: 1px solid rgba(255, 106, 0, 0.3);
+  border-radius: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   background: var(--g-card);
   text-decoration: none;
   color: var(--g-ink);
-  transition: background 0.25s ease;
+  transition: all 0.25s ease;
 }
 
 .guide-next:hover {
-  background: #fdf6ee;
+  background: #ffffff;
+  border-color: rgba(255, 106, 0, 0.7);
+  box-shadow: 0 6px 20px rgba(255, 106, 0, 0.12);
 }
 
 .guide-next span {
@@ -327,10 +337,11 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--g-accent);
+  font-weight: 700;
 }
 
 .guide-next strong {
-  font-family: var(--guide-font-display), Georgia, serif;
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 700;
   font-size: 1.1rem;
 }

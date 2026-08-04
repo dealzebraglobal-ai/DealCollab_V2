@@ -9,7 +9,7 @@ import FeatureLockedOverlay from '@/components/FeatureLockedOverlay';
 
 export default function NotificationsPage() {
   const isLocked = false; // Feature lock enabled
-  const { notifications, markAsRead, markAllAsRead, unreadCount, addNotification, refreshNotifications } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, unreadCount, refreshNotifications } = useNotifications();
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -21,20 +21,13 @@ export default function NotificationsPage() {
     
     try {
       await refreshNotifications();
-      if (isBackground) {
-        addNotification({
-          type: 'success',
-          message: 'Notifications updated in real-time.',
-          time: 'Just now'
-        });
-      }
     } catch {
       if (!isBackground) setError(true);
     } finally {
       if (!isBackground) setInitialLoading(false);
       setRefreshing(false);
     }
-  }, [refreshNotifications, addNotification]);
+  }, [refreshNotifications]);
 
   useEffect(() => {
     // Defer initial fetch to avoid synchronous setState warning in effect body

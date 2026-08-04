@@ -1,0 +1,122 @@
+/* ============================================================
+   GuideMenu — sidebar "Guide & Trust" section
+   Theme via the 4 variables on .root. Light-sidebar defaults;
+   for a DARK sidebar use the commented values.
+   ============================================================ */
+
+.root {
+  --gm-fg: #2a2c33;                       /* dark sidebar: #d6d7dc */
+  --gm-fg-dim: #6b6e78;                   /* dark sidebar: #8b8e99 */
+  --gm-accent: #FF6A00;                   /* brand orange accent */
+  --gm-hover: rgba(0, 0, 0, 0.05);        /* dark sidebar: rgba(255,255,255,0.06) */
+
+  width: 100%;
+  font-size: 0.875rem;
+  color: var(--gm-fg);
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--gm-fg);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.trigger:hover {
+  background: var(--gm-hover);
+}
+
+.triggerActive {
+  color: var(--gm-accent);
+}
+
+.label {
+  flex: 1;
+}
+
+.chevron {
+  color: var(--gm-fg-dim);
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.list {
+  list-style: none;
+  margin: 0.15rem 0 0.35rem;
+  padding: 0 0 0 1.05rem;
+  animation: gm-drop 0.18s ease;
+}
+
+.list li {
+  position: relative;
+}
+
+/* thin rail connecting sub-items to the parent */
+.list::before {
+  content: '';
+  position: absolute;
+  margin-left: -0.45rem;
+  width: 1px;
+  height: 100%;
+  background: currentColor;
+  opacity: 0.12;
+}
+
+.list {
+  position: relative;
+}
+
+.item {
+  display: block;
+  padding: 0.42rem 0.65rem;
+  border-radius: 7px;
+  color: var(--gm-fg-dim);
+  text-decoration: none;
+  line-height: 1.35;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.item:hover {
+  background: var(--gm-hover);
+  color: var(--gm-fg);
+}
+
+.itemActive,
+.itemActive:hover {
+  color: var(--gm-accent);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--gm-accent) 9%, transparent);
+}
+
+@keyframes gm-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list {
+    animation: none;
+  }
+  .chevron {
+    transition: none;
+  }
+}

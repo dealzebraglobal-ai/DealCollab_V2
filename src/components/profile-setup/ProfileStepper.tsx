@@ -131,9 +131,38 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
     }
   };
 
+  // Check consent status on mount to pre-fill termsAccepted if already accepted
+  useEffect(() => {
+    fetch('/api/consent/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.accepted === true) {
+          setFormData(prev => ({ ...prev, termsAccepted: true }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleFinalSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // 0. Submit Terms Acceptance if step 9 is checked
+      if (formData.termsAccepted) {
+        try {
+          const consentRes = await fetch('/api/consent/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accepted: true }),
+          });
+          const consentData = await consentRes.json().catch(() => ({}));
+          if (!consentRes.ok) {
+            console.warn('[ProfileStepper] Terms acceptance warning:', consentData?.message || consentData?.error);
+          }
+        } catch (consentErr) {
+          console.error('[ProfileStepper] Terms acceptance network error:', consentErr);
+        }
+      }
+
       // 1. Handle File Upload if present (Direct to Supabase via Signed URL)
       let attachmentUrl = formData.attachmentUrl;
       if (formData.attachmentFile) {
@@ -553,6 +582,37 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                     placeholder="Types of deals, typical size, strategic focus..." 
                   />
                 </InputGroup>
+              </StepCard>
+            </AnimatedStepWrapper>
+
+            {/* STEP 9: TERMS AND CONDITIONS */}
+            <AnimatedStepWrapper direction={direction} isActive={currentStep === 9}>
+              <StepCard title="Terms and Conditions" helper="Please confirm your agreement to activate your profile">
+                <div className="space-y-6 pt-2">
+                  <label className="flex items-start gap-4 p-6 rounded-2xl bg-[#fffaf3] border border-[#FFE4B5] transition-all cursor-pointer hover:border-[#FFA000]">
+                    <input
+                      type="checkbox"
+                      checked={formData.termsAccepted}
+                      onChange={e => updateFormData({ termsAccepted: e.target.checked })}
+                      className="mt-1 w-5 h-5 accent-[#FFA000] rounded cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs font-semibold leading-relaxed text-[#0B1B2B]">
+                      I agree to DealCollab&rsquo;s{' '}
+                      <a href="/guide/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline text-[#F97316] font-bold hover:text-[#FFA000]">
+                        Terms of Service
+                      </a>{' '}
+                      and{' '}
+                      <a href="/guide/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline text-[#F97316] font-bold hover:text-[#FFA000]">
+                        Privacy Policy
+                      </a>
+                      . I understand that sending an EOI costs tokens and reveals my
+                      verified contact details to the counterparty on approval, that
+                      tokens are non-refundable, and that DealCollab does not guarantee
+                      any match or verify the claims counterparties make. I confirm I am
+                      authorised to submit the mandates I enter.
+                    </span>
+                  </label>
+                </div>
               </StepCard>
             </AnimatedStepWrapper>
           </div>

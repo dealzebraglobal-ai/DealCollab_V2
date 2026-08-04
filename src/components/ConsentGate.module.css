@@ -1,0 +1,117 @@
+/* ============================================================
+   ConsentGate — palette matches the Guide & Trust section.
+   Retheme via the top variables.
+   ============================================================ */
+
+.card {
+  --c-ink: #17181c;
+  --c-ink-soft: #4c4f58;
+  --c-line: #dcd8ce;
+  --c-accent: #7a2e2e;
+  --c-accent-ink: #5c2222;
+  --c-paper: #fffdf9;
+
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 2rem 1.9rem 1.6rem;
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  color: var(--c-ink);
+  font-family: inherit;
+}
+
+.kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+  margin: 0 0 0.6rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.7rem;
+}
+
+.lede {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--c-ink-soft);
+  margin: 0 0 1.6rem;
+}
+
+.lede strong {
+  color: var(--c-ink);
+}
+
+.consentRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem;
+  border: 1px solid var(--c-line);
+  border-radius: 9px;
+  background: rgba(122, 46, 46, 0.03);
+  cursor: pointer;
+}
+
+.checkbox {
+  margin-top: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  accent-color: var(--c-accent);
+  cursor: pointer;
+}
+
+.consentText {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--c-ink);
+}
+
+.consentText a {
+  color: var(--c-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.error {
+  color: #b3261e;
+  font-size: 0.85rem;
+  margin: 0.9rem 0 0;
+}
+
+.button {
+  width: 100%;
+  margin-top: 1.3rem;
+  padding: 0.8rem 1rem;
+  background: var(--c-accent);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.18s ease, opacity 0.18s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--c-accent-ink);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.footnote {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--c-ink-soft);
+  margin: 0.9rem 0 0;
+}

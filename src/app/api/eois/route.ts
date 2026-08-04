@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { buildBlindCounterparty, type CounterpartyProposalRow } from '@/lib/M5_blindCard';
 import { buildSynergyReview, type SynergySide } from '@/lib/M5_synergy';
+import { hasAcceptedTerms } from '@/lib/consent';
+import { deliverNotificationEmail, type NotificationRow } from '@/lib/email/notifications/delivery';
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
@@ -212,6 +214,16 @@ export async function POST(req: NextRequest) {
     const { data: dbUser } = await supabase.from('users').select('id').eq('email', session.user.email).single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    if (!(await hasAcceptedTerms(dbUser.id))) {
+      return NextResponse.json(
+        {
+          error: 'consent_required',
+          message: 'Please complete your profile'
+        },
+        { status: 403 },
+      );
+    }
+
     const { data: eoi, error: eoiErr } = await supabase
       .from('eois')
       .insert([{
@@ -228,12 +240,21 @@ export async function POST(req: NextRequest) {
 
     // Trigger Notification for Receiver if exists
     if (receiverId) {
-      await supabase.from('notifications').insert([{
-        user_id: receiverId,
-        type: 'EOI_RECEIVED',
-        message: 'You have received a new Expression of Interest.',
-        is_read: false
-      }]);
+      const { data: notification, error: notificationErr } =
+        await supabase.from('notifications').insert([{
+          user_id: receiverId,
+          type: 'EOI_RECEIVED',
+          message: 'You have received a new Expression of Interest.',
+
+
+          is_read: false,
+        }]).select('id,user_id,type,message,is_read,created_at').single();
+
+      if (notificationErr) throw notificationErr;
+
+      await deliverNotificationEmail(supabase, notification as NotificationRow);
+
+
     }
 
     return NextResponse.json(eoi);
@@ -287,13 +308,16 @@ export async function PATCH(req: NextRequest) {
         // Sender is the one short: notify the SENDER in-app (with a billing link), and tell the
         // receiver we've notified them. The receiver's own balance is fine, so no "buy tokens" for them.
         if (r?.error_code === 'SENDER_INSUFFICIENT') {
-          await supabase.from('notifications').insert([{
+          const { data: notification, error: notificationErr } = await supabase.from('notifications').insert([{
             user_id: existingEoi.sender_id,
             type: 'EOI_APPROVAL_BLOCKED',
             message: "Someone tried to approve your EOI, but you don't have enough tokens. Please top up to complete the connection.",
             is_read: false,
             metadata: { link: '/profile/billing' },
-          }]);
+          }]).select('id,user_id,type,message,is_read,created_at').single();
+
+          if (notificationErr) throw notificationErr;
+          await deliverNotificationEmail(supabase, notification as NotificationRow);
           return NextResponse.json({
             success: false,
             errorCode: 'SENDER_INSUFFICIENT',
@@ -313,13 +337,15 @@ export async function PATCH(req: NextRequest) {
         }, { status: http });
       }
 
-      await supabase.from('notifications').insert([{
+      const { data: notification, error: notificationErr } = await supabase.from('notifications').insert([{
         user_id: existingEoi.sender_id,
         type: 'EOI_APPROVED',
         message: 'Your Expression of Interest was approved.',
         is_read: false,   // boolean column
-      }]);
+      }]).select('id,user_id,type,message,is_read,created_at').single();
 
+      if (notificationErr) throw notificationErr;
+      await deliverNotificationEmail(supabase, notification as NotificationRow);
       return NextResponse.json({
         success: true,
         status: 'approved',

@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { users, tokenTransactions } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { hasAcceptedTerms } from '@/lib/consent';
 
 export async function GET() {
   const session = await auth();
@@ -65,6 +66,15 @@ export async function POST(req: NextRequest) {
     if (!dbUser) return NextResponse.json({ error: 'User record not initialized' }, { status: 404 });
 
     const userId = dbUser.id;
+
+    if (!(await hasAcceptedTerms(userId))) {
+      return NextResponse.json(
+        { error: 'consent_required',
+          message: 'Complete your profile and accept the Terms before purchasing tokens.' },
+        { status: 403 },
+      );
+    }
+
     const body = await req.json();
     const { type, action, amount } = body;
 

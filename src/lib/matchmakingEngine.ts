@@ -29,6 +29,7 @@ import OpenAI from 'openai';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { getSectorCompatibility, normalizeSector, MATCH_ARCHETYPES, detectFraudSignals } from './M5_sectorMatrix';
 import { buildReciprocalRow, buildBlindNotification, buildSavedSearchRecord, type MatchRow, type NotificationRecord } from './M5_persistence';
+import { deliverNotificationEmail, type NotificationRow } from './email/notifications/delivery';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -883,11 +884,17 @@ export async function executeMatchmaking(
         })
         .filter((n: NotificationRecord | null): n is NotificationRecord => n !== null);
       if (notifRows.length > 0) {
-        const { error: notifErr } = await supabase
+        const { data: insertedNotifications, error: notifErr } = await supabase
           .from('notifications')
-          .upsert(notifRows, { onConflict: 'match_id', ignoreDuplicates: true });
+          .upsert(notifRows, { onConflict: 'match_id', ignoreDuplicates: true }).
+          select('id,user_id,type,message,is_read,created_at');
         if (notifErr) console.error('[M5] Notification insert error:', notifErr);
-        else { notifiedCount = notifRows.length; console.log(`[M5] ${notifiedCount} blind notifications stored`); }
+        else {
+          const notifications = (insertedNotifications ?? []) as NotificationRow[];
+          notifiedCount = notifications.length;
+          await Promise.all(notifications.map((notification) => deliverNotificationEmail(supabase, notification)));
+          console.log(`[M5] ${notifiedCount} blind notifications stored`);
+        }
       }
     }
 
