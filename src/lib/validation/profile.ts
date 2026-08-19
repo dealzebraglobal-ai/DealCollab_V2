@@ -122,6 +122,10 @@ export interface ProfileFormData {
   avatarFile: File | null;
   profileImage: string;
 
+  // End User specific
+  companyName: string;
+  website: string;
+
   // Section 2: Geography & Coverage
   baseCity: string;
   baseCountry: string;
@@ -171,6 +175,8 @@ export const INITIAL_FORM_DATA: ProfileFormData = {
   customCategory: '',
   avatarFile: null,
   profileImage: '',
+  companyName: '',
+  website: '',
   baseCity: '',
   baseCountry: '',
   activeGeographies: [],
@@ -207,6 +213,15 @@ export const TOTAL_STEPS = STEPS.length;
 
 // ─── Validation Functions ───────────────────────────────────────
 
+ 
+export const END_USER_INTENT_OPTIONS = [
+  'Sell Business',
+  'Raise Capital',
+  'Find Strategic Partner',
+  'Acquire a Business',
+  'Other',
+] as const;
+
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -216,8 +231,67 @@ export function isValidPhone(phone: string): boolean {
   return /^\+?[\d\s()-]{7,20}$/.test(phone.trim());
 }
 
+export function isValidWebsite(url: string): boolean {
+  if (!url || !url.trim()) return false;
+  try {
+    const formatted = url.includes('://') ? url : `http://${url}`;
+    const parsed = new URL(formatted);
+    return parsed.hostname.includes('.') && parsed.hostname.length > 3;
+  } catch (_) {
+    return false;
+  }
+}
+
 export function validateStep(step: number, data: ProfileFormData): ValidationError[] {
   const errors: ValidationError[] = [];
+  const isBusinessPromoter = data.professionalCategory.includes('Business Owner / Promoter');
+
+  if (isBusinessPromoter) {
+    switch (step) {
+      case 1: // Basic Identity
+        if (!data.fullName.trim()) {
+          errors.push({ field: 'fullName', message: 'Full Name is required' });
+        }
+        if (!data.workEmail.trim()) {
+          errors.push({ field: 'workEmail', message: 'Work Email is required' });
+        } else if (!isValidEmail(data.workEmail)) {
+          errors.push({ field: 'workEmail', message: 'Enter a valid professional email address' });
+        }
+        if (!data.companyName.trim()) {
+          errors.push({ field: 'companyName', message: 'Company / Business Name is required' });
+        }
+        if (!data.website.trim()) {
+          errors.push({ field: 'website', message: 'Business Website is required' });
+        } else if (!isValidWebsite(data.website)) {
+          errors.push({ field: 'website', message: 'Enter a valid business website URL' });
+        }
+        if (data.phone.trim() && !isValidPhone(data.phone)) {
+          errors.push({ field: 'phone', message: 'Enter a valid phone number with country code' });
+        }
+        break;
+
+      case 2: // Business Details
+        if (data.currentFocus.length === 0) {
+          errors.push({ field: 'currentFocus', message: 'Select at least one intent' });
+        }
+        if (data.primarySectors.length > 5) {
+          errors.push({ field: 'primarySectors', message: 'Maximum 5 industry sectors allowed' });
+        }
+        if (data.expertiseDescription.trim()) {
+          if (data.expertiseDescription.trim().length < 40) {
+            errors.push({ field: 'expertiseDescription', message: `Minimum 40 characters required (currently ${data.expertiseDescription.trim().length})` });
+          }
+        }
+        break;
+
+      case 3: // Terms and Conditions
+        if (!data.termsAccepted) {
+          errors.push({ field: 'termsAccepted', message: 'You must accept the Terms of Service & Privacy Policy' });
+        }
+        break;
+    }
+    return errors;
+  }
 
   switch (step) {
     case 1: // Basic Identity
@@ -331,9 +405,11 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
  */
 export function validateFullProfile(data: ProfileFormData): ValidationError[] {
   const allErrors: ValidationError[] = [];
-  for (let step = 1; step <= TOTAL_STEPS; step++) {
-    // Skip step 7 — file validation is handled by /api/profile/upload
-    if (step === 7) continue;
+  const isBusinessPromoter = data.professionalCategory.includes('Business Owner / Promoter');
+  const totalSteps = isBusinessPromoter ? 3 : TOTAL_STEPS;
+  for (let step = 1; step <= totalSteps; step++) {
+    // Skip step 7 for non-business promoter — file validation is handled by /api/profile/upload
+    if (!isBusinessPromoter && step === 7) continue;
     allErrors.push(...validateStep(step, data));
   }
   return allErrors;
@@ -351,6 +427,27 @@ export function isStepValid(step: number, data: ProfileFormData): boolean {
  * Tracks all required + important fields
  */
 export function calculateProgress(data: ProfileFormData): number {
+  const isBusinessPromoter = data.professionalCategory.includes('Business Owner / Promoter');
+
+  if (isBusinessPromoter) {
+    const mandatoryChecks = [
+      !!data.fullName.trim(),
+      !!data.workEmail.trim() && isValidEmail(data.workEmail),
+      !!data.companyName.trim(),
+      !!data.website.trim() && isValidWebsite(data.website),
+      data.currentFocus.length > 0,
+      !!data.termsAccepted,
+    ];
+
+    if (mandatoryChecks.every(Boolean)) {
+      return 100;
+    }
+
+    const filled = mandatoryChecks.filter(Boolean).length;
+    return Math.round((filled / mandatoryChecks.length) * 100);
+  }
+
+
   const checks = [
     // Section 1: Basic Identity (weight: high)
     !!data.fullName.trim(),
@@ -378,3 +475,4 @@ export function calculateProgress(data: ProfileFormData): number {
   const filled = checks.filter(Boolean).length;
   return Math.round((filled / checks.length) * 100);
 }
+

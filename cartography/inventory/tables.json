@@ -1,0 +1,344 @@
+[
+  {
+    "table": "accounts",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "user_id",
+        "type": "uuid NOT NULL",
+        "primary": false,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0001_glamorous_centennial.sql"
+  },
+  {
+    "table": "chat_messages",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0002_shocking_captain_cross.sql"
+  },
+  {
+    "table": "chat_sessions",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0002_shocking_captain_cross.sql"
+  },
+  {
+    "table": "deals",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/schema.sql"
+  },
+  {
+    "table": "documents",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0002_shocking_captain_cross.sql"
+  },
+  {
+    "table": "eois",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/schema.sql"
+  },
+  {
+    "table": "mandates",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0002_shocking_captain_cross.sql"
+  },
+  {
+    "table": "matches",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/schema.sql"
+  },
+  {
+    "table": "notification_deliveries",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/schema.sql"
+  },
+  {
+    "table": "notifications",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/schema.sql"
+  },
+  {
+    "table": "proposal_matches",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/20260514_matchmaking.sql"
+  },
+  {
+    "table": "proposals",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/20260514_matchmaking.sql"
+  },
+  {
+    "table": "saved_searches",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/20260514_matchmaking.sql"
+  },
+  {
+    "table": "sessions",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "session_token",
+        "type": "text PRIMARY KEY NOT NULL",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0001_glamorous_centennial.sql"
+  },
+  {
+    "table": "token_transactions",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0002_shocking_captain_cross.sql"
+  },
+  {
+    "table": "tokens",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/schema.sql"
+  },
+  {
+    "table": "users",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "id",
+        "type": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "primary": true,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/schema.sql"
+  },
+  {
+    "table": "verification_tokens",
+    "source": "supabase",
+    "columns": [
+      {
+        "name": "identifier",
+        "type": "text NOT NULL",
+        "primary": false,
+        "maps_to_code": ""
+      }
+    ],
+    "row_lifecycle": "",
+    "read_by": [],
+    "written_by": [],
+    "indexes": [],
+    "rls_policies": "",
+    "has_migrations": true,
+    "migration_path": "supabase/migrations/0001_glamorous_centennial.sql"
+  }
+]

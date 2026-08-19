@@ -1,0 +1,523 @@
+[
+  {
+    "var": "ADMIN_API_KEY",
+    "used_in": [
+      "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "src/app/api/chat/route.ts",
+      "src/app/api/webhooks/whatsapp/route.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "ADMIN_EMAILS",
+    "used_in": [
+      "src/lib/admin.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "ADMIN_SECRET",
+    "used_in": [
+      "src/app/api/admin/fix-encoding/route.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "APP_BASE_URL",
+    "used_in": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "AUTH_SECRET",
+    "used_in": [
+      "src/auth.ts",
+      "src/lib/magicLink.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "AUTH_TRUST_HOST",
+    "used_in": [
+      "src/auth.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "AUTH_URL",
+    "used_in": [
+      "src/auth.ts",
+      "src/lib/whatsappNotify.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "BREVO_API_KEY",
+    "used_in": [
+      "src/lib/emailOtp.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "BREVO_REPLY_TO_EMAIL",
+    "used_in": [
+      "src/lib/email/brevo.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "BREVO_REPLY_TO_NAME",
+    "used_in": [
+      "src/lib/email/brevo.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "BREVO_SENDER_EMAIL",
+    "used_in": [
+      "src/lib/emailOtp.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "BREVO_SENDER_NAME",
+    "used_in": [
+      "src/lib/email/brevo.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "CRON_SECRET",
+    "used_in": [
+      "src/app/api/cron/rematch/route.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "DATABASE_URL",
+    "used_in": [
+      "drizzle.config.ts",
+      "scripts/add_whatsapp_columns.ts",
+      "scripts/apply-rpc-migration.ts",
+      "scripts/backfill-mandate-summaries.ts",
+      "scripts/backfill-proposal-summaries.ts",
+      "scripts/embed-mandates.ts",
+      "src/db/index.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "EMAIL_NOTIFICATIONS_ENABLED",
+    "used_in": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "EMAIL_TEST_RECIPIENT",
+    "used_in": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": false,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "GOOGLE_CLIENT_ID",
+    "used_in": [
+      "src/auth.config.ts",
+      "src/auth.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "GOOGLE_CLIENT_SECRET",
+    "used_in": [
+      "src/auth.config.ts",
+      "src/auth.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "GROQ_API_KEY",
+    "used_in": [
+      "src/app/api/chat/history/route.ts",
+      "src/app/api/chat/route.ts",
+      "src/lib/ai/ai-client.ts",
+      "src/lib/intelligenceEngine.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "GROQ_MODEL",
+    "used_in": [
+      "src/lib/ai/ai-client.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "NEXT_PUBLIC_APP_URL",
+    "used_in": [
+      "src/app/api/webhooks/whatsapp/route.ts",
+      "src/lib/whatsappNotify.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local",
+      "browser-exposed build/runtime environment"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "used_in": [
+      "check_db_matches.ts",
+      "check_matches.ts",
+      "check_proposal.ts",
+      "scripts/rematch.ts",
+      "src/app/api/profile/route.ts",
+      "src/app/api/profile/upload/route.ts",
+      "src/utils/supabase/client.ts",
+      "src/utils/supabase/server.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local",
+      "browser-exposed build/runtime environment"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "NEXT_PUBLIC_SUPABASE_URL",
+    "used_in": [
+      "check_db_matches.ts",
+      "check_matches.ts",
+      "check_pharma_matches.ts",
+      "check_proposal.ts",
+      "check_recent_proposals.ts",
+      "check_user_proposals.ts",
+      "scripts/cleanup_proposals.ts",
+      "scripts/enrich-proposals.ts",
+      "scripts/inject-ayush-deals.ts",
+      "scripts/rematch.ts",
+      "scripts/rematch_all.ts",
+      "scripts/repair-database.ts",
+      "scripts/seed-embeddings.ts",
+      "scripts/test-match.ts",
+      "scripts/test-rpc.ts",
+      "src/app/(dashboard)/home/page.tsx",
+      "src/app/api/profile/route.ts",
+      "src/app/api/profile/upload/route.ts",
+      "src/components/profile-setup/ProfileStepper.tsx",
+      "src/scripts/markShells.ts",
+      "src/utils/supabase/client.ts",
+      "src/utils/supabase/server.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local",
+      "browser-exposed build/runtime environment"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "NEXTAUTH_SECRET",
+    "used_in": [
+      "src/app/api/admin/fix-encoding/route.ts",
+      "src/auth.ts",
+      "src/lib/magicLink.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "NEXTAUTH_URL",
+    "used_in": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "NODE_ENV",
+    "used_in": [
+      "next.config.ts",
+      "src/auth.ts",
+      "src/db/index.ts",
+      "src/lib/admin.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "OPENAI_API_KEY",
+    "used_in": [
+      "scripts/apply-rpc-migration.ts",
+      "scripts/backfill-mandate-summaries.ts",
+      "scripts/backfill-proposal-summaries.ts",
+      "scripts/embed-mandates.ts",
+      "scripts/inject-ayush-deals.ts",
+      "scripts/seed-embeddings.ts",
+      "src/app/api/chat/route.ts",
+      "src/app/api/cron/rematch/route.ts",
+      "src/lib/ai/ai-client.ts",
+      "src/lib/intelligenceEngine.ts",
+      "src/lib/matchmakingEngine.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "OPENAI_MODEL",
+    "used_in": [
+      "src/lib/ai/ai-client.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "SUPABASE_SERVICE_ROLE_KEY",
+    "used_in": [
+      "check_pharma_matches.ts",
+      "check_recent_proposals.ts",
+      "check_user_proposals.ts",
+      "scripts/cleanup_proposals.ts",
+      "scripts/enrich-proposals.ts",
+      "scripts/inject-ayush-deals.ts",
+      "scripts/rematch.ts",
+      "scripts/rematch_all.ts",
+      "scripts/repair-database.ts",
+      "scripts/seed-embeddings.ts",
+      "scripts/test-match.ts",
+      "scripts/test-rpc.ts",
+      "src/app/api/profile/route.ts",
+      "src/app/api/profile/upload/route.ts",
+      "src/scripts/markShells.ts",
+      "src/utils/supabase/server.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "VERCEL_ENV",
+    "used_in": [
+      "src/lib/admin.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "WHATSAPP_API_TOKEN",
+    "used_in": [
+      "src/lib/whatsappConfig.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "WHATSAPP_APP_SECRET",
+    "used_in": [
+      "src/lib/whatsappConfig.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "WHATSAPP_PHONE_NUMBER_ID",
+    "used_in": [
+      "src/lib/whatsappConfig.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  },
+  {
+    "var": "WHATSAPP_VERIFY_TOKEN",
+    "used_in": [
+      "src/app/api/webhooks/whatsapp/route.ts",
+      "src/lib/whatsappConfig.ts"
+    ],
+    "set_in": [
+      "Vercel dashboard",
+      ".env.local"
+    ],
+    "required": true,
+    "failure_if_missing": "Feature paths that read this variable may fail, disable integration behavior, or produce configuration errors.",
+    "rotated": "unknown"
+  }
+]

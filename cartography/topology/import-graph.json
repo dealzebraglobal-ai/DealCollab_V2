@@ -1,0 +1,3524 @@
+{
+  "nodes": [
+    "({",
+    ".agents/skills/supabase-postgres-best-practices/SKILL.md",
+    ".agents/skills/supabase-postgres-best-practices/references/_contributing.md",
+    ".agents/skills/supabase-postgres-best-practices/references/_sections.md",
+    ".agents/skills/supabase-postgres-best-practices/references/_template.md",
+    ".agents/skills/supabase-postgres-best-practices/references/advanced-full-text-search.md",
+    ".agents/skills/supabase-postgres-best-practices/references/advanced-jsonb-indexing.md",
+    ".agents/skills/supabase-postgres-best-practices/references/conn-idle-timeout.md",
+    ".agents/skills/supabase-postgres-best-practices/references/conn-limits.md",
+    ".agents/skills/supabase-postgres-best-practices/references/conn-pooling.md",
+    ".agents/skills/supabase-postgres-best-practices/references/conn-prepared-statements.md",
+    ".agents/skills/supabase-postgres-best-practices/references/data-batch-inserts.md",
+    ".agents/skills/supabase-postgres-best-practices/references/data-n-plus-one.md",
+    ".agents/skills/supabase-postgres-best-practices/references/data-pagination.md",
+    ".agents/skills/supabase-postgres-best-practices/references/data-upsert.md",
+    ".agents/skills/supabase-postgres-best-practices/references/lock-advisory.md",
+    ".agents/skills/supabase-postgres-best-practices/references/lock-deadlock-prevention.md",
+    ".agents/skills/supabase-postgres-best-practices/references/lock-short-transactions.md",
+    ".agents/skills/supabase-postgres-best-practices/references/lock-skip-locked.md",
+    ".agents/skills/supabase-postgres-best-practices/references/monitor-explain-analyze.md",
+    ".agents/skills/supabase-postgres-best-practices/references/monitor-pg-stat-statements.md",
+    ".agents/skills/supabase-postgres-best-practices/references/monitor-vacuum-analyze.md",
+    ".agents/skills/supabase-postgres-best-practices/references/query-composite-indexes.md",
+    ".agents/skills/supabase-postgres-best-practices/references/query-covering-indexes.md",
+    ".agents/skills/supabase-postgres-best-practices/references/query-index-types.md",
+    ".agents/skills/supabase-postgres-best-practices/references/query-missing-indexes.md",
+    ".agents/skills/supabase-postgres-best-practices/references/query-partial-indexes.md",
+    ".agents/skills/supabase-postgres-best-practices/references/schema-constraints.md",
+    ".agents/skills/supabase-postgres-best-practices/references/schema-data-types.md",
+    ".agents/skills/supabase-postgres-best-practices/references/schema-foreign-key-indexes.md",
+    ".agents/skills/supabase-postgres-best-practices/references/schema-lowercase-identifiers.md",
+    ".agents/skills/supabase-postgres-best-practices/references/schema-partitioning.md",
+    ".agents/skills/supabase-postgres-best-practices/references/schema-primary-keys.md",
+    ".agents/skills/supabase-postgres-best-practices/references/security-privileges.md",
+    ".agents/skills/supabase-postgres-best-practices/references/security-rls-basics.md",
+    ".agents/skills/supabase-postgres-best-practices/references/security-rls-performance.md",
+    ".env",
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ChatLogs_SupriyaSurve.docx",
+    "LICENSE",
+    "README.md",
+    "cartography/README.md",
+    "cartography/inventory/env-vars.json",
+    "cartography/inventory/external-services.json",
+    "cartography/inventory/files.json",
+    "cartography/inventory/routes.json",
+    "cartography/inventory/state-objects.json",
+    "cartography/inventory/tables.json",
+    "cartography/meta/scan-timestamp.json",
+    "cartography/meta/staleness-report.json",
+    "cartography/narrative/scar-registry.json",
+    "cartography/narrative/why-cards.json",
+    "cartography/topology/data-flows.json",
+    "cartography/topology/import-graph.json",
+    "cartography/topology/module-decision-tree.json",
+    "cartography/topology/prompt-assembly.json",
+    "cartography/topology/state-mutations.json",
+    "check_db_matches.ts",
+    "check_matches.ts",
+    "check_pharma_matches.ts",
+    "check_proposal.ts",
+    "check_recent_proposals.ts",
+    "check_user_proposals.ts",
+    "content/guide/faq.md",
+    "content/guide/get-matched-faster.md",
+    "content/guide/how-it-works.md",
+    "content/guide/privacy-policy.md",
+    "content/guide/terms-of-service.md",
+    "content/guide/tokens-and-payments.md",
+    "content/guide/what-we-do-and-dont.md",
+    "content/guide/who-we-are.md",
+    "drizzle.config.ts",
+    "eslint.config.mjs",
+    "fix_m4.js",
+    "fix_m4_2.js",
+    "next-env.d.ts",
+    "next.config.ts",
+    "npm",
+    "package-lock.json",
+    "package.json",
+    "postcss.config.mjs",
+    "public/earth-poster.png",
+    "public/earth.mp4",
+    "public/file.svg",
+    "public/globe.svg",
+    "public/next.svg",
+    "public/vercel.svg",
+    "public/window.svg",
+    "scripts/add_whatsapp_columns.ts",
+    "scripts/apply-rpc-migration.ts",
+    "scripts/backfill-mandate-summaries.ts",
+    "scripts/backfill-proposal-summaries.ts",
+    "scripts/cartography/build-import-graph.mjs",
+    "scripts/cartography/check-staleness.mjs",
+    "scripts/cartography/scan-db.mjs",
+    "scripts/cartography/scan-env.mjs",
+    "scripts/cartography/scan-external-services.mjs",
+    "scripts/cartography/scan-files.mjs",
+    "scripts/cartography/scan-routes.mjs",
+    "scripts/cartography/shared.mjs",
+    "scripts/cleanup_proposals.ts",
+    "scripts/embed-mandates.ts",
+    "scripts/enrich-proposals.ts",
+    "scripts/inject-ayush-deals.ts",
+    "scripts/rematch.ts",
+    "scripts/rematch_all.ts",
+    "scripts/repair-database.ts",
+    "scripts/seed-embeddings.ts",
+    "scripts/test-match.ts",
+    "scripts/test-rpc.ts",
+    "skills-lock.json",
+    "src/app/(auth)/layout.tsx",
+    "src/app/(auth)/page.tsx",
+    "src/app/(auth)/signup/page.tsx",
+    "src/app/(auth)/verify/page.tsx",
+    "src/app/(dashboard)/analytics/page.tsx",
+    "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+    "src/app/(dashboard)/deal-dashboard/page.tsx",
+    "src/app/(dashboard)/deal-intelligence/page.tsx",
+    "src/app/(dashboard)/deal-log/[id]/page.tsx",
+    "src/app/(dashboard)/deal-log/page.tsx",
+    "src/app/(dashboard)/deal/[id]/page.tsx",
+    "src/app/(dashboard)/eoi-review/[ref]/page.tsx",
+    "src/app/(dashboard)/guide/[slug]/page.tsx",
+    "src/app/(dashboard)/guide/guide.css",
+    "src/app/(dashboard)/guide/layout.tsx",
+    "src/app/(dashboard)/guide/page.tsx",
+    "src/app/(dashboard)/home/loading.tsx",
+    "src/app/(dashboard)/home/page.tsx",
+    "src/app/(dashboard)/layout.tsx",
+    "src/app/(dashboard)/notifications/page.tsx",
+    "src/app/(dashboard)/profile/billing/page.tsx",
+    "src/app/(dashboard)/profile/page.tsx",
+    "src/app/(dashboard)/profile/settings/page.tsx",
+    "src/app/(dashboard)/profile/tokens/page.tsx",
+    "src/app/admin/details/[type]/page.tsx",
+    "src/app/admin/page.tsx",
+    "src/app/api/admin/dashboard/route.ts",
+    "src/app/api/admin/diagnose/[proposalID]/route.ts",
+    "src/app/api/admin/fix-encoding/route.ts",
+    "src/app/api/admin/rematch/[proposalID]/route.ts",
+    "src/app/api/auth/[...nextauth]/route.ts",
+    "src/app/api/auth/email-otp/send/route.ts",
+    "src/app/api/auth/email-otp/verify/route.ts",
+    "src/app/api/auth/google-link/route.ts",
+    "src/app/api/auth/magic-link/route.ts",
+    "src/app/api/auth/otp/verify/route.ts",
+    "src/app/api/auth/save-phone/route.ts",
+    "src/app/api/auth/whatsapp-otp/route.ts",
+    "src/app/api/chat/[id]/messages/route.ts",
+    "src/app/api/chat/[id]/route.ts",
+    "src/app/api/chat/history/route.ts",
+    "src/app/api/chat/latest-document/route.ts",
+    "src/app/api/chat/parse-document/route.ts",
+    "src/app/api/chat/route.ts",
+    "src/app/api/consent/accept/route.ts",
+    "src/app/api/consent/status/route.ts",
+    "src/app/api/cron/rematch/route.ts",
+    "src/app/api/deals/[proposalID]/search-matches/route.ts",
+    "src/app/api/deals/bulk-upload/route.ts",
+    "src/app/api/deals/route.ts",
+    "src/app/api/eois/route.ts",
+    "src/app/api/fix-db/route.ts",
+    "src/app/api/matches/[proposalID]/route.ts",
+    "src/app/api/matches/connect/route.ts",
+    "src/app/api/matches/detail/[matchId]/route.ts",
+    "src/app/api/matches/route.ts",
+    "src/app/api/notifications/route.ts",
+    "src/app/api/profile/create/route.ts",
+    "src/app/api/profile/route.ts",
+    "src/app/api/profile/tokens/route.ts",
+    "src/app/api/profile/upload/route.ts",
+    "src/app/api/profile/upload/signed-url/route.ts",
+    "src/app/api/users/tokens/route.ts",
+    "src/app/api/webhooks/whatsapp/route.ts",
+    "src/app/cartography/CartographyDashboard.tsx",
+    "src/app/cartography/page.tsx",
+    "src/app/data-deletion/page.tsx",
+    "src/app/globals.css",
+    "src/app/layout.tsx",
+    "src/app/loading.tsx",
+    "src/app/page.tsx",
+    "src/app/privacy/page.tsx",
+    "src/app/terms/page.tsx",
+    "src/app/welcome/page.tsx",
+    "src/auth.config.ts",
+    "src/auth.ts",
+    "src/components/ActionButtons.tsx",
+    "src/components/BottomNav.tsx",
+    "src/components/BulkMandateCard.tsx",
+    "src/components/BulkMandateEmptyState.tsx",
+    "src/components/BulkMandateMatches.tsx",
+    "src/components/BulkMandatesTab.tsx",
+    "src/components/BulkUploadModal.tsx",
+    "src/components/ChatArea.tsx",
+    "src/components/ChatProvider.tsx",
+    "src/components/Confetti.tsx",
+    "src/components/ConnectionDetails.tsx",
+    "src/components/ConsentGate.module.css",
+    "src/components/ConsentGate.tsx",
+    "src/components/DashboardLayout.tsx",
+    "src/components/DashboardRow.tsx",
+    "src/components/DealCard.tsx",
+    "src/components/DealLogCard.tsx",
+    "src/components/DealRow.tsx",
+    "src/components/ExpiredLinkView.tsx",
+    "src/components/ExtensionNoiseReducer.tsx",
+    "src/components/FeatureLockedOverlay.tsx",
+    "src/components/GlobalErrorBanner.tsx",
+    "src/components/GuideMenu.module.css",
+    "src/components/GuideMenu.tsx",
+    "src/components/IncomingEOIDetails.tsx",
+    "src/components/InlineFormCard.tsx",
+    "src/components/InputBar.tsx",
+    "src/components/InputField.tsx",
+    "src/components/MatchCard.tsx",
+    "src/components/MatchDetailsModal.tsx",
+    "src/components/MatchPanel.tsx",
+    "src/components/MatchWindow.tsx",
+    "src/components/MobileNavbar.tsx",
+    "src/components/NotificationCard.tsx",
+    "src/components/NotificationList.tsx",
+    "src/components/NotificationProvider.tsx",
+    "src/components/OnboardingChecklist.tsx",
+    "src/components/ProfileDropdown.tsx",
+    "src/components/SendEOIModal.tsx",
+    "src/components/Sidebar.tsx",
+    "src/components/Skeleton.tsx",
+    "src/components/StatusBadge.tsx",
+    "src/components/StatusButton.tsx",
+    "src/components/ThreeDotMenu.tsx",
+    "src/components/UserProvider.tsx",
+    "src/components/auth/AuthProvider.tsx",
+    "src/components/auth/AuthStepper.tsx",
+    "src/components/auth/EmailOtpVerification.tsx",
+    "src/components/auth/EmailVerification.tsx",
+    "src/components/auth/GoogleAuthButton.tsx",
+    "src/components/auth/OTPInput.tsx",
+    "src/components/auth/PhoneVerification.tsx",
+    "src/components/auth/VideoBackground.tsx",
+    "src/components/auth/VideoLogo.tsx",
+    "src/components/guide/GuideCard.tsx",
+    "src/components/guide/GuideCategory.tsx",
+    "src/components/guide/GuideHeader.tsx",
+    "src/components/guide/GuideHero.tsx",
+    "src/components/guide/GuideMarkdown.tsx",
+    "src/components/guide/GuideSearch.tsx",
+    "src/components/guide/GuideSection.tsx",
+    "src/components/guide/GuideSidebar.tsx",
+    "src/components/guide/guideIcons.ts",
+    "src/components/intelligence/AuthoritySection.tsx",
+    "src/components/intelligence/HeroSection.tsx",
+    "src/components/intelligence/IntelligenceHero.tsx",
+    "src/components/intelligence/IntelligenceModule.tsx",
+    "src/components/intelligence/IntelligenceModules.tsx",
+    "src/components/intelligence/IntelligenceStrip.tsx",
+    "src/components/intelligence/IntelligenceVideoBackground.tsx",
+    "src/components/intelligence/PremiumAccess.tsx",
+    "src/components/intelligence/PremiumAccessPanel.tsx",
+    "src/components/intelligence/TrustLayer.tsx",
+    "src/components/profile-setup/AnimatedStepWrapper.tsx",
+    "src/components/profile-setup/AvatarUpload.tsx",
+    "src/components/profile-setup/FileUpload.tsx",
+    "src/components/profile-setup/MultiSelectChips.tsx",
+    "src/components/profile-setup/ProfileStepper.tsx",
+    "src/components/profile-setup/ProfileSuccessScreen.tsx",
+    "src/components/profile-setup/ProfileView.tsx",
+    "src/components/profile-setup/ProgressBar.tsx",
+    "src/components/profile-setup/ProgressCircle.tsx",
+    "src/components/profile-setup/StepCard.tsx",
+    "src/components/profile-setup/TagInput.tsx",
+    "src/components/profile-setup/TokenRewardDisplay.tsx",
+    "src/db/index.ts",
+    "src/db/schema.ts",
+    "src/lib/M0_outputSchema.ts",
+    "src/lib/M1_coreIdentity.ts",
+    "src/lib/M2_phaseRules.ts",
+    "src/lib/M3_intentFrameworks.ts",
+    "src/lib/M4_sectorIntel.ts",
+    "src/lib/M5_blindCard.ts",
+    "src/lib/M5_matchingLayer.ts",
+    "src/lib/M5_persistence.ts",
+    "src/lib/M5_sectorMatrix.ts",
+    "src/lib/M5_synergy.ts",
+    "src/lib/M6_profileIntel.ts",
+    "src/lib/M7_specialModes.ts",
+    "src/lib/M8_helpContent.ts",
+    "src/lib/M_cognitiveQualification.ts",
+    "src/lib/M_intentReasoning.ts",
+    "src/lib/__tests__/Intentreasoning.test.ts",
+    "src/lib/__tests__/M5_blindCard.test.ts",
+    "src/lib/__tests__/M5_matchingLayer.test.ts",
+    "src/lib/__tests__/M5_persistence.test.ts",
+    "src/lib/__tests__/M5_sectorMatrix.test.ts",
+    "src/lib/__tests__/M5_synergy.test.ts",
+    "src/lib/__tests__/_helpers.ts",
+    "src/lib/__tests__/cognitiveQualification.test.ts",
+    "src/lib/__tests__/dataQuality.test.ts",
+    "src/lib/__tests__/detectors.test.ts",
+    "src/lib/__tests__/endFlow.test.ts",
+    "src/lib/__tests__/enum_first.test.ts",
+    "src/lib/__tests__/intentFraming.test.ts",
+    "src/lib/__tests__/intentLock.test.ts",
+    "src/lib/__tests__/m4Flag.test.ts",
+    "src/lib/__tests__/qualityGate.test.ts",
+    "src/lib/__tests__/resolveCompletion.test.ts",
+    "src/lib/__tests__/responseBuilder.test.ts",
+    "src/lib/__tests__/stateManager.test.ts",
+    "src/lib/actions/auth-actions.ts",
+    "src/lib/admin.ts",
+    "src/lib/ai/ai-client.ts",
+    "src/lib/ai/deal-engine.ts",
+    "src/lib/ai/extraction.ts",
+    "src/lib/ai/test.txt",
+    "src/lib/chatPipeline.ts",
+    "src/lib/consent.ts",
+    "src/lib/controlLayer.ts",
+    "src/lib/conversationState.ts",
+    "src/lib/dataQuality.ts",
+    "src/lib/dealDictionary.ts",
+    "src/lib/detectors.ts",
+    "src/lib/documentParser.ts",
+    "src/lib/email/brevo.ts",
+    "src/lib/email/html.ts",
+    "src/lib/email/notifications/delivery.ts",
+    "src/lib/email/templates/eoiApprovalBlocked.ts",
+    "src/lib/email/templates/eoiApproved.ts",
+    "src/lib/email/templates/eoiReceived.ts",
+    "src/lib/email/templates/newCounterparty.ts",
+    "src/lib/emailOtp.ts",
+    "src/lib/fix-db.js",
+    "src/lib/guide.ts",
+    "src/lib/guideData.ts",
+    "src/lib/guideManifest.ts",
+    "src/lib/intelligenceEngine.ts",
+    "src/lib/intentFraming.ts",
+    "src/lib/magicLink.ts",
+    "src/lib/matchmakingEngine.ts",
+    "src/lib/normalizeMessage.ts",
+    "src/lib/otp.ts",
+    "src/lib/profileCompletion.ts",
+    "src/lib/promptRouter.ts",
+    "src/lib/qualityGate.ts",
+    "src/lib/rateLimit.ts",
+    "src/lib/resolveCompletion.ts",
+    "src/lib/responseBuilder.ts",
+    "src/lib/scoringEngine.ts",
+    "src/lib/sectorMatrix.ts",
+    "src/lib/stateManager.ts",
+    "src/lib/types.ts",
+    "src/lib/validation/profile.ts",
+    "src/lib/whatsapp.ts",
+    "src/lib/whatsappConfig.ts",
+    "src/lib/whatsappNotify.ts",
+    "src/patches/1-detectors.patch.md",
+    "src/patches/2-promptRouter.patch.md",
+    "src/patches/3-route-and-sidebar.patch.md",
+    "src/patches/4-consent-gate.patch.md",
+    "src/proxy.ts",
+    "src/scripts/markShells.ts",
+    "src/services/matching/embeddingBuilder.ts",
+    "src/services/matching/explanationEngine.ts",
+    "src/services/matching/matchPersistence.ts",
+    "src/services/matching/rejectionEngine.ts",
+    "src/services/matching/scoringEngine.ts",
+    "src/services/matching/taxonomyEngine.ts",
+    "src/utils/supabase/client.ts",
+    "src/utils/supabase/server.ts",
+    "supabase/migrations/0000_shocking_kinsey_walden.sql",
+    "supabase/migrations/0001_glamorous_centennial.sql",
+    "supabase/migrations/0002_shocking_captain_cross.sql",
+    "supabase/migrations/001_canonical_intent.sql",
+    "supabase/migrations/20260427_profile_prd_update.sql",
+    "supabase/migrations/20260428_add_google_id.sql",
+    "supabase/migrations/20260428_add_profile_image.sql",
+    "supabase/migrations/20260428_setup_storage.sql",
+    "supabase/migrations/20260512_embedding_rpc.sql",
+    "supabase/migrations/20260512_matchmaking.sql",
+    "supabase/migrations/20260514_matchmaking.sql",
+    "supabase/migrations/20260515_fix_rpc_ambiguity.sql",
+    "supabase/migrations/20260515_fix_rpc_sync.sql",
+    "supabase/migrations/20260521_add_raw_text_to_rpc.sql",
+    "supabase/migrations/20260527_fix_rpc_sync.sql",
+    "supabase/migrations/20260720_get_deals_for_user_rpc.sql",
+    "supabase/migrations/20260724_whatsapp_integration.sql",
+    "supabase/migrations/diagnose.sql",
+    "supabase/migrations/meta/0000_snapshot.json",
+    "supabase/migrations/meta/0001_snapshot.json",
+    "supabase/migrations/meta/0002_snapshot.json",
+    "supabase/migrations/meta/_journal.json",
+    "supabase/migrations/relations.ts",
+    "supabase/migrations/schema.ts",
+    "supabase/schema.sql",
+    "tsconfig.json",
+    "tsconfig.tsbuildinfo",
+    "updated profile creation fileds.docx"
+  ],
+  "edges": [
+    {
+      "from": "scripts/cartography/build-import-graph.mjs",
+      "to": "scripts/cartography/shared.mjs",
+      "imports": [
+        "./shared.mjs"
+      ]
+    },
+    {
+      "from": "scripts/cartography/check-staleness.mjs",
+      "to": "scripts/cartography/shared.mjs",
+      "imports": [
+        "./shared.mjs"
+      ]
+    },
+    {
+      "from": "scripts/cartography/scan-db.mjs",
+      "to": "scripts/cartography/shared.mjs",
+      "imports": [
+        "./shared.mjs"
+      ]
+    },
+    {
+      "from": "scripts/cartography/scan-env.mjs",
+      "to": "scripts/cartography/shared.mjs",
+      "imports": [
+        "./shared.mjs"
+      ]
+    },
+    {
+      "from": "scripts/cartography/scan-external-services.mjs",
+      "to": "scripts/cartography/shared.mjs",
+      "imports": [
+        "./shared.mjs"
+      ]
+    },
+    {
+      "from": "scripts/cartography/scan-files.mjs",
+      "to": "scripts/cartography/shared.mjs",
+      "imports": [
+        "./shared.mjs"
+      ]
+    },
+    {
+      "from": "scripts/cartography/scan-routes.mjs",
+      "to": "scripts/cartography/shared.mjs",
+      "imports": [
+        "./shared.mjs"
+      ]
+    },
+    {
+      "from": "scripts/enrich-proposals.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "../src/lib/dataQuality"
+      ]
+    },
+    {
+      "from": "scripts/enrich-proposals.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "../src/lib/promptRouter"
+      ]
+    },
+    {
+      "from": "scripts/rematch.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "../src/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "scripts/rematch_all.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "../src/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "scripts/repair-database.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "../src/lib/dataQuality"
+      ]
+    },
+    {
+      "from": "scripts/test-match.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "../src/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "scripts/test-match.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "../src/lib/promptRouter"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/page.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/page.tsx",
+      "to": "src/components/auth/EmailOtpVerification.tsx",
+      "imports": [
+        "@/components/auth/EmailOtpVerification"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/page.tsx",
+      "to": "src/components/auth/EmailVerification.tsx",
+      "imports": [
+        "@/components/auth/EmailVerification"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/page.tsx",
+      "to": "src/components/auth/GoogleAuthButton.tsx",
+      "imports": [
+        "@/components/auth/GoogleAuthButton"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/page.tsx",
+      "to": "src/components/auth/PhoneVerification.tsx",
+      "imports": [
+        "@/components/auth/PhoneVerification"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/page.tsx",
+      "to": "src/components/auth/VideoBackground.tsx",
+      "imports": [
+        "@/components/auth/VideoBackground"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/page.tsx",
+      "to": "src/components/auth/VideoLogo.tsx",
+      "imports": [
+        "@/components/auth/VideoLogo"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/signup/page.tsx",
+      "to": "src/components/auth/GoogleAuthButton.tsx",
+      "imports": [
+        "@/components/auth/GoogleAuthButton"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/signup/page.tsx",
+      "to": "src/components/auth/VideoBackground.tsx",
+      "imports": [
+        "@/components/auth/VideoBackground"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/signup/page.tsx",
+      "to": "src/components/auth/VideoLogo.tsx",
+      "imports": [
+        "@/components/auth/VideoLogo"
+      ]
+    },
+    {
+      "from": "src/app/(auth)/verify/page.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/analytics/page.tsx",
+      "to": "src/components/FeatureLockedOverlay.tsx",
+      "imports": [
+        "@/components/FeatureLockedOverlay"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "to": "src/components/ConnectionDetails.tsx",
+      "imports": [
+        "@/components/ConnectionDetails"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "to": "src/components/DealCard.tsx",
+      "imports": [
+        "@/components/DealCard"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "to": "src/components/ExpiredLinkView.tsx",
+      "imports": [
+        "@/components/ExpiredLinkView"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "to": "src/components/MatchCard.tsx",
+      "imports": [
+        "@/components/MatchCard"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "@/components/NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/page.tsx",
+      "to": "src/components/DashboardRow.tsx",
+      "imports": [
+        "@/components/DashboardRow"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/page.tsx",
+      "to": "src/components/SendEOIModal.tsx",
+      "imports": [
+        "@/components/SendEOIModal"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/page.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-dashboard/page.tsx",
+      "to": "src/components/StatusButton.tsx",
+      "imports": [
+        "@/components/StatusButton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "to": "src/components/FeatureLockedOverlay.tsx",
+      "imports": [
+        "@/components/FeatureLockedOverlay"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "to": "src/components/intelligence/HeroSection.tsx",
+      "imports": [
+        "@/components/intelligence/HeroSection"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "to": "src/components/intelligence/IntelligenceModules.tsx",
+      "imports": [
+        "@/components/intelligence/IntelligenceModules"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "to": "src/components/intelligence/IntelligenceStrip.tsx",
+      "imports": [
+        "@/components/intelligence/IntelligenceStrip"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "to": "src/components/intelligence/IntelligenceVideoBackground.tsx",
+      "imports": [
+        "@/components/intelligence/IntelligenceVideoBackground"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "to": "src/components/intelligence/PremiumAccess.tsx",
+      "imports": [
+        "@/components/intelligence/PremiumAccess"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "to": "src/components/intelligence/TrustLayer.tsx",
+      "imports": [
+        "@/components/intelligence/TrustLayer"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/[id]/page.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "@/components/NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/[id]/page.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/page.tsx",
+      "to": "src/components/BulkMandateCard.tsx",
+      "imports": [
+        "@/components/BulkMandateCard"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/page.tsx",
+      "to": "src/components/BulkMandatesTab.tsx",
+      "imports": [
+        "@/components/BulkMandatesTab"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/page.tsx",
+      "to": "src/components/BulkUploadModal.tsx",
+      "imports": [
+        "@/components/BulkUploadModal"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/page.tsx",
+      "to": "src/components/DealLogCard.tsx",
+      "imports": [
+        "@/components/DealLogCard"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/page.tsx",
+      "to": "src/components/MatchWindow.tsx",
+      "imports": [
+        "@/components/MatchWindow"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/page.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal-log/page.tsx",
+      "to": "src/components/StatusBadge.tsx",
+      "imports": [
+        "@/components/StatusBadge"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal/[id]/page.tsx",
+      "to": "src/components/MatchWindow.tsx",
+      "imports": [
+        "@/components/MatchWindow"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal/[id]/page.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/deal/[id]/page.tsx",
+      "to": "src/components/StatusBadge.tsx",
+      "imports": [
+        "@/components/StatusBadge"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/eoi-review/[ref]/page.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "@/components/NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/eoi-review/[ref]/page.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/[slug]/page.tsx",
+      "to": "src/components/guide/GuideHeader.tsx",
+      "imports": [
+        "@/components/guide/GuideHeader"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/[slug]/page.tsx",
+      "to": "src/components/guide/GuideMarkdown.tsx",
+      "imports": [
+        "@/components/guide/GuideMarkdown"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/[slug]/page.tsx",
+      "to": "src/components/guide/guideIcons.ts",
+      "imports": [
+        "@/components/guide/guideIcons"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/[slug]/page.tsx",
+      "to": "src/lib/guide.ts",
+      "imports": [
+        "@/lib/guide"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/layout.tsx",
+      "to": "src/components/ChatProvider.tsx",
+      "imports": [
+        "@/components/ChatProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/layout.tsx",
+      "to": "src/components/DashboardLayout.tsx",
+      "imports": [
+        "@/components/DashboardLayout"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/page.tsx",
+      "to": "src/components/guide/GuideCard.tsx",
+      "imports": [
+        "@/components/guide/GuideCard"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/page.tsx",
+      "to": "src/components/guide/GuideCategory.tsx",
+      "imports": [
+        "@/components/guide/GuideCategory"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/page.tsx",
+      "to": "src/components/guide/GuideHeader.tsx",
+      "imports": [
+        "@/components/guide/GuideHeader"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/page.tsx",
+      "to": "src/components/guide/GuideHero.tsx",
+      "imports": [
+        "@/components/guide/GuideHero"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/page.tsx",
+      "to": "src/components/guide/GuideSearch.tsx",
+      "imports": [
+        "@/components/guide/GuideSearch"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/page.tsx",
+      "to": "src/components/guide/GuideSidebar.tsx",
+      "imports": [
+        "@/components/guide/GuideSidebar"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/guide/page.tsx",
+      "to": "src/lib/guideData.ts",
+      "imports": [
+        "@/lib/guideData"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/home/loading.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/home/page.tsx",
+      "to": "src/components/ChatArea.tsx",
+      "imports": [
+        "@/components/ChatArea"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/home/page.tsx",
+      "to": "src/components/ChatProvider.tsx",
+      "imports": [
+        "@/components/ChatProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/home/page.tsx",
+      "to": "src/components/InputBar.tsx",
+      "imports": [
+        "@/components/InputBar"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/home/page.tsx",
+      "to": "src/components/MatchPanel.tsx",
+      "imports": [
+        "@/components/MatchPanel"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/home/page.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/layout.tsx",
+      "to": "src/components/ChatProvider.tsx",
+      "imports": [
+        "@/components/ChatProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/layout.tsx",
+      "to": "src/components/DashboardLayout.tsx",
+      "imports": [
+        "@/components/DashboardLayout"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/layout.tsx",
+      "to": "src/components/GlobalErrorBanner.tsx",
+      "imports": [
+        "@/components/GlobalErrorBanner"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/layout.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/notifications/page.tsx",
+      "to": "src/components/FeatureLockedOverlay.tsx",
+      "imports": [
+        "@/components/FeatureLockedOverlay"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/notifications/page.tsx",
+      "to": "src/components/NotificationList.tsx",
+      "imports": [
+        "@/components/NotificationList"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/notifications/page.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "@/components/NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/notifications/page.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/profile/page.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/profile/page.tsx",
+      "to": "src/components/profile-setup/ProfileStepper.tsx",
+      "imports": [
+        "@/components/profile-setup/ProfileStepper"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/profile/page.tsx",
+      "to": "src/components/profile-setup/ProfileSuccessScreen.tsx",
+      "imports": [
+        "@/components/profile-setup/ProfileSuccessScreen"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/profile/page.tsx",
+      "to": "src/components/profile-setup/ProfileView.tsx",
+      "imports": [
+        "@/components/profile-setup/ProfileView"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/profile/settings/page.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/profile/settings/page.tsx",
+      "to": "src/components/profile-setup/ProfileStepper.tsx",
+      "imports": [
+        "@/components/profile-setup/ProfileStepper"
+      ]
+    },
+    {
+      "from": "src/app/(dashboard)/profile/settings/page.tsx",
+      "to": "src/components/profile-setup/ProfileSuccessScreen.tsx",
+      "imports": [
+        "@/components/profile-setup/ProfileSuccessScreen"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/dashboard/route.ts",
+      "to": "src/lib/admin.ts",
+      "imports": [
+        "@/lib/admin"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/dashboard/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "to": "src/lib/admin.ts",
+      "imports": [
+        "@/lib/admin"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "@/lib/promptRouter"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "to": "src/lib/scoringEngine.ts",
+      "imports": [
+        "@/lib/scoringEngine"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/fix-encoding/route.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "@/lib/dataQuality"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/fix-encoding/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "to": "src/lib/admin.ts",
+      "imports": [
+        "@/lib/admin"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/[...nextauth]/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/send/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/send/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/send/route.ts",
+      "to": "src/lib/emailOtp.ts",
+      "imports": [
+        "@/lib/emailOtp"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/send/route.ts",
+      "to": "src/lib/rateLimit.ts",
+      "imports": [
+        "@/lib/rateLimit"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/send/route.ts",
+      "to": "src/lib/validation/profile.ts",
+      "imports": [
+        "@/lib/validation/profile"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/verify/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/verify/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/email-otp/verify/route.ts",
+      "to": "src/lib/emailOtp.ts",
+      "imports": [
+        "@/lib/emailOtp"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/google-link/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/google-link/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/magic-link/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/magic-link/route.ts",
+      "to": "src/lib/magicLink.ts",
+      "imports": [
+        "@/lib/magicLink"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/otp/verify/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/otp/verify/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/otp/verify/route.ts",
+      "to": "src/lib/otp.ts",
+      "imports": [
+        "@/lib/otp"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/otp/verify/route.ts",
+      "to": "src/lib/rateLimit.ts",
+      "imports": [
+        "@/lib/rateLimit"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/save-phone/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/save-phone/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/save-phone/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/whatsapp-otp/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/whatsapp-otp/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/whatsapp-otp/route.ts",
+      "to": "src/lib/otp.ts",
+      "imports": [
+        "@/lib/otp"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/whatsapp-otp/route.ts",
+      "to": "src/lib/rateLimit.ts",
+      "imports": [
+        "@/lib/rateLimit"
+      ]
+    },
+    {
+      "from": "src/app/api/auth/whatsapp-otp/route.ts",
+      "to": "src/lib/whatsapp.ts",
+      "imports": [
+        "@/lib/whatsapp"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/[id]/messages/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/[id]/messages/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/[id]/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/[id]/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/history/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/history/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/latest-document/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/latest-document/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/parse-document/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/parse-document/route.ts",
+      "to": "src/lib/documentParser.ts",
+      "imports": [
+        "@/lib/documentParser"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/parse-document/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "@/lib/dataQuality"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/intelligenceEngine.ts",
+      "imports": [
+        "@/lib/intelligenceEngine"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/normalizeMessage.ts",
+      "imports": [
+        "@/lib/normalizeMessage"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "@/lib/promptRouter"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/rateLimit.ts",
+      "imports": [
+        "@/lib/rateLimit"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/resolveCompletion.ts",
+      "imports": [
+        "@/lib/resolveCompletion"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/lib/responseBuilder.ts",
+      "imports": [
+        "@/lib/responseBuilder"
+      ]
+    },
+    {
+      "from": "src/app/api/chat/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/consent/accept/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/consent/accept/route.ts",
+      "to": "src/lib/consent.ts",
+      "imports": [
+        "@/lib/consent"
+      ]
+    },
+    {
+      "from": "src/app/api/consent/accept/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/consent/status/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/consent/status/route.ts",
+      "to": "src/lib/consent.ts",
+      "imports": [
+        "@/lib/consent"
+      ]
+    },
+    {
+      "from": "src/app/api/consent/status/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/cron/rematch/route.ts",
+      "to": "src/lib/scoringEngine.ts",
+      "imports": [
+        "@/lib/scoringEngine"
+      ]
+    },
+    {
+      "from": "src/app/api/cron/rematch/route.ts",
+      "to": "src/lib/whatsappNotify.ts",
+      "imports": [
+        "@/lib/whatsappNotify"
+      ]
+    },
+    {
+      "from": "src/app/api/cron/rematch/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/[proposalID]/search-matches/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/[proposalID]/search-matches/route.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/[proposalID]/search-matches/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/bulk-upload/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/bulk-upload/route.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "@/lib/dataQuality"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/bulk-upload/route.ts",
+      "to": "src/lib/documentParser.ts",
+      "imports": [
+        "@/lib/documentParser"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/bulk-upload/route.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/bulk-upload/route.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "@/lib/promptRouter"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/bulk-upload/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/deals/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/eois/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/eois/route.ts",
+      "to": "src/lib/M5_blindCard.ts",
+      "imports": [
+        "@/lib/M5_blindCard"
+      ]
+    },
+    {
+      "from": "src/app/api/eois/route.ts",
+      "to": "src/lib/M5_synergy.ts",
+      "imports": [
+        "@/lib/M5_synergy"
+      ]
+    },
+    {
+      "from": "src/app/api/eois/route.ts",
+      "to": "src/lib/consent.ts",
+      "imports": [
+        "@/lib/consent"
+      ]
+    },
+    {
+      "from": "src/app/api/eois/route.ts",
+      "to": "src/lib/email/notifications/delivery.ts",
+      "imports": [
+        "@/lib/email/notifications/delivery"
+      ]
+    },
+    {
+      "from": "src/app/api/eois/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/fix-db/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/[proposalID]/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/[proposalID]/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/connect/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/connect/route.ts",
+      "to": "src/lib/consent.ts",
+      "imports": [
+        "@/lib/consent"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/connect/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/detail/[matchId]/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/detail/[matchId]/route.ts",
+      "to": "src/lib/M5_blindCard.ts",
+      "imports": [
+        "@/lib/M5_blindCard"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/detail/[matchId]/route.ts",
+      "to": "src/lib/M5_synergy.ts",
+      "imports": [
+        "@/lib/M5_synergy"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/detail/[matchId]/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/matches/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/notifications/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/notifications/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/create/route.ts",
+      "to": "src/app/api/profile/route.ts",
+      "imports": [
+        "../route"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/route.ts",
+      "to": "src/lib/profileCompletion.ts",
+      "imports": [
+        "@/lib/profileCompletion"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/route.ts",
+      "to": "src/lib/validation/profile.ts",
+      "imports": [
+        "@/lib/validation/profile"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/tokens/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/tokens/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/tokens/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/tokens/route.ts",
+      "to": "src/lib/consent.ts",
+      "imports": [
+        "@/lib/consent"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/upload/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/upload/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/upload/signed-url/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/profile/upload/signed-url/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/users/tokens/route.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/app/api/users/tokens/route.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/app/api/webhooks/whatsapp/route.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/app/api/webhooks/whatsapp/route.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/app/api/webhooks/whatsapp/route.ts",
+      "to": "src/lib/magicLink.ts",
+      "imports": [
+        "@/lib/magicLink"
+      ]
+    },
+    {
+      "from": "src/app/api/webhooks/whatsapp/route.ts",
+      "to": "src/lib/whatsapp.ts",
+      "imports": [
+        "@/lib/whatsapp"
+      ]
+    },
+    {
+      "from": "src/app/api/webhooks/whatsapp/route.ts",
+      "to": "src/lib/whatsappConfig.ts",
+      "imports": [
+        "@/lib/whatsappConfig"
+      ]
+    },
+    {
+      "from": "src/app/cartography/page.tsx",
+      "to": "src/app/cartography/CartographyDashboard.tsx",
+      "imports": [
+        "./CartographyDashboard"
+      ]
+    },
+    {
+      "from": "src/app/data-deletion/page.tsx",
+      "to": "src/components/auth/VideoBackground.tsx",
+      "imports": [
+        "@/components/auth/VideoBackground"
+      ]
+    },
+    {
+      "from": "src/app/data-deletion/page.tsx",
+      "to": "src/components/auth/VideoLogo.tsx",
+      "imports": [
+        "@/components/auth/VideoLogo"
+      ]
+    },
+    {
+      "from": "src/app/layout.tsx",
+      "to": "src/components/ExtensionNoiseReducer.tsx",
+      "imports": [
+        "@/components/ExtensionNoiseReducer"
+      ]
+    },
+    {
+      "from": "src/app/layout.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "@/components/NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/app/layout.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/layout.tsx",
+      "to": "src/components/auth/AuthProvider.tsx",
+      "imports": [
+        "@/components/auth/AuthProvider"
+      ]
+    },
+    {
+      "from": "src/app/loading.tsx",
+      "to": "src/components/Skeleton.tsx",
+      "imports": [
+        "@/components/Skeleton"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/auth/AuthStepper.tsx",
+      "imports": [
+        "@/components/auth/AuthStepper"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/auth/EmailOtpVerification.tsx",
+      "imports": [
+        "@/components/auth/EmailOtpVerification"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/auth/EmailVerification.tsx",
+      "imports": [
+        "@/components/auth/EmailVerification"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/auth/GoogleAuthButton.tsx",
+      "imports": [
+        "@/components/auth/GoogleAuthButton"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/auth/PhoneVerification.tsx",
+      "imports": [
+        "@/components/auth/PhoneVerification"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/auth/VideoBackground.tsx",
+      "imports": [
+        "@/components/auth/VideoBackground"
+      ]
+    },
+    {
+      "from": "src/app/page.tsx",
+      "to": "src/components/auth/VideoLogo.tsx",
+      "imports": [
+        "@/components/auth/VideoLogo"
+      ]
+    },
+    {
+      "from": "src/app/privacy/page.tsx",
+      "to": "src/components/auth/VideoBackground.tsx",
+      "imports": [
+        "@/components/auth/VideoBackground"
+      ]
+    },
+    {
+      "from": "src/app/privacy/page.tsx",
+      "to": "src/components/auth/VideoLogo.tsx",
+      "imports": [
+        "@/components/auth/VideoLogo"
+      ]
+    },
+    {
+      "from": "src/app/terms/page.tsx",
+      "to": "src/components/auth/VideoBackground.tsx",
+      "imports": [
+        "@/components/auth/VideoBackground"
+      ]
+    },
+    {
+      "from": "src/app/terms/page.tsx",
+      "to": "src/components/auth/VideoLogo.tsx",
+      "imports": [
+        "@/components/auth/VideoLogo"
+      ]
+    },
+    {
+      "from": "src/auth.ts",
+      "to": "src/auth.config.ts",
+      "imports": [
+        "./auth.config"
+      ]
+    },
+    {
+      "from": "src/auth.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "./db"
+      ]
+    },
+    {
+      "from": "src/auth.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "./db/schema"
+      ]
+    },
+    {
+      "from": "src/components/BottomNav.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "./NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/components/BulkMandateCard.tsx",
+      "to": "src/components/BulkMandateMatches.tsx",
+      "imports": [
+        "./BulkMandateMatches"
+      ]
+    },
+    {
+      "from": "src/components/BulkMandateCard.tsx",
+      "to": "src/components/MatchWindow.tsx",
+      "imports": [
+        "./MatchWindow"
+      ]
+    },
+    {
+      "from": "src/components/BulkMandateMatches.tsx",
+      "to": "src/components/MatchWindow.tsx",
+      "imports": [
+        "./MatchWindow"
+      ]
+    },
+    {
+      "from": "src/components/BulkMandatesTab.tsx",
+      "to": "src/components/BulkMandateCard.tsx",
+      "imports": [
+        "./BulkMandateCard"
+      ]
+    },
+    {
+      "from": "src/components/BulkMandatesTab.tsx",
+      "to": "src/components/BulkMandateEmptyState.tsx",
+      "imports": [
+        "./BulkMandateEmptyState"
+      ]
+    },
+    {
+      "from": "src/components/BulkMandatesTab.tsx",
+      "to": "src/components/MatchWindow.tsx",
+      "imports": [
+        "./MatchWindow"
+      ]
+    },
+    {
+      "from": "src/components/ChatArea.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/ConsentGate.tsx",
+      "to": "src/components/ConsentGate.module.css",
+      "imports": [
+        "./ConsentGate.module.css"
+      ]
+    },
+    {
+      "from": "src/components/DashboardLayout.tsx",
+      "to": "src/components/ChatProvider.tsx",
+      "imports": [
+        "./ChatProvider"
+      ]
+    },
+    {
+      "from": "src/components/DashboardLayout.tsx",
+      "to": "src/components/MobileNavbar.tsx",
+      "imports": [
+        "@/components/MobileNavbar"
+      ]
+    },
+    {
+      "from": "src/components/DashboardLayout.tsx",
+      "to": "src/components/ProfileDropdown.tsx",
+      "imports": [
+        "@/components/ProfileDropdown"
+      ]
+    },
+    {
+      "from": "src/components/DashboardLayout.tsx",
+      "to": "src/components/Sidebar.tsx",
+      "imports": [
+        "@/components/Sidebar"
+      ]
+    },
+    {
+      "from": "src/components/DashboardLayout.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "@/components/UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/DashboardRow.tsx",
+      "to": "src/components/ConnectionDetails.tsx",
+      "imports": [
+        "./ConnectionDetails"
+      ]
+    },
+    {
+      "from": "src/components/DashboardRow.tsx",
+      "to": "src/components/DealCard.tsx",
+      "imports": [
+        "./DealCard"
+      ]
+    },
+    {
+      "from": "src/components/DashboardRow.tsx",
+      "to": "src/components/IncomingEOIDetails.tsx",
+      "imports": [
+        "./IncomingEOIDetails"
+      ]
+    },
+    {
+      "from": "src/components/DashboardRow.tsx",
+      "to": "src/components/MatchCard.tsx",
+      "imports": [
+        "./MatchCard"
+      ]
+    },
+    {
+      "from": "src/components/DashboardRow.tsx",
+      "to": "src/components/StatusButton.tsx",
+      "imports": [
+        "./StatusButton"
+      ]
+    },
+    {
+      "from": "src/components/DealLogCard.tsx",
+      "to": "src/components/ActionButtons.tsx",
+      "imports": [
+        "./ActionButtons"
+      ]
+    },
+    {
+      "from": "src/components/DealLogCard.tsx",
+      "to": "src/components/MatchWindow.tsx",
+      "imports": [
+        "./MatchWindow"
+      ]
+    },
+    {
+      "from": "src/components/DealLogCard.tsx",
+      "to": "src/components/StatusBadge.tsx",
+      "imports": [
+        "./StatusBadge"
+      ]
+    },
+    {
+      "from": "src/components/DealLogCard.tsx",
+      "to": "src/components/StatusButton.tsx",
+      "imports": [
+        "./StatusButton"
+      ]
+    },
+    {
+      "from": "src/components/DealRow.tsx",
+      "to": "src/components/StatusBadge.tsx",
+      "imports": [
+        "./StatusBadge"
+      ]
+    },
+    {
+      "from": "src/components/DealRow.tsx",
+      "to": "src/components/ThreeDotMenu.tsx",
+      "imports": [
+        "./ThreeDotMenu"
+      ]
+    },
+    {
+      "from": "src/components/GlobalErrorBanner.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/GuideMenu.tsx",
+      "to": "src/components/GuideMenu.module.css",
+      "imports": [
+        "./GuideMenu.module.css"
+      ]
+    },
+    {
+      "from": "src/components/GuideMenu.tsx",
+      "to": "src/components/GuideMenu.tsx",
+      "imports": [
+        "@/components/GuideMenu"
+      ]
+    },
+    {
+      "from": "src/components/GuideMenu.tsx",
+      "to": "src/lib/guideManifest.ts",
+      "imports": [
+        "@/lib/guideManifest"
+      ]
+    },
+    {
+      "from": "src/components/InlineFormCard.tsx",
+      "to": "src/components/InputField.tsx",
+      "imports": [
+        "./InputField"
+      ]
+    },
+    {
+      "from": "src/components/MatchDetailsModal.tsx",
+      "to": "src/components/MatchWindow.tsx",
+      "imports": [
+        "./MatchWindow"
+      ]
+    },
+    {
+      "from": "src/components/MatchDetailsModal.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/MatchWindow.tsx",
+      "to": "src/components/ActionButtons.tsx",
+      "imports": [
+        "./ActionButtons"
+      ]
+    },
+    {
+      "from": "src/components/MatchWindow.tsx",
+      "to": "src/components/StatusBadge.tsx",
+      "imports": [
+        "./StatusBadge"
+      ]
+    },
+    {
+      "from": "src/components/MatchWindow.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/MobileNavbar.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/NotificationList.tsx",
+      "to": "src/components/NotificationCard.tsx",
+      "imports": [
+        "./NotificationCard"
+      ]
+    },
+    {
+      "from": "src/components/NotificationProvider.tsx",
+      "to": "src/components/NotificationCard.tsx",
+      "imports": [
+        "@/components/NotificationCard"
+      ]
+    },
+    {
+      "from": "src/components/NotificationProvider.tsx",
+      "to": "src/utils/supabase/client.ts",
+      "imports": [
+        "@/utils/supabase/client"
+      ]
+    },
+    {
+      "from": "src/components/OnboardingChecklist.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/ProfileDropdown.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/Sidebar.tsx",
+      "to": "src/components/ChatProvider.tsx",
+      "imports": [
+        "./ChatProvider"
+      ]
+    },
+    {
+      "from": "src/components/Sidebar.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "./NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/components/Sidebar.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/StatusButton.tsx",
+      "to": "src/components/StatusBadge.tsx",
+      "imports": [
+        "./StatusBadge"
+      ]
+    },
+    {
+      "from": "src/components/StatusButton.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "./UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/UserProvider.tsx",
+      "to": "src/components/NotificationProvider.tsx",
+      "imports": [
+        "./NotificationProvider"
+      ]
+    },
+    {
+      "from": "src/components/UserProvider.tsx",
+      "to": "src/utils/supabase/client.ts",
+      "imports": [
+        "@/utils/supabase/client"
+      ]
+    },
+    {
+      "from": "src/components/auth/EmailOtpVerification.tsx",
+      "to": "src/components/auth/OTPInput.tsx",
+      "imports": [
+        "./OTPInput"
+      ]
+    },
+    {
+      "from": "src/components/auth/EmailVerification.tsx",
+      "to": "src/lib/validation/profile.ts",
+      "imports": [
+        "@/lib/validation/profile"
+      ]
+    },
+    {
+      "from": "src/components/guide/GuideCard.tsx",
+      "to": "src/components/guide/guideIcons.ts",
+      "imports": [
+        "./guideIcons"
+      ]
+    },
+    {
+      "from": "src/components/guide/GuideCard.tsx",
+      "to": "src/lib/guideData.ts",
+      "imports": [
+        "@/lib/guideData"
+      ]
+    },
+    {
+      "from": "src/components/guide/GuideCategory.tsx",
+      "to": "src/components/guide/GuideCard.tsx",
+      "imports": [
+        "./GuideCard"
+      ]
+    },
+    {
+      "from": "src/components/guide/GuideCategory.tsx",
+      "to": "src/components/guide/GuideSection.tsx",
+      "imports": [
+        "./GuideSection"
+      ]
+    },
+    {
+      "from": "src/components/guide/GuideCategory.tsx",
+      "to": "src/components/guide/guideIcons.ts",
+      "imports": [
+        "./guideIcons"
+      ]
+    },
+    {
+      "from": "src/components/guide/GuideCategory.tsx",
+      "to": "src/lib/guideData.ts",
+      "imports": [
+        "@/lib/guideData"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/FileUpload.tsx",
+      "to": "src/lib/validation/profile.ts",
+      "imports": [
+        "@/lib/validation/profile"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "../UserProvider"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/AnimatedStepWrapper.tsx",
+      "imports": [
+        "./AnimatedStepWrapper"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/AvatarUpload.tsx",
+      "imports": [
+        "./AvatarUpload"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/FileUpload.tsx",
+      "imports": [
+        "./FileUpload"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/ProgressBar.tsx",
+      "imports": [
+        "./ProgressBar"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/ProgressCircle.tsx",
+      "imports": [
+        "./ProgressCircle"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/StepCard.tsx",
+      "imports": [
+        "./StepCard"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/TagInput.tsx",
+      "imports": [
+        "./TagInput"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/components/profile-setup/MultiSelectChips.tsx",
+      "imports": [
+        "@/components/profile-setup/MultiSelectChips"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileStepper.tsx",
+      "to": "src/lib/validation/profile.ts",
+      "imports": [
+        "@/lib/validation/profile"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileSuccessScreen.tsx",
+      "to": "src/components/profile-setup/TokenRewardDisplay.tsx",
+      "imports": [
+        "./TokenRewardDisplay"
+      ]
+    },
+    {
+      "from": "src/components/profile-setup/ProfileView.tsx",
+      "to": "src/components/UserProvider.tsx",
+      "imports": [
+        "../UserProvider"
+      ]
+    },
+    {
+      "from": "src/db/index.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "./schema"
+      ]
+    },
+    {
+      "from": "src/lib/M0_outputSchema.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/M3_intentFrameworks.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/M4_sectorIntel.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/M5_persistence.ts",
+      "to": "src/lib/M5_sectorMatrix.ts",
+      "imports": [
+        "./M5_sectorMatrix"
+      ]
+    },
+    {
+      "from": "src/lib/M5_synergy.ts",
+      "to": "src/lib/M5_sectorMatrix.ts",
+      "imports": [
+        "./M5_sectorMatrix"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/Intentreasoning.test.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "../promptRouter"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/Intentreasoning.test.ts",
+      "to": "src/lib/stateManager.ts",
+      "imports": [
+        "../stateManager"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/Intentreasoning.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/M5_blindCard.test.ts",
+      "to": "src/lib/M5_blindCard.ts",
+      "imports": [
+        "../M5_blindCard"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/M5_matchingLayer.test.ts",
+      "to": "src/lib/M5_matchingLayer.ts",
+      "imports": [
+        "../M5_matchingLayer"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/M5_persistence.test.ts",
+      "to": "src/lib/M5_persistence.ts",
+      "imports": [
+        "../M5_persistence"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/M5_sectorMatrix.test.ts",
+      "to": "src/lib/M5_sectorMatrix.ts",
+      "imports": [
+        "../M5_sectorMatrix"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/M5_synergy.test.ts",
+      "to": "src/lib/M5_synergy.ts",
+      "imports": [
+        "../M5_synergy"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/_helpers.ts",
+      "to": "src/lib/resolveCompletion.ts",
+      "imports": [
+        "../resolveCompletion"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/_helpers.ts",
+      "to": "src/lib/stateManager.ts",
+      "imports": [
+        "../stateManager"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/_helpers.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "../types"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/cognitiveQualification.test.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "../promptRouter"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/cognitiveQualification.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/dataQuality.test.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "../dataQuality"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/detectors.test.ts",
+      "to": "src/lib/detectors.ts",
+      "imports": [
+        "../detectors"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/endFlow.test.ts",
+      "to": "src/lib/resolveCompletion.ts",
+      "imports": [
+        "../resolveCompletion"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/endFlow.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/enum_first.test.ts",
+      "to": "src/lib/M5_sectorMatrix.ts",
+      "imports": [
+        "../M5_sectorMatrix"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/intentFraming.test.ts",
+      "to": "src/lib/intentFraming.ts",
+      "imports": [
+        "../intentFraming"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/intentFraming.test.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "../promptRouter"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/intentFraming.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/intentLock.test.ts",
+      "to": "src/lib/stateManager.ts",
+      "imports": [
+        "../stateManager"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/intentLock.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/m4Flag.test.ts",
+      "to": "src/lib/stateManager.ts",
+      "imports": [
+        "../stateManager"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/m4Flag.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/qualityGate.test.ts",
+      "to": "src/lib/qualityGate.ts",
+      "imports": [
+        "../qualityGate"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/qualityGate.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/resolveCompletion.test.ts",
+      "to": "src/lib/resolveCompletion.ts",
+      "imports": [
+        "../resolveCompletion"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/resolveCompletion.test.ts",
+      "to": "src/lib/__tests__/_helpers.ts",
+      "imports": [
+        "./_helpers"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/responseBuilder.test.ts",
+      "to": "src/lib/responseBuilder.ts",
+      "imports": [
+        "../responseBuilder"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/stateManager.test.ts",
+      "to": "src/lib/stateManager.ts",
+      "imports": [
+        "../stateManager"
+      ]
+    },
+    {
+      "from": "src/lib/__tests__/stateManager.test.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "../types"
+      ]
+    },
+    {
+      "from": "src/lib/actions/auth-actions.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/lib/admin.ts",
+      "to": "src/auth.ts",
+      "imports": [
+        "@/auth"
+      ]
+    },
+    {
+      "from": "src/lib/ai/deal-engine.ts",
+      "to": "src/lib/ai/ai-client.ts",
+      "imports": [
+        "./ai-client"
+      ]
+    },
+    {
+      "from": "src/lib/ai/extraction.ts",
+      "to": "src/lib/validation/profile.ts",
+      "imports": [
+        "../validation/profile"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "@/lib/dataQuality"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/intelligenceEngine.ts",
+      "imports": [
+        "@/lib/intelligenceEngine"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/normalizeMessage.ts",
+      "imports": [
+        "@/lib/normalizeMessage"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "@/lib/promptRouter"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/resolveCompletion.ts",
+      "imports": [
+        "@/lib/resolveCompletion"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/responseBuilder.ts",
+      "imports": [
+        "@/lib/responseBuilder"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/lib/whatsappNotify.ts",
+      "imports": [
+        "@/lib/whatsappNotify"
+      ]
+    },
+    {
+      "from": "src/lib/chatPipeline.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/lib/consent.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/lib/consent.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/lib/controlLayer.ts",
+      "to": "src/lib/conversationState.ts",
+      "imports": [
+        "./conversationState"
+      ]
+    },
+    {
+      "from": "src/lib/dataQuality.ts",
+      "to": "src/lib/qualityGate.ts",
+      "imports": [
+        "./qualityGate"
+      ]
+    },
+    {
+      "from": "src/lib/dataQuality.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/dealDictionary.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/detectors.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "./dataQuality"
+      ]
+    },
+    {
+      "from": "src/lib/detectors.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/email/notifications/delivery.ts",
+      "to": "src/lib/email/brevo.ts",
+      "imports": [
+        "@/lib/email/brevo"
+      ]
+    },
+    {
+      "from": "src/lib/email/notifications/delivery.ts",
+      "to": "src/lib/email/templates/eoiApprovalBlocked.ts",
+      "imports": [
+        "@/lib/email/templates/eoiApprovalBlocked"
+      ]
+    },
+    {
+      "from": "src/lib/email/notifications/delivery.ts",
+      "to": "src/lib/email/templates/eoiApproved.ts",
+      "imports": [
+        "@/lib/email/templates/eoiApproved"
+      ]
+    },
+    {
+      "from": "src/lib/email/notifications/delivery.ts",
+      "to": "src/lib/email/templates/eoiReceived.ts",
+      "imports": [
+        "@/lib/email/templates/eoiReceived"
+      ]
+    },
+    {
+      "from": "src/lib/email/notifications/delivery.ts",
+      "to": "src/lib/email/templates/newCounterparty.ts",
+      "imports": [
+        "@/lib/email/templates/newCounterparty"
+      ]
+    },
+    {
+      "from": "src/lib/email/templates/eoiApprovalBlocked.ts",
+      "to": "src/lib/email/html.ts",
+      "imports": [
+        "@/lib/email/html"
+      ]
+    },
+    {
+      "from": "src/lib/email/templates/eoiApprovalBlocked.ts",
+      "to": "src/lib/email/templates/eoiReceived.ts",
+      "imports": [
+        "@/lib/email/templates/eoiReceived"
+      ]
+    },
+    {
+      "from": "src/lib/email/templates/eoiApproved.ts",
+      "to": "src/lib/email/html.ts",
+      "imports": [
+        "@/lib/email/html"
+      ]
+    },
+    {
+      "from": "src/lib/email/templates/eoiApproved.ts",
+      "to": "src/lib/email/templates/eoiReceived.ts",
+      "imports": [
+        "@/lib/email/templates/eoiReceived"
+      ]
+    },
+    {
+      "from": "src/lib/email/templates/eoiReceived.ts",
+      "to": "src/lib/email/html.ts",
+      "imports": [
+        "@/lib/email/html"
+      ]
+    },
+    {
+      "from": "src/lib/email/templates/newCounterparty.ts",
+      "to": "src/lib/email/html.ts",
+      "imports": [
+        "@/lib/email/html"
+      ]
+    },
+    {
+      "from": "src/lib/email/templates/newCounterparty.ts",
+      "to": "src/lib/email/templates/eoiReceived.ts",
+      "imports": [
+        "@/lib/email/templates/eoiReceived"
+      ]
+    },
+    {
+      "from": "src/lib/guide.ts",
+      "to": "src/lib/guideManifest.ts",
+      "imports": [
+        "./guideManifest"
+      ]
+    },
+    {
+      "from": "src/lib/intelligenceEngine.ts",
+      "to": "src/lib/conversationState.ts",
+      "imports": [
+        "./conversationState"
+      ]
+    },
+    {
+      "from": "src/lib/intentFraming.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/matchmakingEngine.ts",
+      "to": "src/lib/M5_persistence.ts",
+      "imports": [
+        "./M5_persistence"
+      ]
+    },
+    {
+      "from": "src/lib/matchmakingEngine.ts",
+      "to": "src/lib/M5_sectorMatrix.ts",
+      "imports": [
+        "./M5_sectorMatrix"
+      ]
+    },
+    {
+      "from": "src/lib/matchmakingEngine.ts",
+      "to": "src/lib/email/notifications/delivery.ts",
+      "imports": [
+        "./email/notifications/delivery"
+      ]
+    },
+    {
+      "from": "src/lib/matchmakingEngine.ts",
+      "to": "src/utils/supabase/server.ts",
+      "imports": [
+        "@/utils/supabase/server"
+      ]
+    },
+    {
+      "from": "src/lib/normalizeMessage.ts",
+      "to": "src/lib/dealDictionary.ts",
+      "imports": [
+        "./dealDictionary"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M0_outputSchema.ts",
+      "imports": [
+        "./M0_outputSchema"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M1_coreIdentity.ts",
+      "imports": [
+        "./M1_coreIdentity"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M2_phaseRules.ts",
+      "imports": [
+        "./M2_phaseRules"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M3_intentFrameworks.ts",
+      "imports": [
+        "./M3_intentFrameworks"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M4_sectorIntel.ts",
+      "imports": [
+        "./M4_sectorIntel"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M5_matchingLayer.ts",
+      "imports": [
+        "./M5_matchingLayer"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M6_profileIntel.ts",
+      "imports": [
+        "./M6_profileIntel"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M7_specialModes.ts",
+      "imports": [
+        "./M7_specialModes"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M8_helpContent.ts",
+      "imports": [
+        "./M8_helpContent"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M_cognitiveQualification.ts",
+      "imports": [
+        "./M_cognitiveQualification"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/M_intentReasoning.ts",
+      "imports": [
+        "./M_intentReasoning"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/detectors.ts",
+      "imports": [
+        "./detectors"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/intentFraming.ts",
+      "imports": [
+        "./intentFraming"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/qualityGate.ts",
+      "imports": [
+        "./qualityGate"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/stateManager.ts",
+      "imports": [
+        "./stateManager"
+      ]
+    },
+    {
+      "from": "src/lib/promptRouter.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/qualityGate.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/resolveCompletion.ts",
+      "to": "src/lib/detectors.ts",
+      "imports": [
+        "./detectors"
+      ]
+    },
+    {
+      "from": "src/lib/resolveCompletion.ts",
+      "to": "src/lib/qualityGate.ts",
+      "imports": [
+        "./qualityGate"
+      ]
+    },
+    {
+      "from": "src/lib/resolveCompletion.ts",
+      "to": "src/lib/stateManager.ts",
+      "imports": [
+        "./stateManager"
+      ]
+    },
+    {
+      "from": "src/lib/resolveCompletion.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/responseBuilder.ts",
+      "to": "src/lib/conversationState.ts",
+      "imports": [
+        "./conversationState"
+      ]
+    },
+    {
+      "from": "src/lib/scoringEngine.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "./dataQuality"
+      ]
+    },
+    {
+      "from": "src/lib/scoringEngine.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "./promptRouter"
+      ]
+    },
+    {
+      "from": "src/lib/scoringEngine.ts",
+      "to": "src/lib/sectorMatrix.ts",
+      "imports": [
+        "./sectorMatrix"
+      ]
+    },
+    {
+      "from": "src/lib/sectorMatrix.ts",
+      "to": "src/lib/promptRouter.ts",
+      "imports": [
+        "./promptRouter"
+      ]
+    },
+    {
+      "from": "src/lib/stateManager.ts",
+      "to": "src/lib/dataQuality.ts",
+      "imports": [
+        "./dataQuality"
+      ]
+    },
+    {
+      "from": "src/lib/stateManager.ts",
+      "to": "src/lib/detectors.ts",
+      "imports": [
+        "./detectors"
+      ]
+    },
+    {
+      "from": "src/lib/stateManager.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "./types"
+      ]
+    },
+    {
+      "from": "src/lib/whatsapp.ts",
+      "to": "src/lib/whatsappConfig.ts",
+      "imports": [
+        "./whatsappConfig"
+      ]
+    },
+    {
+      "from": "src/lib/whatsappNotify.ts",
+      "to": "src/lib/magicLink.ts",
+      "imports": [
+        "./magicLink"
+      ]
+    },
+    {
+      "from": "src/lib/whatsappNotify.ts",
+      "to": "src/lib/whatsapp.ts",
+      "imports": [
+        "./whatsapp"
+      ]
+    },
+    {
+      "from": "src/lib/whatsappNotify.ts",
+      "to": "src/db/index.ts",
+      "imports": [
+        "@/db"
+      ]
+    },
+    {
+      "from": "src/lib/whatsappNotify.ts",
+      "to": "src/db/schema.ts",
+      "imports": [
+        "@/db/schema"
+      ]
+    },
+    {
+      "from": "src/services/matching/embeddingBuilder.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/explanationEngine.ts",
+      "to": "src/services/matching/rejectionEngine.ts",
+      "imports": [
+        "./rejectionEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/explanationEngine.ts",
+      "to": "src/services/matching/taxonomyEngine.ts",
+      "imports": [
+        "./taxonomyEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/explanationEngine.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/rejectionEngine.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/scoringEngine.ts",
+      "to": "src/services/matching/rejectionEngine.ts",
+      "imports": [
+        "./rejectionEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/scoringEngine.ts",
+      "to": "src/services/matching/taxonomyEngine.ts",
+      "imports": [
+        "./taxonomyEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/scoringEngine.ts",
+      "to": "src/lib/matchmakingEngine.ts",
+      "imports": [
+        "@/lib/matchmakingEngine"
+      ]
+    },
+    {
+      "from": "src/services/matching/taxonomyEngine.ts",
+      "to": "src/lib/types.ts",
+      "imports": [
+        "@/lib/types"
+      ]
+    },
+    {
+      "from": "supabase/migrations/relations.ts",
+      "to": "supabase/migrations/schema.ts",
+      "imports": [
+        "./schema"
+      ]
+    }
+  ],
+  "hub_score": {
+    "src/utils/supabase/server.ts": 29,
+    "src/auth.ts": 28,
+    "src/components/UserProvider.tsx": 21,
+    "src/lib/types.ts": 14,
+    "src/db/index.ts": 13,
+    "src/lib/matchmakingEngine.ts": 12,
+    "src/db/schema.ts": 11,
+    "src/lib/promptRouter.ts": 11,
+    "src/lib/dataQuality.ts": 10,
+    "src/components/NotificationProvider.tsx": 8,
+    "src/components/Skeleton.tsx": 8,
+    "src/lib/__tests__/_helpers.ts": 8,
+    "scripts/cartography/shared.mjs": 7,
+    "src/components/MatchWindow.tsx": 7,
+    "src/lib/stateManager.ts": 7,
+    "src/components/StatusBadge.tsx": 6,
+    "src/components/auth/VideoBackground.tsx": 6,
+    "src/components/auth/VideoLogo.tsx": 6,
+    "src/lib/validation/profile.ts": 6,
+    "src/components/ChatProvider.tsx": 5,
+    "src/lib/M5_sectorMatrix.ts": 5,
+    "src/lib/consent.ts": 5,
+    "src/lib/resolveCompletion.ts": 5,
+    "src/lib/detectors.ts": 4,
+    "src/lib/email/html.ts": 4,
+    "src/lib/email/templates/eoiReceived.ts": 4,
+    "src/lib/qualityGate.ts": 4,
+    "src/lib/rateLimit.ts": 4,
+    "src/components/FeatureLockedOverlay.tsx": 3,
+    "src/components/StatusButton.tsx": 3,
+    "src/components/auth/GoogleAuthButton.tsx": 3,
+    "src/components/guide/guideIcons.ts": 3,
+    "src/lib/M5_blindCard.ts": 3,
+    "src/lib/M5_synergy.ts": 3,
+    "src/lib/admin.ts": 3,
+    "src/lib/conversationState.ts": 3,
+    "src/lib/guideData.ts": 3,
+    "src/lib/magicLink.ts": 3,
+    "src/lib/responseBuilder.ts": 3,
+    "src/lib/whatsapp.ts": 3,
+    "src/components/ActionButtons.tsx": 2,
+    "src/components/BulkMandateCard.tsx": 2,
+    "src/components/ConnectionDetails.tsx": 2,
+    "src/components/DashboardLayout.tsx": 2,
+    "src/components/DealCard.tsx": 2,
+    "src/components/MatchCard.tsx": 2,
+    "src/components/NotificationCard.tsx": 2,
+    "src/components/auth/EmailOtpVerification.tsx": 2,
+    "src/components/auth/EmailVerification.tsx": 2,
+    "src/components/auth/PhoneVerification.tsx": 2,
+    "src/components/guide/GuideCard.tsx": 2,
+    "src/components/guide/GuideHeader.tsx": 2,
+    "src/components/profile-setup/ProfileStepper.tsx": 2,
+    "src/components/profile-setup/ProfileSuccessScreen.tsx": 2,
+    "src/lib/M5_matchingLayer.ts": 2,
+    "src/lib/M5_persistence.ts": 2,
+    "src/lib/documentParser.ts": 2,
+    "src/lib/email/notifications/delivery.ts": 2,
+    "src/lib/emailOtp.ts": 2,
+    "src/lib/guideManifest.ts": 2,
+    "src/lib/intelligenceEngine.ts": 2,
+    "src/lib/intentFraming.ts": 2,
+    "src/lib/normalizeMessage.ts": 2,
+    "src/lib/otp.ts": 2,
+    "src/lib/scoringEngine.ts": 2,
+    "src/lib/whatsappConfig.ts": 2,
+    "src/lib/whatsappNotify.ts": 2,
+    "src/services/matching/rejectionEngine.ts": 2,
+    "src/services/matching/taxonomyEngine.ts": 2,
+    "src/utils/supabase/client.ts": 2,
+    "src/app/api/profile/route.ts": 1,
+    "src/app/cartography/CartographyDashboard.tsx": 1,
+    "src/auth.config.ts": 1,
+    "src/components/BulkMandateEmptyState.tsx": 1,
+    "src/components/BulkMandateMatches.tsx": 1,
+    "src/components/BulkMandatesTab.tsx": 1,
+    "src/components/BulkUploadModal.tsx": 1,
+    "src/components/ChatArea.tsx": 1,
+    "src/components/ConsentGate.module.css": 1,
+    "src/components/DashboardRow.tsx": 1,
+    "src/components/DealLogCard.tsx": 1,
+    "src/components/ExpiredLinkView.tsx": 1,
+    "src/components/ExtensionNoiseReducer.tsx": 1,
+    "src/components/GlobalErrorBanner.tsx": 1,
+    "src/components/GuideMenu.module.css": 1,
+    "src/components/GuideMenu.tsx": 1,
+    "src/components/IncomingEOIDetails.tsx": 1,
+    "src/components/InputBar.tsx": 1,
+    "src/components/InputField.tsx": 1,
+    "src/components/MatchPanel.tsx": 1,
+    "src/components/MobileNavbar.tsx": 1,
+    "src/components/NotificationList.tsx": 1,
+    "src/components/ProfileDropdown.tsx": 1,
+    "src/components/SendEOIModal.tsx": 1,
+    "src/components/Sidebar.tsx": 1,
+    "src/components/ThreeDotMenu.tsx": 1,
+    "src/components/auth/AuthProvider.tsx": 1,
+    "src/components/auth/AuthStepper.tsx": 1,
+    "src/components/auth/OTPInput.tsx": 1,
+    "src/components/guide/GuideCategory.tsx": 1,
+    "src/components/guide/GuideHero.tsx": 1,
+    "src/components/guide/GuideMarkdown.tsx": 1,
+    "src/components/guide/GuideSearch.tsx": 1,
+    "src/components/guide/GuideSection.tsx": 1,
+    "src/components/guide/GuideSidebar.tsx": 1,
+    "src/components/intelligence/HeroSection.tsx": 1,
+    "src/components/intelligence/IntelligenceModules.tsx": 1,
+    "src/components/intelligence/IntelligenceStrip.tsx": 1,
+    "src/components/intelligence/IntelligenceVideoBackground.tsx": 1,
+    "src/components/intelligence/PremiumAccess.tsx": 1,
+    "src/components/intelligence/TrustLayer.tsx": 1,
+    "src/components/profile-setup/AnimatedStepWrapper.tsx": 1,
+    "src/components/profile-setup/AvatarUpload.tsx": 1,
+    "src/components/profile-setup/FileUpload.tsx": 1,
+    "src/components/profile-setup/MultiSelectChips.tsx": 1,
+    "src/components/profile-setup/ProfileView.tsx": 1,
+    "src/components/profile-setup/ProgressBar.tsx": 1,
+    "src/components/profile-setup/ProgressCircle.tsx": 1,
+    "src/components/profile-setup/StepCard.tsx": 1,
+    "src/components/profile-setup/TagInput.tsx": 1,
+    "src/components/profile-setup/TokenRewardDisplay.tsx": 1,
+    "src/lib/M0_outputSchema.ts": 1,
+    "src/lib/M1_coreIdentity.ts": 1,
+    "src/lib/M2_phaseRules.ts": 1,
+    "src/lib/M3_intentFrameworks.ts": 1,
+    "src/lib/M4_sectorIntel.ts": 1,
+    "src/lib/M6_profileIntel.ts": 1,
+    "src/lib/M7_specialModes.ts": 1,
+    "src/lib/M8_helpContent.ts": 1,
+    "src/lib/M_cognitiveQualification.ts": 1,
+    "src/lib/M_intentReasoning.ts": 1,
+    "src/lib/ai/ai-client.ts": 1,
+    "src/lib/dealDictionary.ts": 1,
+    "src/lib/email/brevo.ts": 1,
+    "src/lib/email/templates/eoiApprovalBlocked.ts": 1,
+    "src/lib/email/templates/eoiApproved.ts": 1,
+    "src/lib/email/templates/newCounterparty.ts": 1,
+    "src/lib/guide.ts": 1,
+    "src/lib/profileCompletion.ts": 1,
+    "src/lib/sectorMatrix.ts": 1,
+    "supabase/migrations/schema.ts": 1
+  },
+  "generated_at": "2026-08-05T13:20:36.573Z"
+}

@@ -1,0 +1,9 @@
+[
+  {
+    "path": "src/lib/M0_outputSchema.ts",
+    "why_exists": "Acts as the root prompt contract loaded first in every LLM chat/intake turn. Defines the mandatory pre-flight instructions (PRE_FLIGHT_EXTRACTION) and output format (M0_OUTPUT_SCHEMA).",
+    "business_rules": "Controls the intent-change lock, sector mapping classification, and the redundancy-skipping map (preventing users from being asked duplicate questions about details they already provided).",
+    "fragile_conditions": "Modifying output JSON keys will break the backend parsing parser. The completion gate (is_complete=false on the same turn M4 questions are introduced) must remain intact to prevent early intake closure.",
+    "blast_radius": "Universal chat and document ingestion flow. Any syntax issue or key change here breaks every prompt turn, intent detection, and matchmaking pipeline."
+  }
+]

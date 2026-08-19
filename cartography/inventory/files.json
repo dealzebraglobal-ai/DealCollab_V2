@@ -1,0 +1,7698 @@
+[
+  {
+    "path": "({",
+    "type": "asset",
+    "language": "unknown",
+    "size_lines": 0,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/SKILL.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 65,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/_contributing.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 171,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/_sections.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 40,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/_template.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 35,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/advanced-full-text-search.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 56,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/advanced-jsonb-indexing.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 50,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/conn-idle-timeout.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 47,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/conn-limits.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 45,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/conn-pooling.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 42,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/conn-prepared-statements.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 47,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/data-batch-inserts.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 55,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/data-n-plus-one.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 54,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/data-pagination.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 51,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/data-upsert.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 51,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/lock-advisory.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 57,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/lock-deadlock-prevention.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 69,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/lock-short-transactions.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 51,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/lock-skip-locked.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 55,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/monitor-explain-analyze.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 46,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/monitor-pg-stat-statements.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 56,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/monitor-vacuum-analyze.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 56,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/query-composite-indexes.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 45,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/query-covering-indexes.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 41,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/query-index-types.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 49,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/query-missing-indexes.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 44,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/query-partial-indexes.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 46,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/schema-constraints.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 81,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/schema-data-types.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 47,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/schema-foreign-key-indexes.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 60,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/schema-lowercase-identifiers.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 56,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/schema-partitioning.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 56,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/schema-primary-keys.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 62,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/security-privileges.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 55,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/security-rls-basics.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 51,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".agents/skills/supabase-postgres-best-practices/references/security-rls-performance.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 58,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".env",
+    "type": "asset",
+    "language": "unknown",
+    "size_lines": 64,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".github/workflows/ci.yml",
+    "type": "asset",
+    "language": "yml",
+    "size_lines": 50,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-06-11 13:51:13 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": ".gitignore",
+    "type": "asset",
+    "language": "unknown",
+    "size_lines": 42,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "AGENTS.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 6,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "CLAUDE.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 333,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "ChatLogs_SupriyaSurve.docx",
+    "type": "asset",
+    "language": "docx",
+    "size_lines": 90,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-06-20 12:29:00 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "LICENSE",
+    "type": "asset",
+    "language": "unknown",
+    "size_lines": 22,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:52:20 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "README.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 37,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/README.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 11,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/inventory/env-vars.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 524,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/inventory/external-services.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 195,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/inventory/files.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 7699,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/inventory/routes.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 1287,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/inventory/state-objects.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/inventory/tables.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 345,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/meta/scan-timestamp.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 6,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/meta/staleness-report.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 7,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/narrative/scar-registry.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/narrative/why-cards.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/topology/data-flows.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/topology/import-graph.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 3525,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/topology/module-decision-tree.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 4,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/topology/prompt-assembly.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 3,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "cartography/topology/state-mutations.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "check_db_matches.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 22,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "check_matches.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 46,
+    "exports": [],
+    "imports_from": [
+      "@next/env",
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "check_pharma_matches.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 41,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "check_proposal.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 18,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "check_recent_proposals.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 26,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "check_user_proposals.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 25,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/faq.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 134,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/get-matched-faster.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 82,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/how-it-works.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 62,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/privacy-policy.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 98,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/terms-of-service.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 118,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/tokens-and-payments.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 65,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/what-we-do-and-dont.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 57,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "content/guide/who-we-are.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 77,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "drizzle.config.ts",
+    "type": "config",
+    "language": "typescript",
+    "size_lines": 30,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "drizzle-kit",
+      "fs",
+      "path"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "eslint.config.mjs",
+    "type": "config",
+    "language": "javascript",
+    "size_lines": 19,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "eslint-config-next/core-web-vitals",
+      "eslint-config-next/typescript",
+      "eslint/config"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "fix_m4.js",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 60,
+    "exports": [
+      "$"
+    ],
+    "imports_from": [
+      "fs"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "fix_m4_2.js",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 60,
+    "exports": [
+      "$"
+    ],
+    "imports_from": [
+      "fs"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "next-env.d.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 7,
+    "exports": [],
+    "imports_from": [
+      "./.next/dev/types/routes.d.ts"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "next.config.ts",
+    "type": "config",
+    "language": "typescript",
+    "size_lines": 86,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "next"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "npm",
+    "type": "asset",
+    "language": "unknown",
+    "size_lines": 0,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "package-lock.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 12167,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "package.json",
+    "type": "config",
+    "language": "json",
+    "size_lines": 64,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "postcss.config.mjs",
+    "type": "config",
+    "language": "javascript",
+    "size_lines": 8,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "public/earth-poster.png",
+    "type": "asset",
+    "language": "png",
+    "size_lines": 1330,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "public/earth.mp4",
+    "type": "asset",
+    "language": "mp4",
+    "size_lines": 6863,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "public/file.svg",
+    "type": "asset",
+    "language": "svg",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "public/globe.svg",
+    "type": "asset",
+    "language": "svg",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "public/next.svg",
+    "type": "asset",
+    "language": "svg",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "public/vercel.svg",
+    "type": "asset",
+    "language": "svg",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "public/window.svg",
+    "type": "asset",
+    "language": "svg",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/add_whatsapp_columns.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 52,
+    "exports": [],
+    "imports_from": [
+      "dotenv",
+      "path",
+      "pg"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/apply-rpc-migration.ts",
+    "type": "migration",
+    "language": "typescript",
+    "size_lines": 86,
+    "exports": [],
+    "imports_from": [
+      "dotenv",
+      "openai",
+      "pg"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/backfill-mandate-summaries.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 72,
+    "exports": [],
+    "imports_from": [
+      "dotenv",
+      "openai",
+      "pg"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/backfill-proposal-summaries.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 152,
+    "exports": [],
+    "imports_from": [
+      "dotenv",
+      "openai",
+      "pg"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/build-import-graph.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 9,
+    "exports": [],
+    "imports_from": [
+      "./shared.mjs",
+      "node:fs",
+      "node:path"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/check-staleness.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 10,
+    "exports": [],
+    "imports_from": [
+      "./shared.mjs",
+      "node:fs",
+      "node:path"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/scan-db.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 13,
+    "exports": [],
+    "imports_from": [
+      "./shared.mjs"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/scan-env.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 21,
+    "exports": [],
+    "imports_from": [
+      "./shared.mjs"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/scan-external-services.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 23,
+    "exports": [],
+    "imports_from": [
+      "./shared.mjs"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/scan-files.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 28,
+    "exports": [],
+    "imports_from": [
+      "./shared.mjs",
+      "node:path"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/scan-routes.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 10,
+    "exports": [],
+    "imports_from": [
+      "./shared.mjs"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cartography/shared.mjs",
+    "type": "script",
+    "language": "javascript",
+    "size_lines": 58,
+    "exports": [
+      "changeFrequency",
+      "classifyFile",
+      "codeExtensions",
+      "ensureDir",
+      "excludedDirs",
+      "extractExports",
+      "extractImports",
+      "git",
+      "languageFor",
+      "lineCount",
+      "listFiles",
+      "ownerTool",
+      "readText",
+      "repoRoot",
+      "resolveImport",
+      "writeJson"
+    ],
+    "imports_from": [
+      "node:child_process",
+      "node:fs",
+      "node:path"
+    ],
+    "imported_by": [
+      "scripts/cartography/build-import-graph.mjs",
+      "scripts/cartography/check-staleness.mjs",
+      "scripts/cartography/scan-db.mjs",
+      "scripts/cartography/scan-env.mjs",
+      "scripts/cartography/scan-external-services.mjs",
+      "scripts/cartography/scan-files.mjs",
+      "scripts/cartography/scan-routes.mjs"
+    ],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/cleanup_proposals.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 40,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/embed-mandates.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 74,
+    "exports": [],
+    "imports_from": [
+      "dotenv",
+      "openai",
+      "pg"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/enrich-proposals.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 230,
+    "exports": [],
+    "imports_from": [
+      "../src/lib/dataQuality",
+      "../src/lib/promptRouter",
+      "@supabase/supabase-js",
+      "fs",
+      "path"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/inject-ayush-deals.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 256,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js",
+      "openai"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/rematch.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 70,
+    "exports": [],
+    "imports_from": [
+      "../src/lib/matchmakingEngine",
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/rematch_all.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 62,
+    "exports": [],
+    "imports_from": [
+      "../src/lib/matchmakingEngine",
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/repair-database.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 233,
+    "exports": [],
+    "imports_from": [
+      "../src/lib/dataQuality",
+      "@supabase/supabase-js",
+      "fs",
+      "path"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/seed-embeddings.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 275,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js",
+      "openai"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/test-match.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 146,
+    "exports": [],
+    "imports_from": [
+      "../src/lib/matchmakingEngine",
+      "../src/lib/promptRouter",
+      "@supabase/supabase-js",
+      "fs",
+      "path"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "scripts/test-rpc.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 31,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js",
+      "fs",
+      "path"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "skills-lock.json",
+    "type": "asset",
+    "language": "json",
+    "size_lines": 11,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(auth)/layout.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 11,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(auth)/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 289,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/UserProvider",
+      "@/components/auth/EmailOtpVerification",
+      "@/components/auth/EmailVerification",
+      "@/components/auth/GoogleAuthButton",
+      "@/components/auth/PhoneVerification",
+      "@/components/auth/VideoBackground",
+      "@/components/auth/VideoLogo",
+      "framer-motion",
+      "lucide-react",
+      "next-auth/react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(auth)/signup/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 75,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/auth/GoogleAuthButton",
+      "@/components/auth/VideoBackground",
+      "@/components/auth/VideoLogo",
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(auth)/verify/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 113,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/UserProvider",
+      "lucide-react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/analytics/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 87,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/FeatureLockedOverlay",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 311,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/ConnectionDetails",
+      "@/components/DealCard",
+      "@/components/ExpiredLinkView",
+      "@/components/MatchCard",
+      "@/components/NotificationProvider",
+      "@/components/Skeleton",
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/deal-dashboard/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 253,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/DashboardRow",
+      "@/components/SendEOIModal",
+      "@/components/Skeleton",
+      "@/components/StatusButton",
+      "lucide-react",
+      "next/link",
+      "react",
+      "swr"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/deal-intelligence/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 40,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/FeatureLockedOverlay",
+      "@/components/intelligence/HeroSection",
+      "@/components/intelligence/IntelligenceModules",
+      "@/components/intelligence/IntelligenceStrip",
+      "@/components/intelligence/IntelligenceVideoBackground",
+      "@/components/intelligence/PremiumAccess",
+      "@/components/intelligence/TrustLayer",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/deal-log/[id]/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 378,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/NotificationProvider",
+      "@/components/UserProvider",
+      "lucide-react",
+      "next/link",
+      "next/navigation",
+      "react",
+      "swr"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/deal-log/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 338,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/BulkMandateCard",
+      "@/components/BulkMandatesTab",
+      "@/components/BulkUploadModal",
+      "@/components/DealLogCard",
+      "@/components/MatchWindow",
+      "@/components/Skeleton",
+      "@/components/StatusBadge",
+      "lucide-react",
+      "next/navigation",
+      "react",
+      "swr"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/deal/[id]/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 345,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/MatchWindow",
+      "@/components/Skeleton",
+      "@/components/StatusBadge",
+      "lucide-react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/eoi-review/[ref]/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 308,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/NotificationProvider",
+      "@/components/UserProvider",
+      "lucide-react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/guide/[slug]/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 98,
+    "exports": [
+      "default",
+      "generateMetadata",
+      "generateStaticParams"
+    ],
+    "imports_from": [
+      "@/components/guide/GuideHeader",
+      "@/components/guide/GuideMarkdown",
+      "@/components/guide/guideIcons",
+      "@/lib/guide",
+      "lucide-react",
+      "next/link",
+      "next/navigation",
+      "react-markdown",
+      "remark-gfm"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/guide/guide.css",
+    "type": "asset",
+    "language": "css",
+    "size_lines": 348,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/guide/layout.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 25,
+    "exports": [
+      "default",
+      "metadata"
+    ],
+    "imports_from": [
+      "@/components/ChatProvider",
+      "@/components/DashboardLayout",
+      "next"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/guide/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 77,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/guide/GuideCard",
+      "@/components/guide/GuideCategory",
+      "@/components/guide/GuideHeader",
+      "@/components/guide/GuideHero",
+      "@/components/guide/GuideSearch",
+      "@/components/guide/GuideSidebar",
+      "@/lib/guideData",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/home/loading.tsx",
+    "type": "module",
+    "language": "typescriptreact",
+    "size_lines": 23,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/Skeleton",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/home/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 302,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/ChatArea",
+      "@/components/ChatProvider",
+      "@/components/InputBar",
+      "@/components/MatchPanel",
+      "@/components/Skeleton",
+      "lucide-react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/layout.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 46,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/ChatProvider",
+      "@/components/DashboardLayout",
+      "@/components/GlobalErrorBanner",
+      "@/components/UserProvider",
+      "next-auth/react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/notifications/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 137,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/FeatureLockedOverlay",
+      "@/components/NotificationList",
+      "@/components/NotificationProvider",
+      "@/components/Skeleton",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/profile/billing/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 173,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/profile/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 117,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/UserProvider",
+      "@/components/profile-setup/ProfileStepper",
+      "@/components/profile-setup/ProfileSuccessScreen",
+      "@/components/profile-setup/ProfileView",
+      "lucide-react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/profile/settings/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 87,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/UserProvider",
+      "@/components/profile-setup/ProfileStepper",
+      "@/components/profile-setup/ProfileSuccessScreen",
+      "lucide-react",
+      "next/link",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-27 14:19:41 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/(dashboard)/profile/tokens/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 165,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-29 08:52:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/admin/details/[type]/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 210,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/link",
+      "react",
+      "swr"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/admin/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 637,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/link",
+      "react",
+      "swr"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-23 14:55:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/admin/dashboard/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 752,
+    "exports": [
+      "GET",
+      "PATCH",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/lib/admin",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-23 14:55:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/admin/diagnose/[proposalID]/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 159,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/admin",
+      "@/lib/promptRouter",
+      "@/lib/scoringEngine",
+      "@/utils/supabase/server",
+      "crypto",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/admin/fix-encoding/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 103,
+    "exports": [
+      "POST",
+      "dynamic",
+      "maxDuration",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/lib/dataQuality",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/admin/rematch/[proposalID]/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 76,
+    "exports": [
+      "POST",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/admin",
+      "@/lib/matchmakingEngine",
+      "@/utils/supabase/server",
+      "crypto",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/[...nextauth]/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 8,
+    "exports": [
+      "GET",
+      "POST",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/email-otp/send/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 76,
+    "exports": [
+      "POST",
+      "dynamic"
+    ],
+    "imports_from": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/emailOtp",
+      "@/lib/rateLimit",
+      "@/lib/validation/profile",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/email-otp/verify/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 65,
+    "exports": [
+      "POST",
+      "dynamic"
+    ],
+    "imports_from": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/emailOtp",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/google-link/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 92,
+    "exports": [
+      "POST",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/db",
+      "@/db/schema",
+      "drizzle-orm",
+      "next/headers",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-04 14:17:07 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/magic-link/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 30,
+    "exports": [
+      "GET"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/magicLink",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/otp/verify/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 75,
+    "exports": [
+      "POST",
+      "dynamic"
+    ],
+    "imports_from": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/otp",
+      "@/lib/rateLimit",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/save-phone/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 62,
+    "exports": [
+      "POST",
+      "dynamic"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/db",
+      "@/db/schema",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-04 14:17:07 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/auth/whatsapp-otp/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 59,
+    "exports": [
+      "POST"
+    ],
+    "imports_from": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/otp",
+      "@/lib/rateLimit",
+      "@/lib/whatsapp",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/chat/[id]/messages/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 97,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/chat/[id]/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 177,
+    "exports": [
+      "DELETE",
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/chat/history/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 66,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-29 09:07:54 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/chat/latest-document/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 44,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-01 17:55:11 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/chat/parse-document/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 296,
+    "exports": [
+      "POST",
+      "dynamic",
+      "maxDuration",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/documentParser",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-20 16:33:42 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/chat/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 877,
+    "exports": [
+      "GET",
+      "POST",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/dataQuality",
+      "@/lib/intelligenceEngine",
+      "@/lib/matchmakingEngine",
+      "@/lib/normalizeMessage",
+      "@/lib/promptRouter",
+      "@/lib/rateLimit",
+      "@/lib/resolveCompletion",
+      "@/lib/responseBuilder",
+      "@/utils/supabase/server",
+      "crypto",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/consent/accept/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 117,
+    "exports": [
+      "POST",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/consent",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/consent/status/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 36,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/consent",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/cron/rematch/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 120,
+    "exports": [
+      "GET"
+    ],
+    "imports_from": [
+      "@/lib/scoringEngine",
+      "@/lib/whatsappNotify",
+      "@/utils/supabase/server",
+      "next/server",
+      "openai"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/deals/[proposalID]/search-matches/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 90,
+    "exports": [
+      "POST",
+      "dynamic",
+      "maxDuration",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/matchmakingEngine",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/deals/bulk-upload/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 302,
+    "exports": [
+      "POST",
+      "dynamic",
+      "maxDuration",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/dataQuality",
+      "@/lib/documentParser",
+      "@/lib/matchmakingEngine",
+      "@/lib/promptRouter",
+      "@/utils/supabase/server",
+      "next/server",
+      "papaparse"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/deals/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 184,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/eois/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 427,
+    "exports": [
+      "DELETE",
+      "GET",
+      "PATCH",
+      "POST",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/M5_blindCard",
+      "@/lib/M5_synergy",
+      "@/lib/consent",
+      "@/lib/email/notifications/delivery",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/fix-db/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 43,
+    "exports": [
+      "GET"
+    ],
+    "imports_from": [
+      "@/db",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/matches/[proposalID]/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 249,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 19:07:16 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/matches/connect/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 153,
+    "exports": [
+      "POST",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/consent",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/matches/detail/[matchId]/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 148,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/M5_blindCard",
+      "@/lib/M5_synergy",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/matches/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 190,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/notifications/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 74,
+    "exports": [
+      "GET",
+      "PATCH",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/profile/create/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 4,
+    "exports": [
+      "POST"
+    ],
+    "imports_from": [
+      "../route"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-27 14:19:41 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/profile/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 284,
+    "exports": [
+      "GET",
+      "POST",
+      "dynamic"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/lib/profileCompletion",
+      "@/lib/validation/profile",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [
+      "src/app/api/profile/create/route.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/profile/tokens/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 122,
+    "exports": [
+      "GET",
+      "POST"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/db",
+      "@/db/schema",
+      "@/lib/consent",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/profile/upload/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 141,
+    "exports": [
+      "POST"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-29 08:52:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/profile/upload/signed-url/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 71,
+    "exports": [
+      "GET"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/users/tokens/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 49,
+    "exports": [
+      "GET",
+      "dynamic",
+      "runtime"
+    ],
+    "imports_from": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/api/webhooks/whatsapp/route.ts",
+    "type": "route",
+    "language": "typescript",
+    "size_lines": 339,
+    "exports": [
+      "GET",
+      "POST"
+    ],
+    "imports_from": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/magicLink",
+      "@/lib/whatsapp",
+      "@/lib/whatsappConfig",
+      "crypto",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/cartography/CartographyDashboard.tsx",
+    "type": "module",
+    "language": "typescriptreact",
+    "size_lines": 690,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/cartography/page.tsx"
+    ],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/cartography/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 74,
+    "exports": [
+      "default",
+      "metadata"
+    ],
+    "imports_from": [
+      "./CartographyDashboard",
+      "node:fs/promises",
+      "node:path"
+    ],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/data-deletion/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 62,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/auth/VideoBackground",
+      "@/components/auth/VideoLogo",
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-30 14:02:42 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/globals.css",
+    "type": "asset",
+    "language": "css",
+    "size_lines": 153,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-19 19:38:36 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/layout.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 54,
+    "exports": [
+      "default",
+      "metadata"
+    ],
+    "imports_from": [
+      "@/components/ExtensionNoiseReducer",
+      "@/components/NotificationProvider",
+      "@/components/UserProvider",
+      "@/components/auth/AuthProvider",
+      "next",
+      "next/font/google"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/loading.tsx",
+    "type": "module",
+    "language": "typescriptreact",
+    "size_lines": 35,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/Skeleton",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 329,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/UserProvider",
+      "@/components/auth/AuthStepper",
+      "@/components/auth/EmailOtpVerification",
+      "@/components/auth/EmailVerification",
+      "@/components/auth/GoogleAuthButton",
+      "@/components/auth/PhoneVerification",
+      "@/components/auth/VideoBackground",
+      "@/components/auth/VideoLogo",
+      "lucide-react",
+      "next-auth/react",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/privacy/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 68,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/auth/VideoBackground",
+      "@/components/auth/VideoLogo",
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-30 14:02:42 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/terms/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 58,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/components/auth/VideoBackground",
+      "@/components/auth/VideoLogo",
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-30 14:02:42 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/app/welcome/page.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 139,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/auth.config.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 23,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "next-auth",
+      "next-auth/providers/google"
+    ],
+    "imported_by": [
+      "src/auth.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/auth.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 219,
+    "exports": [],
+    "imports_from": [
+      "./auth.config",
+      "./db",
+      "./db/schema",
+      "@auth/drizzle-adapter",
+      "drizzle-orm",
+      "next-auth",
+      "next-auth/providers/credentials"
+    ],
+    "imported_by": [
+      "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "src/app/api/auth/[...nextauth]/route.ts",
+      "src/app/api/auth/magic-link/route.ts",
+      "src/app/api/auth/save-phone/route.ts",
+      "src/app/api/chat/[id]/messages/route.ts",
+      "src/app/api/chat/[id]/route.ts",
+      "src/app/api/chat/history/route.ts",
+      "src/app/api/chat/latest-document/route.ts",
+      "src/app/api/chat/parse-document/route.ts",
+      "src/app/api/chat/route.ts",
+      "src/app/api/consent/accept/route.ts",
+      "src/app/api/consent/status/route.ts",
+      "src/app/api/deals/[proposalID]/search-matches/route.ts",
+      "src/app/api/deals/bulk-upload/route.ts",
+      "src/app/api/deals/route.ts",
+      "src/app/api/eois/route.ts",
+      "src/app/api/matches/[proposalID]/route.ts",
+      "src/app/api/matches/connect/route.ts",
+      "src/app/api/matches/detail/[matchId]/route.ts",
+      "src/app/api/matches/route.ts",
+      "src/app/api/notifications/route.ts",
+      "src/app/api/profile/route.ts",
+      "src/app/api/profile/tokens/route.ts",
+      "src/app/api/profile/upload/route.ts",
+      "src/app/api/profile/upload/signed-url/route.ts",
+      "src/app/api/users/tokens/route.ts",
+      "src/lib/admin.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ActionButtons.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 48,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/DealLogCard.tsx",
+      "src/components/MatchWindow.tsx"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/BottomNav.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 54,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./NotificationProvider",
+      "lucide-react",
+      "next/link",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/BulkMandateCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 107,
+    "exports": [
+      "BulkMandate",
+      "default"
+    ],
+    "imports_from": [
+      "./BulkMandateMatches",
+      "./MatchWindow",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-log/page.tsx",
+      "src/components/BulkMandatesTab.tsx"
+    ],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/BulkMandateEmptyState.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 35,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/BulkMandatesTab.tsx"
+    ],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/BulkMandateMatches.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 73,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./MatchWindow",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/BulkMandateCard.tsx"
+    ],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/BulkMandatesTab.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 69,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./BulkMandateCard",
+      "./BulkMandateEmptyState",
+      "./MatchWindow",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-log/page.tsx"
+    ],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/BulkUploadModal.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 169,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-log/page.tsx"
+    ],
+    "last_modified": "2026-07-16 19:00:42 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ChatArea.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 123,
+    "exports": [
+      "Message",
+      "default"
+    ],
+    "imports_from": [
+      "./UserProvider",
+      "lucide-react",
+      "next/image",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/home/page.tsx"
+    ],
+    "last_modified": "2026-05-19 19:38:36 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ChatProvider.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 266,
+    "exports": [
+      "ChatProvider",
+      "useChat"
+    ],
+    "imports_from": [
+      "next-auth/react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/layout.tsx",
+      "src/app/(dashboard)/home/page.tsx",
+      "src/app/(dashboard)/layout.tsx",
+      "src/components/DashboardLayout.tsx",
+      "src/components/Sidebar.tsx"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/Confetti.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 58,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ConnectionDetails.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 172,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "src/components/DashboardRow.tsx"
+    ],
+    "last_modified": "2026-05-19 19:38:36 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ConsentGate.module.css",
+    "type": "asset",
+    "language": "css",
+    "size_lines": 118,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [
+      "src/components/ConsentGate.tsx"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ConsentGate.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 101,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./ConsentGate.module.css",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/DashboardLayout.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 91,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./ChatProvider",
+      "@/components/MobileNavbar",
+      "@/components/ProfileDropdown",
+      "@/components/Sidebar",
+      "@/components/UserProvider",
+      "lucide-react",
+      "next/link",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/layout.tsx",
+      "src/app/(dashboard)/layout.tsx"
+    ],
+    "last_modified": "2026-05-19 19:38:36 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/DashboardRow.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 132,
+    "exports": [
+      "DashboardDeal",
+      "default"
+    ],
+    "imports_from": [
+      "./ConnectionDetails",
+      "./DealCard",
+      "./IncomingEOIDetails",
+      "./MatchCard",
+      "./StatusButton",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/page.tsx"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/DealCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 19,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "src/components/DashboardRow.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/DealLogCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 85,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./ActionButtons",
+      "./MatchWindow",
+      "./StatusBadge",
+      "./StatusButton",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-log/page.tsx"
+    ],
+    "last_modified": "2026-07-16 15:32:06 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/DealRow.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 39,
+    "exports": [
+      "Deal",
+      "default"
+    ],
+    "imports_from": [
+      "./StatusBadge",
+      "./ThreeDotMenu",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ExpiredLinkView.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 45,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/[id]/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ExtensionNoiseReducer.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 60,
+    "exports": [
+      "ExtensionNoiseReducer"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/layout.tsx"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/FeatureLockedOverlay.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 50,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/analytics/page.tsx",
+      "src/app/(dashboard)/deal-intelligence/page.tsx",
+      "src/app/(dashboard)/notifications/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/GlobalErrorBanner.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 43,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./UserProvider",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/layout.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/GuideMenu.module.css",
+    "type": "asset",
+    "language": "css",
+    "size_lines": 123,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [
+      "src/components/GuideMenu.tsx"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/GuideMenu.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 124,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./GuideMenu.module.css",
+      "@/components/GuideMenu",
+      "@/lib/guideManifest",
+      "next/link",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/GuideMenu.tsx"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/IncomingEOIDetails.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 152,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/DashboardRow.tsx"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/InlineFormCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 46,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./InputField",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/InputBar.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 136,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/home/page.tsx"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/InputField.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 25,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/InlineFormCard.tsx"
+    ],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/MatchCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 21,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "src/components/DashboardRow.tsx"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/MatchDetailsModal.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 185,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./MatchWindow",
+      "./UserProvider",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/MatchPanel.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 336,
+    "exports": [
+      "MatchPanel"
+    ],
+    "imports_from": [
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/home/page.tsx"
+    ],
+    "last_modified": "2026-07-16 15:32:06 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/MatchWindow.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 228,
+    "exports": [
+      "Match",
+      "MatchCounterparty",
+      "MatchScores",
+      "default"
+    ],
+    "imports_from": [
+      "./ActionButtons",
+      "./StatusBadge",
+      "./UserProvider",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-log/page.tsx",
+      "src/app/(dashboard)/deal/[id]/page.tsx",
+      "src/components/BulkMandateCard.tsx",
+      "src/components/BulkMandateMatches.tsx",
+      "src/components/BulkMandatesTab.tsx",
+      "src/components/DealLogCard.tsx",
+      "src/components/MatchDetailsModal.tsx"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/MobileNavbar.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 59,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./UserProvider",
+      "lucide-react",
+      "next/image",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/DashboardLayout.tsx"
+    ],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/NotificationCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 131,
+    "exports": [
+      "Notification",
+      "NotificationType",
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/navigation"
+    ],
+    "imported_by": [
+      "src/components/NotificationList.tsx",
+      "src/components/NotificationProvider.tsx"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/NotificationList.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 31,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./NotificationCard",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/notifications/page.tsx"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/NotificationProvider.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 152,
+    "exports": [
+      "NotificationProvider",
+      "useNotifications"
+    ],
+    "imports_from": [
+      "@/components/NotificationCard",
+      "@/utils/supabase/client",
+      "next-auth/react",
+      "react",
+      "swr"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "src/app/(dashboard)/deal-log/[id]/page.tsx",
+      "src/app/(dashboard)/eoi-review/[ref]/page.tsx",
+      "src/app/(dashboard)/notifications/page.tsx",
+      "src/app/layout.tsx",
+      "src/components/BottomNav.tsx",
+      "src/components/Sidebar.tsx",
+      "src/components/UserProvider.tsx"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/OnboardingChecklist.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 99,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./UserProvider",
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ProfileDropdown.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 118,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./UserProvider",
+      "lucide-react",
+      "next-auth/react",
+      "next/image",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/DashboardLayout.tsx"
+    ],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/SendEOIModal.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 252,
+    "exports": [
+      "SendEOIData",
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/page.tsx"
+    ],
+    "last_modified": "2026-05-19 19:38:36 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/Sidebar.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 197,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./ChatProvider",
+      "./NotificationProvider",
+      "./UserProvider",
+      "lucide-react",
+      "next-auth/react",
+      "next/image",
+      "next/link",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/DashboardLayout.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/Skeleton.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 135,
+    "exports": [
+      "ChatSkeleton",
+      "DashboardSkeleton",
+      "DealDetailSkeleton",
+      "DealLogSkeleton",
+      "EmptyState",
+      "ErrorState",
+      "NotificationSkeleton",
+      "Skeleton",
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/[id]/page.tsx",
+      "src/app/(dashboard)/deal-dashboard/page.tsx",
+      "src/app/(dashboard)/deal-log/page.tsx",
+      "src/app/(dashboard)/deal/[id]/page.tsx",
+      "src/app/(dashboard)/home/loading.tsx",
+      "src/app/(dashboard)/home/page.tsx",
+      "src/app/(dashboard)/notifications/page.tsx",
+      "src/app/loading.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/StatusBadge.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 26,
+    "exports": [
+      "DealStatus",
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-log/page.tsx",
+      "src/app/(dashboard)/deal/[id]/page.tsx",
+      "src/components/DealLogCard.tsx",
+      "src/components/DealRow.tsx",
+      "src/components/MatchWindow.tsx",
+      "src/components/StatusButton.tsx"
+    ],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/StatusButton.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 121,
+    "exports": [
+      "DashboardStatus",
+      "default"
+    ],
+    "imports_from": [
+      "./StatusBadge",
+      "./UserProvider",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-dashboard/page.tsx",
+      "src/components/DashboardRow.tsx",
+      "src/components/DealLogCard.tsx"
+    ],
+    "last_modified": "2026-05-19 19:38:36 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/ThreeDotMenu.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 56,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/DealRow.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/UserProvider.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 352,
+    "exports": [
+      "UserProfile",
+      "UserProvider",
+      "useUser"
+    ],
+    "imports_from": [
+      "./NotificationProvider",
+      "@/utils/supabase/client",
+      "next-auth/react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(auth)/page.tsx",
+      "src/app/(auth)/verify/page.tsx",
+      "src/app/(dashboard)/deal-log/[id]/page.tsx",
+      "src/app/(dashboard)/eoi-review/[ref]/page.tsx",
+      "src/app/(dashboard)/layout.tsx",
+      "src/app/(dashboard)/profile/page.tsx",
+      "src/app/(dashboard)/profile/settings/page.tsx",
+      "src/app/layout.tsx",
+      "src/app/page.tsx",
+      "src/components/ChatArea.tsx",
+      "src/components/DashboardLayout.tsx",
+      "src/components/GlobalErrorBanner.tsx",
+      "src/components/MatchDetailsModal.tsx",
+      "src/components/MatchWindow.tsx",
+      "src/components/MobileNavbar.tsx",
+      "src/components/OnboardingChecklist.tsx",
+      "src/components/ProfileDropdown.tsx",
+      "src/components/Sidebar.tsx",
+      "src/components/StatusButton.tsx",
+      "src/components/profile-setup/ProfileStepper.tsx",
+      "src/components/profile-setup/ProfileView.tsx"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/AuthProvider.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 8,
+    "exports": [
+      "AuthProvider"
+    ],
+    "imports_from": [
+      "next-auth/react"
+    ],
+    "imported_by": [
+      "src/app/layout.tsx"
+    ],
+    "last_modified": "2026-05-11 17:59:43 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/AuthStepper.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 38,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/EmailOtpVerification.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 177,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./OTPInput",
+      "lucide-react",
+      "next-auth/react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(auth)/page.tsx",
+      "src/app/page.tsx"
+    ],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/EmailVerification.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 117,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/lib/validation/profile",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(auth)/page.tsx",
+      "src/app/page.tsx"
+    ],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/GoogleAuthButton.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 45,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(auth)/page.tsx",
+      "src/app/(auth)/signup/page.tsx",
+      "src/app/page.tsx"
+    ],
+    "last_modified": "2026-04-28 17:49:30 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/OTPInput.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 79,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/auth/EmailOtpVerification.tsx"
+    ],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/PhoneVerification.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 290,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next-auth/react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(auth)/page.tsx",
+      "src/app/page.tsx"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/VideoBackground.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 27,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(auth)/page.tsx",
+      "src/app/(auth)/signup/page.tsx",
+      "src/app/data-deletion/page.tsx",
+      "src/app/page.tsx",
+      "src/app/privacy/page.tsx",
+      "src/app/terms/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/auth/VideoLogo.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 27,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(auth)/page.tsx",
+      "src/app/(auth)/signup/page.tsx",
+      "src/app/data-deletion/page.tsx",
+      "src/app/page.tsx",
+      "src/app/privacy/page.tsx",
+      "src/app/terms/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 42,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./guideIcons",
+      "@/lib/guideData",
+      "lucide-react",
+      "next/link",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/page.tsx",
+      "src/components/guide/GuideCategory.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideCategory.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 26,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./GuideCard",
+      "./GuideSection",
+      "./guideIcons",
+      "@/lib/guideData",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/page.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideHeader.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 70,
+    "exports": [
+      "GuideBreadcrumbItem",
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/link",
+      "next/navigation",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/[slug]/page.tsx",
+      "src/app/(dashboard)/guide/page.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideHero.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 24,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/page.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideMarkdown.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 38,
+    "exports": [
+      "guideMarkdownComponents"
+    ],
+    "imports_from": [
+      "react-markdown"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/[slug]/page.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideSearch.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 45,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/page.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideSection.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 25,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/guide/GuideCategory.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/GuideSidebar.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 56,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/page.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/guide/guideIcons.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 40,
+    "exports": [
+      "GUIDE_ICONS",
+      "guideIcon"
+    ],
+    "imports_from": [
+      "lucide-react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/[slug]/page.tsx",
+      "src/components/guide/GuideCard.tsx",
+      "src/components/guide/GuideCategory.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/AuthoritySection.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 28,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/HeroSection.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 29,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-intelligence/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/IntelligenceHero.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 40,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/IntelligenceModule.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 67,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/IntelligenceModules.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 60,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-intelligence/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/IntelligenceStrip.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 35,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-intelligence/page.tsx"
+    ],
+    "last_modified": "2026-05-16 15:30:04 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/IntelligenceVideoBackground.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 27,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-intelligence/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/PremiumAccess.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 40,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-intelligence/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/PremiumAccessPanel.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 49,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/intelligence/TrustLayer.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 42,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/deal-intelligence/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/AnimatedStepWrapper.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 23,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/AvatarUpload.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 102,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "next/image",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-28 16:25:15 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/FileUpload.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 90,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "@/lib/validation/profile",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-27 14:19:41 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/MultiSelectChips.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 66,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/ProfileStepper.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 720,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "../UserProvider",
+      "./AnimatedStepWrapper",
+      "./AvatarUpload",
+      "./FileUpload",
+      "./ProgressBar",
+      "./ProgressCircle",
+      "./StepCard",
+      "./TagInput",
+      "@/components/profile-setup/MultiSelectChips",
+      "@/lib/validation/profile",
+      "lucide-react",
+      "next-auth/react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/profile/page.tsx",
+      "src/app/(dashboard)/profile/settings/page.tsx"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/ProfileSuccessScreen.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 92,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "./TokenRewardDisplay",
+      "canvas-confetti",
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/profile/page.tsx",
+      "src/app/(dashboard)/profile/settings/page.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/ProfileView.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 210,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "../UserProvider",
+      "lucide-react",
+      "next/image",
+      "react"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/profile/page.tsx"
+    ],
+    "last_modified": "2026-04-29 18:50:36 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/ProgressBar.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 20,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/ProgressCircle.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 46,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/StepCard.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 25,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/TagInput.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 81,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "lucide-react",
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileStepper.tsx"
+    ],
+    "last_modified": "2026-04-27 19:55:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/components/profile-setup/TokenRewardDisplay.tsx",
+    "type": "component",
+    "language": "typescriptreact",
+    "size_lines": 42,
+    "exports": [
+      "default"
+    ],
+    "imports_from": [
+      "react"
+    ],
+    "imported_by": [
+      "src/components/profile-setup/ProfileSuccessScreen.tsx"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/db/index.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 46,
+    "exports": [
+      "db"
+    ],
+    "imports_from": [
+      "./schema",
+      "drizzle-orm/node-postgres",
+      "pg"
+    ],
+    "imported_by": [
+      "src/app/api/auth/email-otp/send/route.ts",
+      "src/app/api/auth/email-otp/verify/route.ts",
+      "src/app/api/auth/google-link/route.ts",
+      "src/app/api/auth/otp/verify/route.ts",
+      "src/app/api/auth/save-phone/route.ts",
+      "src/app/api/auth/whatsapp-otp/route.ts",
+      "src/app/api/fix-db/route.ts",
+      "src/app/api/profile/tokens/route.ts",
+      "src/app/api/webhooks/whatsapp/route.ts",
+      "src/auth.ts",
+      "src/lib/actions/auth-actions.ts",
+      "src/lib/consent.ts",
+      "src/lib/whatsappNotify.ts"
+    ],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/db/schema.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 370,
+    "exports": [
+      "accounts",
+      "accountsRelations",
+      "chatMessages",
+      "chatMessagesRelations",
+      "chatSessions",
+      "chatSessionsRelations",
+      "dealStatusEnum",
+      "deals",
+      "dealsRelations",
+      "documents",
+      "documentsRelations",
+      "eoiStatusEnum",
+      "eois",
+      "eoisRelations",
+      "mandates",
+      "mandatesRelations",
+      "matches",
+      "matchesRelations",
+      "notifications",
+      "notificationsRelations",
+      "proposalMatches",
+      "proposalMatchesRelations",
+      "proposals",
+      "proposalsRelations",
+      "savedSearches",
+      "sessions",
+      "sessionsRelations",
+      "tokenTransactionTypeEnum",
+      "tokenTransactions",
+      "tokenTransactionsRelations",
+      "users",
+      "usersRelations",
+      "verificationTokens"
+    ],
+    "imports_from": [
+      "drizzle-orm",
+      "drizzle-orm/pg-core"
+    ],
+    "imported_by": [
+      "src/app/api/auth/email-otp/send/route.ts",
+      "src/app/api/auth/email-otp/verify/route.ts",
+      "src/app/api/auth/google-link/route.ts",
+      "src/app/api/auth/otp/verify/route.ts",
+      "src/app/api/auth/save-phone/route.ts",
+      "src/app/api/auth/whatsapp-otp/route.ts",
+      "src/app/api/profile/tokens/route.ts",
+      "src/app/api/webhooks/whatsapp/route.ts",
+      "src/auth.ts",
+      "src/db/index.ts",
+      "src/lib/whatsappNotify.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M0_outputSchema.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 113,
+    "exports": [
+      "M0_OUTPUT_SCHEMA",
+      "PRE_FLIGHT_EXTRACTION"
+    ],
+    "imports_from": [
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M1_coreIdentity.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 22,
+    "exports": [
+      "M1_CORE_IDENTITY"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M2_phaseRules.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 90,
+    "exports": [
+      "M2_PHASE_RULES"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M3_intentFrameworks.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 102,
+    "exports": [
+      "M3_MODULES"
+    ],
+    "imports_from": [
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M4_sectorIntel.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 445,
+    "exports": [
+      "M4_MODULES",
+      "M4_SHELL"
+    ],
+    "imports_from": [
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M5_blindCard.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 166,
+    "exports": [
+      "BlindCounterpartyView",
+      "CounterpartyProposalRow",
+      "MatchRowLite",
+      "buildBlindCounterparty",
+      "buildSafeTeaser"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/app/api/eois/route.ts",
+      "src/app/api/matches/detail/[matchId]/route.ts",
+      "src/lib/__tests__/M5_blindCard.test.ts"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M5_matchingLayer.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 28,
+    "exports": [
+      "buildM5_Matching"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/__tests__/M5_matchingLayer.test.ts",
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M5_persistence.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 226,
+    "exports": [
+      "BlindNotificationInput",
+      "MIN_MATCH_SCORE",
+      "MatchRow",
+      "NotificationRecord",
+      "SavedSearchInput",
+      "SavedSearchRecord",
+      "buildBlindNotification",
+      "buildReciprocalRow",
+      "buildSavedSearchRecord"
+    ],
+    "imports_from": [
+      "./M5_sectorMatrix"
+    ],
+    "imported_by": [
+      "src/lib/__tests__/M5_persistence.test.ts",
+      "src/lib/matchmakingEngine.ts"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M5_sectorMatrix.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 252,
+    "exports": [
+      "CompatibilityLevel",
+      "MATCH_ARCHETYPES",
+      "SectorRelation",
+      "detectFraudSignals",
+      "getSectorCompatibility",
+      "normalizeSector"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/M5_persistence.ts",
+      "src/lib/M5_synergy.ts",
+      "src/lib/__tests__/M5_sectorMatrix.test.ts",
+      "src/lib/__tests__/enum_first.test.ts",
+      "src/lib/matchmakingEngine.ts"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M5_synergy.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 112,
+    "exports": [
+      "SynergyReview",
+      "SynergySide",
+      "buildSynergyReview"
+    ],
+    "imports_from": [
+      "./M5_sectorMatrix"
+    ],
+    "imported_by": [
+      "src/app/api/eois/route.ts",
+      "src/app/api/matches/detail/[matchId]/route.ts",
+      "src/lib/__tests__/M5_synergy.test.ts"
+    ],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M6_profileIntel.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 6,
+    "exports": [
+      "M6_PROFILE_INTELLIGENCE"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M7_specialModes.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 88,
+    "exports": [
+      "M_DOCUMENT_INTAKE",
+      "M_INTENT_VALIDATION",
+      "buildQualityGateFailModule"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M8_helpContent.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 31,
+    "exports": [
+      "M8_HELP_CONTENT"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M_cognitiveQualification.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 85,
+    "exports": [
+      "M_COGNITIVE_QUALIFICATION"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/M_intentReasoning.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 79,
+    "exports": [
+      "M_INTENT_REASONING"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/Intentreasoning.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 91,
+    "exports": [],
+    "imports_from": [
+      "../promptRouter",
+      "../stateManager",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/M5_blindCard.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 65,
+    "exports": [],
+    "imports_from": [
+      "../M5_blindCard"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/M5_matchingLayer.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 50,
+    "exports": [],
+    "imports_from": [
+      "../M5_matchingLayer",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-18 17:17:22 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/M5_persistence.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 79,
+    "exports": [],
+    "imports_from": [
+      "../M5_persistence"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/M5_sectorMatrix.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 43,
+    "exports": [],
+    "imports_from": [
+      "../M5_sectorMatrix",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/M5_synergy.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 55,
+    "exports": [],
+    "imports_from": [
+      "../M5_synergy"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-15 17:34:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/_helpers.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 20,
+    "exports": [
+      "baseState",
+      "ext"
+    ],
+    "imports_from": [
+      "../resolveCompletion",
+      "../stateManager",
+      "../types"
+    ],
+    "imported_by": [
+      "src/lib/__tests__/Intentreasoning.test.ts",
+      "src/lib/__tests__/cognitiveQualification.test.ts",
+      "src/lib/__tests__/endFlow.test.ts",
+      "src/lib/__tests__/intentFraming.test.ts",
+      "src/lib/__tests__/intentLock.test.ts",
+      "src/lib/__tests__/m4Flag.test.ts",
+      "src/lib/__tests__/qualityGate.test.ts",
+      "src/lib/__tests__/resolveCompletion.test.ts"
+    ],
+    "last_modified": "2026-06-18 17:17:22 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/cognitiveQualification.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 38,
+    "exports": [],
+    "imports_from": [
+      "../promptRouter",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/dataQuality.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 65,
+    "exports": [],
+    "imports_from": [
+      "../dataQuality",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-18 17:17:22 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/detectors.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 137,
+    "exports": [],
+    "imports_from": [
+      "../detectors",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/endFlow.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 40,
+    "exports": [],
+    "imports_from": [
+      "../resolveCompletion",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/enum_first.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 42,
+    "exports": [],
+    "imports_from": [
+      "../M5_sectorMatrix"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-26 13:59:35 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/intentFraming.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 53,
+    "exports": [],
+    "imports_from": [
+      "../intentFraming",
+      "../promptRouter",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/intentLock.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 56,
+    "exports": [],
+    "imports_from": [
+      "../stateManager",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/m4Flag.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 24,
+    "exports": [],
+    "imports_from": [
+      "../stateManager",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/qualityGate.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 69,
+    "exports": [],
+    "imports_from": [
+      "../qualityGate",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-18 17:17:22 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/resolveCompletion.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 339,
+    "exports": [],
+    "imports_from": [
+      "../resolveCompletion",
+      "./_helpers",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/responseBuilder.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 53,
+    "exports": [],
+    "imports_from": [
+      "../responseBuilder",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/__tests__/stateManager.test.ts",
+    "type": "test",
+    "language": "typescript",
+    "size_lines": 106,
+    "exports": [],
+    "imports_from": [
+      "../stateManager",
+      "../types",
+      "vitest"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/actions/auth-actions.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 33,
+    "exports": [
+      "fixDatabaseConstraint"
+    ],
+    "imports_from": [
+      "@/db",
+      "drizzle-orm"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-29 08:52:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/admin.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 80,
+    "exports": [
+      "AdminAccess",
+      "getAdminAccess",
+      "getAdminEmails",
+      "isAdmin"
+    ],
+    "imports_from": [
+      "@/auth"
+    ],
+    "imported_by": [
+      "src/app/api/admin/dashboard/route.ts",
+      "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "src/app/api/admin/rematch/[proposalID]/route.ts"
+    ],
+    "last_modified": "2026-07-23 14:55:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/ai/ai-client.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 85,
+    "exports": [
+      "cleanAIJSON",
+      "generateAIResponse"
+    ],
+    "imports_from": [
+      "groq-sdk",
+      "openai"
+    ],
+    "imported_by": [
+      "src/lib/ai/deal-engine.ts"
+    ],
+    "last_modified": "2026-04-28 08:34:43 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/ai/deal-engine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 132,
+    "exports": [
+      "DealData",
+      "EngineResponse",
+      "MANDATORY_FIELDS",
+      "getMissingFields",
+      "isMissing",
+      "mergeData",
+      "processDealIntake"
+    ],
+    "imports_from": [
+      "./ai-client"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-29 08:52:29 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/ai/extraction.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 34,
+    "exports": [
+      "ExtractionResult",
+      "extractProfileData"
+    ],
+    "imports_from": [
+      "../validation/profile"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-27 18:14:43 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/ai/test.txt",
+    "type": "asset",
+    "language": "txt",
+    "size_lines": 2,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-27 18:14:43 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/chatPipeline.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 407,
+    "exports": [
+      "ChatChannel",
+      "ChatTurnParams",
+      "ChatTurnResult",
+      "runChatTurn"
+    ],
+    "imports_from": [
+      "@/lib/dataQuality",
+      "@/lib/intelligenceEngine",
+      "@/lib/matchmakingEngine",
+      "@/lib/normalizeMessage",
+      "@/lib/promptRouter",
+      "@/lib/resolveCompletion",
+      "@/lib/responseBuilder",
+      "@/lib/whatsappNotify",
+      "@/utils/supabase/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/consent.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 108,
+    "exports": [
+      "CURRENT_TERMS_VERSION",
+      "hasAcceptedTerms",
+      "recordAcceptance"
+    ],
+    "imports_from": [
+      "@/db",
+      "@/utils/supabase/server",
+      "drizzle-orm"
+    ],
+    "imported_by": [
+      "src/app/api/consent/accept/route.ts",
+      "src/app/api/consent/status/route.ts",
+      "src/app/api/eois/route.ts",
+      "src/app/api/matches/connect/route.ts",
+      "src/app/api/profile/tokens/route.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/controlLayer.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 138,
+    "exports": [
+      "generateControlPrompt",
+      "getMissingFields",
+      "mergeWithPriority",
+      "parseDealDocument",
+      "validateResponse"
+    ],
+    "imports_from": [
+      "./conversationState"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-04 18:19:06 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/conversationState.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 43,
+    "exports": [
+      "ConversationState",
+      "INITIAL_STATE",
+      "IntelligenceState"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/controlLayer.ts",
+      "src/lib/intelligenceEngine.ts",
+      "src/lib/responseBuilder.ts"
+    ],
+    "last_modified": "2026-05-09 16:58:30 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/dataQuality.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 482,
+    "exports": [
+      "DIGITAL_MARKETING_SIGNALS",
+      "HARD_EXCLUSION_SIGNALS",
+      "NormalizedSize",
+      "QualityTier",
+      "computeQualityScore",
+      "digitalMarketingRelevanceScore",
+      "fixEncoding",
+      "isDigitalMarketing",
+      "isHardExcluded",
+      "isSectorLegitimate",
+      "isShellCompany",
+      "normalizeIntent",
+      "normalizeSize",
+      "operationalRichnessScore",
+      "qualityTierFromScore",
+      "shellCompanyScore"
+    ],
+    "imports_from": [
+      "./qualityGate",
+      "./types"
+    ],
+    "imported_by": [
+      "scripts/enrich-proposals.ts",
+      "scripts/repair-database.ts",
+      "src/app/api/admin/fix-encoding/route.ts",
+      "src/app/api/chat/route.ts",
+      "src/app/api/deals/bulk-upload/route.ts",
+      "src/lib/__tests__/dataQuality.test.ts",
+      "src/lib/chatPipeline.ts",
+      "src/lib/detectors.ts",
+      "src/lib/scoringEngine.ts",
+      "src/lib/stateManager.ts"
+    ],
+    "last_modified": "2026-07-16 16:58:53 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/dealDictionary.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 100,
+    "exports": [
+      "HINGLISH_MAP",
+      "INTENT_SYNONYMS",
+      "SECTOR_SYNONYMS",
+      "SHORTHAND_MAP",
+      "SPECIAL_CONDITIONS_MAP",
+      "TYPO_MAP"
+    ],
+    "imports_from": [
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/normalizeMessage.ts"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/detectors.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 620,
+    "exports": [
+      "Confirmation",
+      "VALID_SECTOR_KEYS",
+      "detectConfirmation",
+      "detectDealSizeFromText",
+      "detectFrictionSignal",
+      "detectGatewaySector",
+      "detectHelpQuery",
+      "detectIntentFromText",
+      "detectIntermediaryFromText",
+      "detectProfileIntentFromText",
+      "detectRevenueFromText",
+      "detectSectorFromText",
+      "detectShellCompanyFromText",
+      "detectShellQuery",
+      "detectStructureFromText",
+      "detectTradingDistribution"
+    ],
+    "imports_from": [
+      "./dataQuality",
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/__tests__/detectors.test.ts",
+      "src/lib/promptRouter.ts",
+      "src/lib/resolveCompletion.ts",
+      "src/lib/stateManager.ts"
+    ],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/documentParser.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 187,
+    "exports": [
+      "extractDocxText",
+      "extractTextFromFile"
+    ],
+    "imports_from": [
+      "mammoth"
+    ],
+    "imported_by": [
+      "src/app/api/chat/parse-document/route.ts",
+      "src/app/api/deals/bulk-upload/route.ts"
+    ],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/email/brevo.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 73,
+    "exports": [
+      "BrevoEmailInput",
+      "BrevoEmailResult",
+      "sendBrevoEmail"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/email/html.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 63,
+    "exports": [
+      "escapeHtml",
+      "renderBaseEmail"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/email/templates/eoiApprovalBlocked.ts",
+      "src/lib/email/templates/eoiApproved.ts",
+      "src/lib/email/templates/eoiReceived.ts",
+      "src/lib/email/templates/newCounterparty.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/email/notifications/delivery.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 253,
+    "exports": [
+      "NotificationRow",
+      "deliverNotificationEmail"
+    ],
+    "imports_from": [
+      "@/lib/email/brevo",
+      "@/lib/email/templates/eoiApprovalBlocked",
+      "@/lib/email/templates/eoiApproved",
+      "@/lib/email/templates/eoiReceived",
+      "@/lib/email/templates/newCounterparty",
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [
+      "src/app/api/eois/route.ts",
+      "src/lib/matchmakingEngine.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/email/templates/eoiApprovalBlocked.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 32,
+    "exports": [
+      "renderEoiApprovalBlockedEmail"
+    ],
+    "imports_from": [
+      "@/lib/email/html",
+      "@/lib/email/templates/eoiReceived"
+    ],
+    "imported_by": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/email/templates/eoiApproved.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 32,
+    "exports": [
+      "renderEoiApprovedEmail"
+    ],
+    "imports_from": [
+      "@/lib/email/html",
+      "@/lib/email/templates/eoiReceived"
+    ],
+    "imported_by": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/email/templates/eoiReceived.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 37,
+    "exports": [
+      "RenderedEmail",
+      "renderEoiReceivedEmail"
+    ],
+    "imports_from": [
+      "@/lib/email/html"
+    ],
+    "imported_by": [
+      "src/lib/email/notifications/delivery.ts",
+      "src/lib/email/templates/eoiApprovalBlocked.ts",
+      "src/lib/email/templates/eoiApproved.ts",
+      "src/lib/email/templates/newCounterparty.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/email/templates/newCounterparty.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 32,
+    "exports": [
+      "renderNewCounterpartyEmail"
+    ],
+    "imports_from": [
+      "@/lib/email/html",
+      "@/lib/email/templates/eoiReceived"
+    ],
+    "imported_by": [
+      "src/lib/email/notifications/delivery.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/emailOtp.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 109,
+    "exports": [
+      "generateOtp",
+      "hashOtp",
+      "sendOtpEmail"
+    ],
+    "imports_from": [
+      "crypto"
+    ],
+    "imported_by": [
+      "src/app/api/auth/email-otp/send/route.ts",
+      "src/app/api/auth/email-otp/verify/route.ts"
+    ],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/fix-db.js",
+    "type": "module",
+    "language": "javascript",
+    "size_lines": 32,
+    "exports": [],
+    "imports_from": [
+      "pg"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/guide.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 27,
+    "exports": [
+      "GUIDE_DOCS",
+      "getGuideDoc",
+      "type GuideDoc"
+    ],
+    "imports_from": [
+      "./guideManifest",
+      "fs",
+      "path"
+    ],
+    "imported_by": [
+      "src/app/(dashboard)/guide/[slug]/page.tsx"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/guideData.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 96,
+    "exports": [
+      "GUIDE_CATEGORIES",
+      "GUIDE_DOCS",
+      "GuideCategoryId",
+      "GuideCategoryMeta",
+      "GuideDoc"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/app/(dashboard)/guide/page.tsx",
+      "src/components/guide/GuideCard.tsx",
+      "src/components/guide/GuideCategory.tsx"
+    ],
+    "last_modified": "2026-07-24 15:40:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/guideManifest.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 60,
+    "exports": [
+      "GUIDE_DOCS",
+      "GuideDoc"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/components/GuideMenu.tsx",
+      "src/lib/guide.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/intelligenceEngine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 413,
+    "exports": [
+      "DocumentIntelligence",
+      "cleanAndStructureDocument",
+      "processIntelligence"
+    ],
+    "imports_from": [
+      "./conversationState",
+      "groq-sdk",
+      "openai"
+    ],
+    "imported_by": [
+      "src/app/api/chat/route.ts",
+      "src/lib/chatPipeline.ts"
+    ],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/intentFraming.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 76,
+    "exports": [
+      "IntentFraming",
+      "buildIntentFraming"
+    ],
+    "imports_from": [
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/__tests__/intentFraming.test.ts",
+      "src/lib/promptRouter.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/magicLink.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 82,
+    "exports": [
+      "MagicLinkPayload",
+      "MagicLinkVerification",
+      "createMagicLinkToken",
+      "verifyMagicLinkToken"
+    ],
+    "imports_from": [
+      "crypto"
+    ],
+    "imported_by": [
+      "src/app/api/auth/magic-link/route.ts",
+      "src/app/api/webhooks/whatsapp/route.ts",
+      "src/lib/whatsappNotify.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/matchmakingEngine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 938,
+    "exports": [
+      "MatchCard",
+      "MatchmakingResult",
+      "ProposalInput",
+      "buildCanonicalText",
+      "buildMandateSummary",
+      "executeMatchmaking"
+    ],
+    "imports_from": [
+      "./M5_persistence",
+      "./M5_sectorMatrix",
+      "./email/notifications/delivery",
+      "@/utils/supabase/server",
+      "openai"
+    ],
+    "imported_by": [
+      "scripts/rematch.ts",
+      "scripts/rematch_all.ts",
+      "scripts/test-match.ts",
+      "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "src/app/api/chat/route.ts",
+      "src/app/api/deals/[proposalID]/search-matches/route.ts",
+      "src/app/api/deals/bulk-upload/route.ts",
+      "src/lib/chatPipeline.ts",
+      "src/services/matching/embeddingBuilder.ts",
+      "src/services/matching/explanationEngine.ts",
+      "src/services/matching/rejectionEngine.ts",
+      "src/services/matching/scoringEngine.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/normalizeMessage.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 34,
+    "exports": [
+      "extractSpecialConditions",
+      "normalizeMessage"
+    ],
+    "imports_from": [
+      "./dealDictionary"
+    ],
+    "imported_by": [
+      "src/app/api/chat/route.ts",
+      "src/lib/chatPipeline.ts"
+    ],
+    "last_modified": "2026-05-06 11:10:01 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/otp.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 47,
+    "exports": [
+      "OtpValidationResult",
+      "generateOtp",
+      "otpExpiryDate",
+      "validateOtp"
+    ],
+    "imports_from": [
+      "crypto"
+    ],
+    "imported_by": [
+      "src/app/api/auth/otp/verify/route.ts",
+      "src/app/api/auth/whatsapp-otp/route.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/profileCompletion.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 57,
+    "exports": [
+      "calculateProfileCompletion"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/app/api/profile/route.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/promptRouter.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 321,
+    "exports": [
+      "M4_SHELL",
+      "VALID_SECTOR_KEYS",
+      "buildSystemPrompt",
+      "computeQualityGate",
+      "createBlankState",
+      "detectDealSizeFromText",
+      "detectFrictionSignal",
+      "detectGatewaySector",
+      "detectHelpQuery",
+      "detectIntentFromText",
+      "detectIntermediaryFromText",
+      "detectProfileIntentFromText",
+      "detectRevenueFromText",
+      "detectSectorFromText",
+      "detectShellCompanyFromText",
+      "detectShellQuery",
+      "detectStructureFromText",
+      "initializeStateFromDocument",
+      "resolvePhase",
+      "updateStateFromExtraction"
+    ],
+    "imports_from": [
+      "./M0_outputSchema",
+      "./M1_coreIdentity",
+      "./M2_phaseRules",
+      "./M3_intentFrameworks",
+      "./M4_sectorIntel",
+      "./M5_matchingLayer",
+      "./M6_profileIntel",
+      "./M7_specialModes",
+      "./M8_helpContent",
+      "./M_cognitiveQualification",
+      "./M_intentReasoning",
+      "./detectors",
+      "./intentFraming",
+      "./qualityGate",
+      "./stateManager",
+      "./types"
+    ],
+    "imported_by": [
+      "scripts/enrich-proposals.ts",
+      "scripts/test-match.ts",
+      "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "src/app/api/chat/route.ts",
+      "src/app/api/deals/bulk-upload/route.ts",
+      "src/lib/__tests__/Intentreasoning.test.ts",
+      "src/lib/__tests__/cognitiveQualification.test.ts",
+      "src/lib/__tests__/intentFraming.test.ts",
+      "src/lib/chatPipeline.ts",
+      "src/lib/scoringEngine.ts",
+      "src/lib/sectorMatrix.ts"
+    ],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/qualityGate.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 126,
+    "exports": [
+      "QualityGateResult",
+      "computeQualityGate"
+    ],
+    "imports_from": [
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/__tests__/qualityGate.test.ts",
+      "src/lib/dataQuality.ts",
+      "src/lib/promptRouter.ts",
+      "src/lib/resolveCompletion.ts"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/rateLimit.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 60,
+    "exports": [
+      "RateLimitResult",
+      "checkRateLimit",
+      "getClientIp"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/app/api/auth/email-otp/send/route.ts",
+      "src/app/api/auth/otp/verify/route.ts",
+      "src/app/api/auth/whatsapp-otp/route.ts",
+      "src/app/api/chat/route.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/resolveCompletion.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 390,
+    "exports": [
+      "CAPTURE_CONFIRMATION",
+      "Extraction",
+      "GENUINE_MANDATE_QUESTION",
+      "INTENT_DECLINED_MESSAGE",
+      "ResolveCompletionInput",
+      "ResolveCompletionResult",
+      "TERMINAL_STATUS_LINE",
+      "resolveCompletion"
+    ],
+    "imports_from": [
+      "./detectors",
+      "./qualityGate",
+      "./stateManager",
+      "./types"
+    ],
+    "imported_by": [
+      "src/app/api/chat/route.ts",
+      "src/lib/__tests__/_helpers.ts",
+      "src/lib/__tests__/endFlow.test.ts",
+      "src/lib/__tests__/resolveCompletion.test.ts",
+      "src/lib/chatPipeline.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/responseBuilder.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 65,
+    "exports": [
+      "buildFinalMessage"
+    ],
+    "imports_from": [
+      "./conversationState"
+    ],
+    "imported_by": [
+      "src/app/api/chat/route.ts",
+      "src/lib/__tests__/responseBuilder.test.ts",
+      "src/lib/chatPipeline.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/scoringEngine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 522,
+    "exports": [
+      "INTENT_FLIP",
+      "MIN_SURFACE_SCORE",
+      "MatchExplanation",
+      "MatchLabel",
+      "RejectionResult",
+      "ScoreBreakdown",
+      "ScoredMatch",
+      "ScoringCandidate",
+      "ScoringQuery",
+      "applyAdvisorCap",
+      "buildExplanation",
+      "computeCompositeScore",
+      "computeRiskFlags",
+      "getCounterpartyIntents",
+      "labelFor",
+      "passesHardRules"
+    ],
+    "imports_from": [
+      "./dataQuality",
+      "./promptRouter",
+      "./sectorMatrix"
+    ],
+    "imported_by": [
+      "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "src/app/api/cron/rematch/route.ts"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/sectorMatrix.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 138,
+    "exports": [
+      "AdjacencyLevel",
+      "SECTOR_COMPATIBILITY",
+      "sectorAdjacency",
+      "sectorsAreCompatible"
+    ],
+    "imports_from": [
+      "./promptRouter"
+    ],
+    "imported_by": [
+      "src/lib/scoringEngine.ts"
+    ],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/stateManager.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 488,
+    "exports": [
+      "computeMissingM3Fields",
+      "createBlankState",
+      "initializeStateFromDocument",
+      "resolvePhase",
+      "shouldAskBusinessModelFirst",
+      "shouldAskGeographyFirst",
+      "updateStateFromExtraction"
+    ],
+    "imports_from": [
+      "./dataQuality",
+      "./detectors",
+      "./types"
+    ],
+    "imported_by": [
+      "src/lib/__tests__/Intentreasoning.test.ts",
+      "src/lib/__tests__/_helpers.ts",
+      "src/lib/__tests__/intentLock.test.ts",
+      "src/lib/__tests__/m4Flag.test.ts",
+      "src/lib/__tests__/stateManager.test.ts",
+      "src/lib/promptRouter.ts",
+      "src/lib/resolveCompletion.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/types.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 142,
+    "exports": [
+      "ConversationPhase",
+      "DealIntent",
+      "RouterOutput",
+      "RouterState",
+      "SectorKey"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/lib/M0_outputSchema.ts",
+      "src/lib/M3_intentFrameworks.ts",
+      "src/lib/M4_sectorIntel.ts",
+      "src/lib/__tests__/_helpers.ts",
+      "src/lib/__tests__/stateManager.test.ts",
+      "src/lib/dataQuality.ts",
+      "src/lib/dealDictionary.ts",
+      "src/lib/detectors.ts",
+      "src/lib/intentFraming.ts",
+      "src/lib/promptRouter.ts",
+      "src/lib/qualityGate.ts",
+      "src/lib/resolveCompletion.ts",
+      "src/lib/stateManager.ts",
+      "src/services/matching/taxonomyEngine.ts"
+    ],
+    "last_modified": "2026-06-22 17:10:59 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/validation/profile.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 381,
+    "exports": [
+      "ACCEPTED_FILE_EXTENSIONS",
+      "ACCEPTED_FILE_TYPES",
+      "COLLABORATION_MODEL_OPTIONS",
+      "CORRIDOR_OPTIONS",
+      "GEOGRAPHY_OPTIONS",
+      "INITIAL_FORM_DATA",
+      "INTENT_OPTIONS",
+      "MANDATE_OPTIONS",
+      "MAX_FILE_SIZE_BYTES",
+      "MAX_FILE_SIZE_MB",
+      "PROFESSIONAL_CATEGORY_OPTIONS",
+      "ProfileFormData",
+      "ROLE_OPTIONS",
+      "STEPS",
+      "TOTAL_STEPS",
+      "ValidationError",
+      "calculateProgress",
+      "isStepValid",
+      "isValidEmail",
+      "isValidPhone",
+      "validateFullProfile",
+      "validateStep"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/app/api/auth/email-otp/send/route.ts",
+      "src/app/api/profile/route.ts",
+      "src/components/auth/EmailVerification.tsx",
+      "src/components/profile-setup/FileUpload.tsx",
+      "src/components/profile-setup/ProfileStepper.tsx",
+      "src/lib/ai/extraction.ts"
+    ],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/whatsapp.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 105,
+    "exports": [
+      "sendWhatsAppButtons",
+      "sendWhatsAppMatchNotification",
+      "sendWhatsAppMessage",
+      "sendWhatsAppOTP"
+    ],
+    "imports_from": [
+      "./whatsappConfig"
+    ],
+    "imported_by": [
+      "src/app/api/auth/whatsapp-otp/route.ts",
+      "src/app/api/webhooks/whatsapp/route.ts",
+      "src/lib/whatsappNotify.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/whatsappConfig.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 40,
+    "exports": [
+      "WhatsAppConfig",
+      "getWhatsAppAppSecret",
+      "getWhatsAppConfig"
+    ],
+    "imports_from": [],
+    "imported_by": [
+      "src/app/api/webhooks/whatsapp/route.ts",
+      "src/lib/whatsapp.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/lib/whatsappNotify.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 42,
+    "exports": [
+      "notifyMatchViaWhatsApp"
+    ],
+    "imports_from": [
+      "./magicLink",
+      "./whatsapp",
+      "@/db",
+      "@/db/schema",
+      "drizzle-orm"
+    ],
+    "imported_by": [
+      "src/app/api/cron/rematch/route.ts",
+      "src/lib/chatPipeline.ts"
+    ],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/patches/1-detectors.patch.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 52,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/patches/2-promptRouter.patch.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 119,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/patches/3-route-and-sidebar.patch.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 80,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-20 13:13:39 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/patches/4-consent-gate.patch.md",
+    "type": "asset",
+    "language": "markdown",
+    "size_lines": 65,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/proxy.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 10,
+    "exports": [
+      "proxy"
+    ],
+    "imports_from": [
+      "next/server"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/scripts/markShells.ts",
+    "type": "script",
+    "language": "typescript",
+    "size_lines": 194,
+    "exports": [],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/services/matching/embeddingBuilder.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 40,
+    "exports": [
+      "buildSemanticNarrative"
+    ],
+    "imports_from": [
+      "@/lib/matchmakingEngine"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-16 02:26:36 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/services/matching/explanationEngine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 41,
+    "exports": [
+      "generateExplanation"
+    ],
+    "imports_from": [
+      "./rejectionEngine",
+      "./taxonomyEngine",
+      "@/lib/matchmakingEngine"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-16 02:29:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/services/matching/matchPersistence.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 47,
+    "exports": [
+      "MatchInsert",
+      "persistMatches",
+      "saveSearch"
+    ],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/services/matching/rejectionEngine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 63,
+    "exports": [
+      "Candidate",
+      "passesHardRules"
+    ],
+    "imports_from": [
+      "@/lib/matchmakingEngine"
+    ],
+    "imported_by": [
+      "src/services/matching/explanationEngine.ts",
+      "src/services/matching/scoringEngine.ts"
+    ],
+    "last_modified": "2026-05-16 02:29:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/services/matching/scoringEngine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 69,
+    "exports": [
+      "ScoreBreakdown",
+      "computeCompositeScore"
+    ],
+    "imports_from": [
+      "./rejectionEngine",
+      "./taxonomyEngine",
+      "@/lib/matchmakingEngine"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/services/matching/taxonomyEngine.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 61,
+    "exports": [
+      "CANONICAL_TAXONOMY",
+      "SectorRelation",
+      "getSectorCompatibility"
+    ],
+    "imports_from": [
+      "@/lib/types"
+    ],
+    "imported_by": [
+      "src/services/matching/explanationEngine.ts",
+      "src/services/matching/scoringEngine.ts"
+    ],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/utils/supabase/client.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 28,
+    "exports": [
+      "createSupabaseClient"
+    ],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [
+      "src/components/NotificationProvider.tsx",
+      "src/components/UserProvider.tsx"
+    ],
+    "last_modified": "2026-05-04 16:01:49 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "src/utils/supabase/server.ts",
+    "type": "module",
+    "language": "typescript",
+    "size_lines": 63,
+    "exports": [
+      "createServerSupabaseClient",
+      "getServerKeyType"
+    ],
+    "imports_from": [
+      "@supabase/supabase-js"
+    ],
+    "imported_by": [
+      "src/app/api/admin/dashboard/route.ts",
+      "src/app/api/admin/diagnose/[proposalID]/route.ts",
+      "src/app/api/admin/fix-encoding/route.ts",
+      "src/app/api/admin/rematch/[proposalID]/route.ts",
+      "src/app/api/chat/[id]/messages/route.ts",
+      "src/app/api/chat/[id]/route.ts",
+      "src/app/api/chat/history/route.ts",
+      "src/app/api/chat/latest-document/route.ts",
+      "src/app/api/chat/parse-document/route.ts",
+      "src/app/api/chat/route.ts",
+      "src/app/api/consent/accept/route.ts",
+      "src/app/api/consent/status/route.ts",
+      "src/app/api/cron/rematch/route.ts",
+      "src/app/api/deals/[proposalID]/search-matches/route.ts",
+      "src/app/api/deals/bulk-upload/route.ts",
+      "src/app/api/deals/route.ts",
+      "src/app/api/eois/route.ts",
+      "src/app/api/matches/[proposalID]/route.ts",
+      "src/app/api/matches/connect/route.ts",
+      "src/app/api/matches/detail/[matchId]/route.ts",
+      "src/app/api/matches/route.ts",
+      "src/app/api/notifications/route.ts",
+      "src/app/api/profile/route.ts",
+      "src/app/api/profile/upload/route.ts",
+      "src/app/api/profile/upload/signed-url/route.ts",
+      "src/app/api/users/tokens/route.ts",
+      "src/lib/chatPipeline.ts",
+      "src/lib/consent.ts",
+      "src/lib/matchmakingEngine.ts"
+    ],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/0000_shocking_kinsey_walden.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 68,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/0001_glamorous_centennial.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 31,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/0002_shocking_captain_cross.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 102,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/001_canonical_intent.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 21,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260427_profile_prd_update.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 81,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-27 14:19:41 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260428_add_google_id.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 27,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-28 14:57:22 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260428_add_profile_image.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 6,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-28 13:16:45 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260428_setup_storage.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 38,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-28 13:04:33 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260512_embedding_rpc.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 19,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260512_matchmaking.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 202,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260514_matchmaking.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 240,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260515_fix_rpc_ambiguity.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 117,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260515_fix_rpc_sync.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 54,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260521_add_raw_text_to_rpc.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 55,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-20 19:25:28 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260527_fix_rpc_sync.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 132,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-06-08 17:37:51 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260720_get_deals_for_user_rpc.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 116,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-23 13:59:17 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/20260724_whatsapp_integration.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 26,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-28 19:53:27 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/diagnose.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 51,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/meta/0000_snapshot.json",
+    "type": "migration",
+    "language": "json",
+    "size_lines": 491,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/meta/0001_snapshot.json",
+    "type": "migration",
+    "language": "json",
+    "size_lines": 672,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/meta/0002_snapshot.json",
+    "type": "migration",
+    "language": "json",
+    "size_lines": 1272,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/meta/_journal.json",
+    "type": "migration",
+    "language": "json",
+    "size_lines": 27,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-05-15 17:52:09 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/relations.ts",
+    "type": "migration",
+    "language": "typescript",
+    "size_lines": 82,
+    "exports": [
+      "accountsRelations",
+      "dealsRelations",
+      "eoisRelations",
+      "matchesRelations",
+      "notificationsRelations",
+      "sessionsRelations",
+      "tokensRelations",
+      "usersRelations"
+    ],
+    "imports_from": [
+      "./schema",
+      "drizzle-orm/relations"
+    ],
+    "imported_by": [],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/migrations/schema.ts",
+    "type": "migration",
+    "language": "typescript",
+    "size_lines": 173,
+    "exports": [
+      "accounts",
+      "dealStatus",
+      "deals",
+      "eoiStatus",
+      "eois",
+      "matches",
+      "notifications",
+      "sessions",
+      "tokenTransactionType",
+      "tokens",
+      "users",
+      "verificationTokens"
+    ],
+    "imports_from": [
+      "drizzle-orm",
+      "drizzle-orm/pg-core"
+    ],
+    "imported_by": [
+      "supabase/migrations/relations.ts"
+    ],
+    "last_modified": "2026-04-24 01:54:46 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "supabase/schema.sql",
+    "type": "migration",
+    "language": "sql",
+    "size_lines": 98,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-08-04 13:13:13 +0530",
+    "change_frequency": "high",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "tsconfig.json",
+    "type": "config",
+    "language": "json",
+    "size_lines": 35,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-07-16 16:58:53 +0530",
+    "change_frequency": "medium",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "tsconfig.tsbuildinfo",
+    "type": "asset",
+    "language": "tsbuildinfo",
+    "size_lines": 1,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": null,
+    "change_frequency": "frozen",
+    "owner_tool": "manual",
+    "narrative": ""
+  },
+  {
+    "path": "updated profile creation fileds.docx",
+    "type": "asset",
+    "language": "docx",
+    "size_lines": 64,
+    "exports": [],
+    "imports_from": [],
+    "imported_by": [],
+    "last_modified": "2026-04-27 14:19:41 +0530",
+    "change_frequency": "low",
+    "owner_tool": "manual",
+    "narrative": ""
+  }
+]

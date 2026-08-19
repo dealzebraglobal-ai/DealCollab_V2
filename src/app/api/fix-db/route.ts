@@ -27,6 +27,22 @@ export async function GET() {
 
     // 2. Drop user_profiles table (CLEANUP)
     await db.execute(sql`DROP TABLE IF EXISTS user_profiles CASCADE;`);
+
+    // 3. Create end_user_profiles table for End Users (Business Promoters)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS end_user_profiles (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+          company_name TEXT NOT NULL,
+          website TEXT NOT NULL,
+          sectors TEXT[],
+          intent TEXT[] NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_end_user_profiles_user_id ON end_user_profiles(user_id);
+    `);
+
     
     return NextResponse.json({ 
       success: true, 

@@ -14,8 +14,128 @@ interface ProfileViewProps {
 export default function ProfileView({ data, onEdit }: ProfileViewProps) {
   if (!data) return null;
 
+  const isBusinessPromoter = Array.isArray(data.category) && data.category.includes('Business Owner / Promoter');
+
+  if (isBusinessPromoter) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8 pb-32">
+        {/* Header Card */}
+        <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 bg-brand-accent/5 rounded-3xl flex items-center justify-center text-brand-accent overflow-hidden relative">
+              {data.profileImage ? (
+                <Image 
+                  src={data.profileImage} 
+                  alt="Profile" 
+                  className="object-cover" 
+                  fill
+                  sizes="80px"
+                />
+              ) : (
+                <User size={40} />
+              )}
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-foreground tracking-tight">{data.fullName || data.name}</h1>
+              <p className="text-brand-secondary font-medium">
+                Business Promoter {data.companyName ? `@ ${data.companyName}` : ''}
+              </p>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-wider">
+                  Profile Verified
+                </span>
+                <span className="px-3 py-1 bg-brand-accent/5 text-brand-accent rounded-full text-[10px] font-black uppercase tracking-wider">
+                  Strength: {data.profileCompletion || 0}%
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={onEdit}
+              className="flex items-center gap-2 px-6 py-3 bg-foreground text-white rounded-2xl font-black text-sm hover:bg-brand-accent transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-brand-accent/20"
+            >
+              <Edit3 size={18} />
+              Update Profile
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Section 1: Basic Identity */}
+          <SectionCard title="Basic Identity" icon={<User size={20} />} onClick={onEdit}>
+            <DataRow label="Full Name" value={data.fullName || data.name} />
+            <DataRow label="Work Email" value={data.email} />
+            <DataRow label="Phone" value={data.phone || 'Not provided'} />
+            <DataRow label="Company / Business Name" value={data.companyName} />
+            {data.website && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Business Website</span>
+                <a 
+                  href={data.website.startsWith('http') ? data.website : `https://${data.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-bold text-brand-accent hover:underline break-all"
+                >
+                  {data.website}
+                </a>
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Section 2: Business Details */}
+          <SectionCard title="Business Details" icon={<Target size={20} />} onClick={onEdit}>
+            <div className="space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Industry / Sector</span>
+              <div className="flex flex-wrap gap-2">
+                {Array.isArray(data.sectors) && data.sectors.length > 0 ? (
+                  data.sectors.map((sector: string) => (
+                    <span 
+                      key={sector} 
+                      className="px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-600 text-[11px] font-bold rounded-lg"
+                    >
+                      {sector}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm font-medium text-brand-secondary">Not provided</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">What are you looking for?</span>
+              <div className="flex flex-wrap gap-2">
+                {Array.isArray(data.intent) && data.intent.length > 0 ? (
+                  data.intent.map((focus: string) => (
+                    <span 
+                      key={focus} 
+                      className="px-3 py-1.5 bg-brand-accent/5 border border-brand-accent/20 text-brand-accent text-[11px] font-bold rounded-lg"
+                    >
+                      {focus}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm font-medium text-brand-secondary">Not provided</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1 pt-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Brief Requirement Description</span>
+              <p className="text-sm font-medium text-foreground leading-relaxed italic">
+                {data.expertiseDescription ? `"${data.expertiseDescription}"` : 'No description provided.'}
+              </p>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8 pb-32">
+
       {/* Header Card */}
       <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-6">

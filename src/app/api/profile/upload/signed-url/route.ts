@@ -6,7 +6,7 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 // passed to createSignedUploadUrl() — any caller could request a signed
 // upload URL into an arbitrary (existing) bucket name, not just the ones
 // this endpoint is meant to serve.
-const ALLOWED_BUCKETS = ['profile-attachments', 'avatars'];
+const ALLOWED_BUCKETS = ['profile-attachments', 'avatars', 'pdfs'];
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -46,16 +46,16 @@ export async function GET(req: NextRequest) {
     console.error("Supabase error:", error);
     console.error("FULL ERROR:", error);
     console.error("STRINGIFIED:", JSON.stringify(error, null, 2));
-    
+
     // Check if it's a "bucket not found" error
-    const isNotFound = error.message?.includes('not found') || 
-                       error.message?.includes('does not exist') || 
-                       (error as { status?: number }).status === 404 || 
-                       (error as { status?: number }).status === 400;
+    const isNotFound = error.message?.includes('not found') ||
+      error.message?.includes('does not exist') ||
+      (error as { status?: number }).status === 404 ||
+      (error as { status?: number }).status === 400;
 
     if (isNotFound) {
-      return NextResponse.json({ 
-        error: `Storage bucket '${bucket}' does not exist. Please create it in your Supabase dashboard or run the setup migration.` 
+      return NextResponse.json({
+        error: `Storage bucket '${bucket}' does not exist. Please create it in your Supabase dashboard or run the setup migration.`
       }, { status: 500 });
     }
 

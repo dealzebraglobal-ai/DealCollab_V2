@@ -293,7 +293,7 @@ export const savedSearches = pgTable('saved_searches', {
 }));
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   deals: many(deals),
@@ -303,6 +303,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   chatSessions: many(chatSessions),
   sentEois: many(eois, { relationName: 'sender' }),
   receivedEois: many(eois, { relationName: 'receiver' }),
+  endUserProfile: one(endUserProfiles),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -366,4 +367,26 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
 
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   chat: one(chatSessions, { fields: [chatMessages.chatId], references: [chatSessions.id] }),
+}));
+
+// 6. END USER PROFILES (Business Promoter specific)
+export const endUserProfiles = pgTable('end_user_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
+  companyName: text('company_name').notNull(),
+  website: text('website').notNull(),
+  sectors: text('sectors').array(),
+  intent: text('intent').array().notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const endUserProfilesRelations = relations(endUserProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [endUserProfiles.userId],
+    references: [users.id],
+  }),
 }));

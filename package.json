@@ -7,7 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "cartography:scan-files": "node scripts/cartography/scan-files.mjs",
+    "cartography:scan-routes": "node scripts/cartography/scan-routes.mjs",
+    "cartography:scan-db": "node scripts/cartography/scan-db.mjs",
+    "cartography:import-graph": "node scripts/cartography/build-import-graph.mjs",
+    "cartography:staleness": "node scripts/cartography/check-staleness.mjs",
+    "cartography:scan": "npm run cartography:scan-files && npm run cartography:scan-routes && npm run cartography:scan-db && npm run cartography:scan-env && npm run cartography:scan-services && npm run cartography:import-graph && npm run cartography:staleness",
+    "cartography:scan-env": "node scripts/cartography/scan-env.mjs",
+    "cartography:scan-services": "node scripts/cartography/scan-external-services.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

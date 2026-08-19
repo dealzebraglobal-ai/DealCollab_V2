@@ -3,6 +3,7 @@ import { calculateProfileCompletion } from '@/lib/profileCompletion';
 import { ProfileFormData, validateFullProfile } from '@/lib/validation/profile';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { hasAcceptedTerms } from '@/lib/consent';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,8 @@ export async function GET(_req: NextRequest) {
     });
 
     let profile = initialProfile;
-
+    let endUserProfile = null;
+ 
     if (!profile) {
       const nameFallback = session.user.name || email.split("@")[0];
       const { data: newProfile, error: insertError } = await supabase
@@ -62,13 +64,25 @@ export async function GET(_req: NextRequest) {
         })
         .select()
         .single();
-
+ 
       if (insertError) {
         console.error("Supabase error:", insertError);
         return NextResponse.json({ error: insertError.message }, { status: 500 });
       }
       profile = newProfile;
+    } else {
+      const categories = profile.category || [];
+      if (categories.includes('Business Owner / Promoter')) {
+        const { data: eup } = await supabase
+          .from('end_user_profiles')
+          .select('*')
+          .eq('user_id', profile.id)
+          .maybeSingle();
+        endUserProfile = eup;
+      }
     }
+ 
+    const isBusinessPromoter = profile.category?.includes('Business Owner / Promoter') || false;
 
     // Map DB (snake_case) to Frontend (camelCase)
     const profileData = {
@@ -76,27 +90,29 @@ export async function GET(_req: NextRequest) {
       fullName: profile.name,
       email: profile.email,
       phone: profile.phone,
-      firmName: profile.firm_name,
-      role: profile.role,
-      customRole: profile.custom_role,
+      firmName: isBusinessPromoter ? null : profile.firm_name,
+      companyName: endUserProfile?.company_name || null,
+      website: endUserProfile?.website || null,
+      role: isBusinessPromoter ? null : profile.role,
+      customRole: isBusinessPromoter ? null : profile.custom_role,
       category: profile.category || [],
-      customCategory: profile.custom_category,
-      baseCity: profile.base_city,
-      baseCountry: profile.base_country,
-      baseLocation: profile.base_location,
-      geographies: profile.geographies || [],
-      crossBorder: profile.cross_border === true,
-      corridors: profile.corridors || [],
-      sectors: profile.sectors || [],
-      currentFocus: profile.intent || [],
-      expertiseDescription: profile.expertise_description,
-      activeMandates: profile.active_mandates || [],
-      prioritySectors: profile.priority_sectors || [],
-      coAdvisory: profile.co_advisory === true,
-      collaborationModels: profile.collaboration_model || [],
-      profileAttachmentUrl: profile.profile_attachment_url,
+      customCategory: isBusinessPromoter ? null : profile.custom_category,
+      baseCity: isBusinessPromoter ? null : profile.base_city,
+      baseCountry: isBusinessPromoter ? null : profile.base_country,
+      baseLocation: isBusinessPromoter ? null : profile.base_location,
+      geographies: isBusinessPromoter ? [] : (profile.geographies || []),
+      crossBorder: isBusinessPromoter ? false : (profile.cross_border === true),
+      corridors: isBusinessPromoter ? [] : (profile.corridors || []),
+      sectors: isBusinessPromoter ? (endUserProfile?.sectors || []) : (profile.sectors || []),
+      currentFocus: isBusinessPromoter ? (endUserProfile?.intent || []) : (profile.intent || []),
+      expertiseDescription: isBusinessPromoter ? (endUserProfile?.description || '') : (profile.expertise_description || ''),
+      activeMandates: isBusinessPromoter ? [] : (profile.active_mandates || []),
+      prioritySectors: isBusinessPromoter ? (endUserProfile?.sectors || []) : (profile.priority_sectors || []),
+      coAdvisory: isBusinessPromoter ? false : (profile.co_advisory === true),
+      collaborationModels: isBusinessPromoter ? [] : (profile.collaboration_model || []),
+      profileAttachmentUrl: isBusinessPromoter ? null : profile.profile_attachment_url,
       profileImage: profile.profile_image,
-      additionalInfo: profile.additional_info,
+      additionalInfo: isBusinessPromoter ? null : profile.additional_info,
       profileCompletion: profile.profile_completion || 0,
       tokens: profile.tokens,
     };
@@ -154,43 +170,37 @@ export async function POST(req: NextRequest) {
     console.log("Saving phone:", incomingPhone);
     console.log("User ID:", session?.user?.id);
 
-    // 3. Build update object (Snake Case)
+    const isBusinessPromoter = body.professionalCategory.includes('Business Owner / Promoter');
+
+    // 3. Build update object (Snake Case) for users table
     const updateData = {
       name: body.fullName || currentUser.name,
       email: body.workEmail || currentUser.email,
       phone: incomingPhone || currentUser.phone,
-      firm_name: body.firmName || currentUser.firm_name,
-      role: body.role || currentUser.role,
-      custom_role: body.customRole || currentUser.custom_role,
+      firm_name: isBusinessPromoter ? null : (body.firmName || currentUser.firm_name),
+      role: isBusinessPromoter ? null : (body.role || currentUser.role),
+      custom_role: isBusinessPromoter ? null : (body.customRole || currentUser.custom_role),
       category: body.professionalCategory || currentUser.category,
-      custom_category: body.customCategory || currentUser.custom_category,
-      base_city: body.baseCity || currentUser.base_city,
-      base_country: body.baseCountry || currentUser.base_country,
-      base_location: (body.baseCity && body.baseCountry) ? `${body.baseCity}, ${body.baseCountry}` : currentUser.base_location,
-      geographies: body.activeGeographies || currentUser.geographies,
-      cross_border: body.crossBorder !== undefined ? body.crossBorder : currentUser.cross_border,
-      corridors: body.corridors || currentUser.corridors,
-      sectors: body.primarySectors || currentUser.sectors,
-      expertise_description: body.expertiseDescription !== undefined ? body.expertiseDescription : currentUser.expertise_description,
-      active_mandates: body.activeMandates !== undefined ? body.activeMandates : currentUser.active_mandates,
-      priority_sectors: body.primarySectors !== undefined ? body.primarySectors : currentUser.priority_sectors,
-      co_advisory: body.coAdvisory !== undefined ? body.coAdvisory : currentUser.co_advisory,
-      collaboration_model: body.collaborationModels || currentUser.collaboration_model,
-      profile_attachment_url: body.attachmentUrl !== undefined ? body.attachmentUrl : (body.profile_attachment_url !== undefined ? body.profile_attachment_url : currentUser.profile_attachment_url),
-      additional_info: body.additionalInfo !== undefined ? body.additionalInfo : currentUser.additional_info,
-      // SAFE UPDATE: Prevent overwriting intent/currentFocus with empty values if not provided
-      intent: (body.currentFocus !== undefined && body.currentFocus !== null && body.currentFocus.length > 0)
-        ? body.currentFocus
-        : currentUser.intent,
+      custom_category: isBusinessPromoter ? null : (body.customCategory || currentUser.custom_category),
+      base_city: isBusinessPromoter ? null : (body.baseCity || currentUser.base_city),
+      base_country: isBusinessPromoter ? null : (body.baseCountry || currentUser.base_country),
+      base_location: isBusinessPromoter ? null : (((body.baseCity && body.baseCountry) ? `${body.baseCity}, ${body.baseCountry}` : currentUser.base_location)),
+      geographies: isBusinessPromoter ? null : (body.activeGeographies || currentUser.geographies),
+      cross_border: isBusinessPromoter ? false : (body.crossBorder !== undefined ? body.crossBorder : currentUser.cross_border),
+      corridors: isBusinessPromoter ? null : (body.corridors || currentUser.corridors),
+      sectors: isBusinessPromoter ? null : (body.primarySectors || currentUser.sectors),
+      expertise_description: isBusinessPromoter ? null : (body.expertiseDescription !== undefined ? body.expertiseDescription : currentUser.expertise_description),
+      active_mandates: isBusinessPromoter ? null : (body.activeMandates !== undefined ? body.activeMandates : currentUser.active_mandates),
+      priority_sectors: isBusinessPromoter ? null : (body.primarySectors !== undefined ? body.primarySectors : currentUser.priority_sectors),
+      co_advisory: isBusinessPromoter ? false : (body.coAdvisory !== undefined ? body.coAdvisory : currentUser.co_advisory),
+      collaboration_model: isBusinessPromoter ? null : (body.collaborationModels || currentUser.collaboration_model),
+      profile_attachment_url: isBusinessPromoter ? null : (body.attachmentUrl !== undefined ? body.attachmentUrl : currentUser.profile_attachment_url),
+      additional_info: isBusinessPromoter ? null : (body.additionalInfo !== undefined ? body.additionalInfo : currentUser.additional_info),
+      intent: isBusinessPromoter ? null : ((body.currentFocus !== undefined && body.currentFocus !== null && body.currentFocus.length > 0) ? body.currentFocus : currentUser.intent),
       profile_completion: currentUser.profile_completion, // Will be updated after this save
       profile_completed_once: currentUser.profile_completed_once,
       is_phone_verified: incomingPhone ? true : currentUser.isPhoneVerified,
-      // Balance is never client-settable — this endpoint is a profile save,
-      // not a token operation. Always carry the current value forward; use
-      // /api/profile/tokens (server-fixed action costs) to change balance.
       tokens: currentUser.tokens ?? 0,
-      // STRICT: Only update profile_image if a value is provided in the request
-      // and it is NOT a Google avatar URL (Google avatars are fallbacks, not DB values)
       profile_image: (() => {
         const incoming = (body.profileImage !== undefined)
           ? body.profileImage
@@ -224,6 +234,29 @@ export async function POST(req: NextRequest) {
       throw new Error(updateError.message);
     }
 
+    if (isBusinessPromoter) {
+      const { error: eupError } = await supabase
+        .from('end_user_profiles')
+        .upsert({
+          user_id: currentUser.id,
+          company_name: body.companyName,
+          website: body.website,
+          sectors: body.primarySectors || [],
+          intent: body.currentFocus || [],
+          description: body.expertiseDescription || null,
+        }, { onConflict: 'user_id' });
+
+      if (eupError) {
+        console.error('[PROFILE POST] end_user_profiles upsert error:', eupError);
+        throw new Error(`Failed to save End User profile: ${eupError.message}`);
+      }
+    } else {
+      await supabase
+        .from('end_user_profiles')
+        .delete()
+        .eq('user_id', currentUser.id);
+    }
+
     // 5. Recalculate completion using the NEW logic based on DB state
     const { data: updatedUser } = await supabase
       .from("users")
@@ -231,7 +264,25 @@ export async function POST(req: NextRequest) {
       .ilike("email", email)
       .single();
 
-    const score = calculateProfileCompletion(updatedUser);
+    const accepted = await hasAcceptedTerms(updatedUser.id);
+    let mergedUser = { ...updatedUser, terms_accepted: accepted };
+    
+    if (isBusinessPromoter) {
+      const { data: eup } = await supabase
+        .from('end_user_profiles')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      if (eup) {
+        mergedUser.company_name = eup.company_name;
+        mergedUser.website = eup.website;
+        mergedUser.sectors = eup.sectors;
+        mergedUser.intent = eup.intent;
+        mergedUser.expertise_description = eup.description;
+      }
+    }
+
+    const score = calculateProfileCompletion(mergedUser);
     let tokenIncrement = 0;
 
     // Reward logic: +100 tokens if reaching 100% for the first time
@@ -247,6 +298,7 @@ export async function POST(req: NextRequest) {
           tokens: finalTokensWithReward
         })
         .ilike("email", email);
+
 
       shouldShowSuccess = true;
 

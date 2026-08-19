@@ -23,7 +23,8 @@ import {
   CORRIDOR_OPTIONS,
   INTENT_OPTIONS,
   MANDATE_OPTIONS,
-  COLLABORATION_MODEL_OPTIONS
+  COLLABORATION_MODEL_OPTIONS,
+  END_USER_INTENT_OPTIONS
 } from '@/lib/validation/profile';
 
 // Sub-components
@@ -66,6 +67,8 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
         customRole: initialData.customRole || initialData.custom_role || '',
         professionalCategory: initialData.category || [],
         customCategory: initialData.customCategory || initialData.custom_category || '',
+        companyName: initialData.companyName || initialData.company_name || '',
+        website: initialData.website || '',
         baseCity: initialData.baseCity || initialData.base_city || '',
         baseCountry: initialData.baseCountry || initialData.base_country || '',
         activeGeographies: initialData.geographies || [],
@@ -113,8 +116,39 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
     setFormData(prev => ({ ...prev, ...data }));
   };
 
+  const isBusinessPromoter = formData.professionalCategory.includes('Business Owner / Promoter');
+
+  const activeSteps = useMemo(() => {
+    if (isBusinessPromoter) {
+      return [
+        { id: 1, label: 'Basic Identity', section: 'Basic Identity' },
+        { id: 2, label: 'Business Details', section: 'Business Details' },
+        { id: 3, label: 'Terms and Conditions', section: 'Terms and Conditions' },
+      ];
+    }
+    return STEPS;
+  }, [isBusinessPromoter]);
+
+  const activeTotalSteps = activeSteps.length;
+
+  const handleUserTypeChange = (type: 'intermediary' | 'promoter') => {
+    if (type === 'promoter') {
+      updateFormData({
+        professionalCategory: ['Business Owner / Promoter'],
+      });
+      if (currentStep > 3) {
+        setCurrentStep(3);
+      }
+    } else {
+      const cleaned = formData.professionalCategory.filter(cat => cat !== 'Business Owner / Promoter');
+      updateFormData({
+        professionalCategory: cleaned,
+      });
+    }
+  };
+
   const handleNext = async () => {
-    if (currentStep < TOTAL_STEPS) {
+    if (currentStep < activeTotalSteps) {
       setDirection('next');
       setCurrentStep(prev => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -285,13 +319,13 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
             <div className="space-y-6">
               <div className="flex justify-between items-end">
                 <span className="text-sm font-black text-foreground">Journey Progress</span>
-                <span className="text-[10px] font-black text-brand-secondary">Step {currentStep}/{TOTAL_STEPS}</span>
+                <span className="text-[10px] font-black text-brand-secondary">Step {currentStep}/{activeTotalSteps}</span>
               </div>
               <ProgressBar progress={progress} />
             </div>
-
+ 
             <nav className="space-y-2 pt-4 border-t border-gray-50">
-              {STEPS.map((step) => {
+              {activeSteps.map((step) => {
                 const isActive = currentStep === step.id;
                 const isCompleted = currentStep > step.id;
                 
@@ -331,22 +365,65 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
         <div className="flex-1 w-full max-w-3xl min-h-[600px]">
           <div className="transition-all duration-500">
             
+            {/* USER TYPE SELECTION HEADER */}
+            <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm mb-8 space-y-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Profile Setup Category</span>
+                <h3 className="text-xl font-black text-foreground tracking-tight mt-1">Select Your Profile Type</h3>
+                <p className="text-xs font-semibold text-brand-secondary mt-1 leading-relaxed">
+                  Choose the category that matches your purpose to display the right steps and fields.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleUserTypeChange('intermediary')}
+                  className={`flex flex-col text-left p-6 rounded-2xl border-2 transition-all duration-300 ${
+                    !isBusinessPromoter
+                      ? 'border-brand-accent bg-brand-accent/5 shadow-md shadow-brand-accent/5'
+                      : 'border-gray-100 hover:border-gray-200 bg-gray-50/50'
+                  }`}
+                >
+                  <span className="block text-sm font-black text-foreground uppercase tracking-tight">IB / Intermediary Professional</span>
+                  <span className="block text-[11px] text-brand-secondary font-medium mt-1.5 leading-relaxed">
+                    For M&A advisors, brokers, investment bankers representing multiple client mandates. (Full 9 steps)
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUserTypeChange('promoter')}
+                  className={`flex flex-col text-left p-6 rounded-2xl border-2 transition-all duration-300 ${
+                    isBusinessPromoter
+                      ? 'border-brand-accent bg-brand-accent/5 shadow-md shadow-brand-accent/5'
+                      : 'border-gray-100 hover:border-gray-200 bg-gray-50/50'
+                  }`}
+                >
+                  <span className="block text-sm font-black text-foreground uppercase tracking-tight">Business Promoter (End User)</span>
+                  <span className="block text-[11px] text-brand-secondary font-medium mt-1.5 leading-relaxed">
+                    For business owners and founders looking to raise capital, sell, or partner directly. (Concise 3 steps)
+                  </span>
+                </button>
+              </div>
+            </div>
+
             {/* STEP 1: BASIC IDENTITY */}
             <AnimatedStepWrapper direction={direction} isActive={currentStep === 1}>
-              <StepCard title="Basic Identity" helper="Establish your professional identity within the network">
+              <StepCard title="Basic Identity" helper={isBusinessPromoter ? "Establish your business promoter identity within the network" : "Establish your professional identity within the network"}>
                 <div className="space-y-8">
-                  <AvatarUpload 
-                    file={formData.avatarFile}
-                    existingUrl={formData.profileImage}
-                    onFileSelect={(file) => {
-                      if (file === null) {
-                        updateFormData({ avatarFile: null, profileImage: '' });
-                      } else {
-                        updateFormData({ avatarFile: file });
-                      }
-                    }}
-                  />
-
+                  {!isBusinessPromoter && (
+                    <AvatarUpload 
+                      file={formData.avatarFile}
+                      existingUrl={formData.profileImage}
+                      onFileSelect={(file) => {
+                        if (file === null) {
+                          updateFormData({ avatarFile: null, profileImage: '' });
+                        } else {
+                          updateFormData({ avatarFile: file });
+                        }
+                      }}
+                    />
+                  )}
+ 
                   <div className="grid grid-cols-1 gap-6">
                     <InputGroup label="Full Name">
                       <input type="text" value={formData.fullName} onChange={e => updateFormData({ fullName: e.target.value })} className="input-premium" placeholder="Legal Name" />
@@ -356,42 +433,55 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                       <InputGroup label="Work Email">
                         <input type="email" value={formData.workEmail} onChange={e => updateFormData({ workEmail: e.target.value })} className="input-premium" placeholder="name@firm.com" />
                       </InputGroup>
-                      <InputGroup label="Phone Number">
+                      <InputGroup label="Phone Number (Optional for End Users)">
                         <input type="tel" value={formData.phone} onChange={e => updateFormData({ phone: e.target.value })} className="input-premium" placeholder="+91 00000 00000" />
                       </InputGroup>
                     </div>
-
-                    <InputGroup label="Firm / Organization Name (Optional)">
-                      <input type="text" value={formData.firmName} onChange={e => updateFormData({ firmName: e.target.value })} className="input-premium" placeholder="Company Name" />
-                    </InputGroup>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <InputGroup label="Your Role">
-                        <select value={formData.role} onChange={e => updateFormData({ role: e.target.value })} className="input-premium cursor-pointer">
-                          <option value="">Select your role</option>
-                          {ROLE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
-                      </InputGroup>
-                      {formData.role === 'Other' && (
-                        <InputGroup label="Specify Role">
-                          <input type="text" value={formData.customRole} onChange={e => updateFormData({ customRole: e.target.value })} className="input-premium" placeholder="Enter your role" />
+ 
+                    {isBusinessPromoter ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <InputGroup label="Company / Business Name">
+                          <input type="text" value={formData.companyName} onChange={e => updateFormData({ companyName: e.target.value })} className="input-premium" placeholder="e.g. Acme Corp" />
                         </InputGroup>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    <MultiSelectChips 
-                      label="Professional Category"
-                      options={[...PROFESSIONAL_CATEGORY_OPTIONS]}
-                      selected={formData.professionalCategory}
-                      onChange={(selected: string[]) => updateFormData({ professionalCategory: selected })}
-                      grid
-                    />
-                    {formData.professionalCategory.includes("Other") && (
-                      <InputGroup label="Specify Category">
-                        <input type="text" value={formData.customCategory} onChange={e => updateFormData({ customCategory: e.target.value })} className="input-premium" placeholder="Your specific professional title" />
-                      </InputGroup>
+                        <InputGroup label="Business Website">
+                          <input type="text" value={formData.website} onChange={e => updateFormData({ website: e.target.value })} className="input-premium" placeholder="e.g. https://acme.com" />
+                        </InputGroup>
+                      </div>
+                    ) : (
+                      <>
+                        <InputGroup label="Firm / Organization Name (Optional)">
+                          <input type="text" value={formData.firmName} onChange={e => updateFormData({ firmName: e.target.value })} className="input-premium" placeholder="Company Name" />
+                        </InputGroup>
+ 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <InputGroup label="Your Role">
+                            <select value={formData.role} onChange={e => updateFormData({ role: e.target.value })} className="input-premium cursor-pointer">
+                              <option value="">Select your role</option>
+                              {ROLE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          </InputGroup>
+                          {formData.role === 'Other' && (
+                            <InputGroup label="Specify Role">
+                              <input type="text" value={formData.customRole} onChange={e => updateFormData({ customRole: e.target.value })} className="input-premium" placeholder="Enter your role" />
+                            </InputGroup>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-6">
+                          <MultiSelectChips 
+                            label="Professional Category"
+                            options={[...PROFESSIONAL_CATEGORY_OPTIONS]}
+                            selected={formData.professionalCategory}
+                            onChange={(selected: string[]) => updateFormData({ professionalCategory: selected })}
+                            grid
+                          />
+                          {formData.professionalCategory.includes("Other") && (
+                            <InputGroup label="Specify Category">
+                              <input type="text" value={formData.customCategory} onChange={e => updateFormData({ customCategory: e.target.value })} className="input-premium" placeholder="Your specific professional title" />
+                            </InputGroup>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -399,7 +489,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
             </AnimatedStepWrapper>
 
             {/* STEP 2: GEOGRAPHY & COVERAGE */}
-            <AnimatedStepWrapper direction={direction} isActive={currentStep === 2}>
+            <AnimatedStepWrapper direction={direction} isActive={currentStep === 2 && !isBusinessPromoter}>
               <StepCard title="Geography & Coverage" helper="Define your operational deal-making jurisdictions">
                 <div className="space-y-10">
                   <div className="grid grid-cols-1 gap-6">
@@ -412,14 +502,14 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                       </InputGroup>
                     </div>
                   </div>
-
+ 
                   <MultiSelectChips 
                     label="Active Deal Geographies" 
                     options={[...GEOGRAPHY_OPTIONS]} 
                     selected={formData.activeGeographies} 
                     onChange={(selected: string[]) => updateFormData({ activeGeographies: selected })} 
                   />
-
+ 
                   <div className="group">
                     <button 
                       type="button"
@@ -440,7 +530,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                       <div className={`toggle-switch ${formData.crossBorder ? 'active' : ''}`}><div className="toggle-knob" /></div>
                     </button>
                   </div>
-
+ 
                   {formData.crossBorder && (
                     <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
                       <MultiSelectChips 
@@ -460,9 +550,51 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                 </div>
               </StepCard>
             </AnimatedStepWrapper>
-
+ 
+            {/* BUSINESS PROMOTER STEP 2: BUSINESS DETAILS */}
+            <AnimatedStepWrapper direction={direction} isActive={currentStep === 2 && isBusinessPromoter}>
+              <StepCard title="Business Details" helper="Specify your industry, goals, and description">
+                <div className="space-y-10">
+                  <TagInput 
+                    label="Primary Industry Sectors (Optional)" 
+                    tags={formData.primarySectors} 
+                    onChange={(tags) => updateFormData({ primarySectors: tags })} 
+                    maxTags={5}
+                    placeholder="e.g. Food, Pharma, Solar..."
+                    helperText="Press Enter or comma to add a sector. Max 5 allowed."
+                  />
+ 
+                  <MultiSelectChips 
+                    label="What are you looking for? (Select all that apply)" 
+                    options={[...END_USER_INTENT_OPTIONS]} 
+                    selected={formData.currentFocus} 
+                    onChange={(selected: string[]) => updateFormData({ currentFocus: selected })} 
+                    grid
+                  />
+ 
+                  <InputGroup label="Briefly describe your requirement (Optional)">
+                    <textarea 
+                      value={formData.expertiseDescription} 
+                      onChange={e => updateFormData({ expertiseDescription: e.target.value })} 
+                      rows={6} 
+                      className="textarea-premium" 
+                      placeholder="e.g. Looking to raise $2M seed round for our B2B SaaS startup..." 
+                    />
+                    <div className="flex justify-between mt-1 px-1">
+                      <p className="text-[10px] text-brand-secondary font-medium">Please be as descriptive as possible (min 40 characters if entered).</p>
+                      {formData.expertiseDescription.trim().length > 0 && (
+                        <span className={`text-[10px] font-bold ${formData.expertiseDescription.length >= 40 ? 'text-green-500' : 'text-brand-accent'}`}>
+                          {formData.expertiseDescription.length} / 40 min
+                        </span>
+                      )}
+                    </div>
+                  </InputGroup>
+                </div>
+              </StepCard>
+            </AnimatedStepWrapper>
+ 
             {/* STEP 3: EXPERTISE & DEAL CAPABILITY */}
-            <AnimatedStepWrapper direction={direction} isActive={currentStep === 3}>
+            <AnimatedStepWrapper direction={direction} isActive={currentStep === 3 && !isBusinessPromoter}>
               <StepCard title="Expertise & Deal Capability" helper="Specify your primary industry sectors">
                 <TagInput 
                   label="Primary Industry Sectors" 
@@ -474,9 +606,39 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                 />
               </StepCard>
             </AnimatedStepWrapper>
-
+ 
+            {/* BUSINESS PROMOTER STEP 3: TERMS AND CONDITIONS */}
+            <AnimatedStepWrapper direction={direction} isActive={currentStep === 3 && isBusinessPromoter}>
+              <StepCard title="Terms and Conditions" helper="Please confirm your agreement to activate your profile">
+                <div className="space-y-6 pt-2">
+                  <label className="flex items-start gap-4 p-6 rounded-2xl bg-[#fffaf3] border border-[#FFE4B5] transition-all cursor-pointer hover:border-[#FFA000]">
+                    <input
+                      type="checkbox"
+                      checked={formData.termsAccepted}
+                      onChange={e => updateFormData({ termsAccepted: e.target.checked })}
+                      className="mt-1 w-5 h-5 accent-[#FFA000] rounded cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs font-semibold leading-relaxed text-[#0B1B2B]">
+                      I agree to DealCollab&rsquo;s{' '}
+                      <a href="/guide/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline text-[#F97316] font-bold hover:text-[#FFA000]">
+                        Terms of Service
+                      </a>{' '}
+                      and{' '}
+                      <a href="/guide/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline text-[#F97316] font-bold hover:text-[#FFA000]">
+                        Privacy Policy
+                      </a>
+                      . I understand that sending an EOI costs tokens and reveals my
+                      verified contact details to the counterparty on approval, that
+                      tokens are non-refundable, and that DealCollab does not guarantee
+                      any match or verify the claims counterparties make.
+                    </span>
+                  </label>
+                </div>
+              </StepCard>
+            </AnimatedStepWrapper>
+ 
             {/* STEP 4: CURRENT INTENT */}
-            <AnimatedStepWrapper direction={direction} isActive={currentStep === 4}>
+            <AnimatedStepWrapper direction={direction} isActive={currentStep === 4 && !isBusinessPromoter}>
               <StepCard title="Current Intent" helper="What describes your current deal-making focus?">
                 <div className="space-y-10">
                   <MultiSelectChips 
@@ -632,8 +794,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
             )}
           </div>
 
-          <div className="flex items-center gap-4">
-            {progress === 100 && currentStep < TOTAL_STEPS && (
+          <div className="flex items-center gap-4">            {progress === 100 && currentStep < activeTotalSteps && (
               <button 
                 onClick={handleFinalSubmit} 
                 disabled={isSubmitting}
@@ -642,16 +803,18 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                 Finalize & Skip <Zap size={14} className="fill-green-600" />
               </button>
             )}
-
+ 
             <button 
               onClick={handleNext} 
               disabled={!isValid || isSubmitting} 
               className={`flex items-center gap-4 px-12 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all ${isValid ? 'bg-[#0B1B2B] text-white hover:bg-brand-accent' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
             >
               {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 
-              currentStep === TOTAL_STEPS ? <>Finalize Profile <Zap size={16} className="fill-white" /></> : <>Next Step <ChevronRight size={18} /></>}
+              currentStep === activeTotalSteps ? <>Finalize Profile <Zap size={16} className="fill-white" /></> : <>Next Step <ChevronRight size={18} /></>}
             </button>
+
           </div>
+
         </div>
       </div>
 

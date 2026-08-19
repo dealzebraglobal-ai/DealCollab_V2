@@ -1,0 +1,8 @@
+[
+  {
+    "path": "src/lib/M0_outputSchema.ts",
+    "production_issue": "JSON parsing failures caused by LLMs wrapping responses in markdown formatting fences, preamble/postamble conversational text, or prematurely completing the intake before the user could answer sector-specific questions.",
+    "unusual_logic": "Enforces strict INTENT_CHANGED triggers to ignore semantic drift; implements a delayed is_complete=false gate when sector-specific questions are first displayed; uses strong negative rules to prevent markdown code block formatting.",
+    "why_not_remove": "Removing these instructions causes standard JSON parsing exceptions when receiving fenced markdown, or allows onboarding to close early without capturing vital sector data required for high-quality matchmaking."
+  }
+]

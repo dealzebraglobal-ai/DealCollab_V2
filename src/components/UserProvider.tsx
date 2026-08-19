@@ -33,11 +33,15 @@ export interface UserProfile {
   profile_attachment_url: string | null;
   profile_image: string | null;
   additional_info: string | null;
+  // End User-specific fields
+  company_name?: string | null;
+  website?: string | null;
   // Mapped/Alias fields used in frontend
   fullName?: string | null;
   profileImage?: string | null;
   userAvatar?: string | null;
   firmName?: string | null;
+  companyName?: string | null;
   customRole?: string | null;
   customCategory?: string | null;
   baseLocation?: string | null;
@@ -164,6 +168,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         ...data,
         fullName: data.name || data.fullName,
         firmName: data.firmName || data.firm_name,
+        companyName: data.companyName || data.company_name,
+        website: data.website,
         customRole: data.customRole || data.custom_role,
         customCategory: data.customCategory || data.custom_category,
         baseLocation: data.baseLocation || data.base_location,

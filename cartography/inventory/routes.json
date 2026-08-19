@@ -1,0 +1,1286 @@
+[
+  {
+    "path": "src/app/api/admin/dashboard/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/admin/dashboard",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/lib/admin",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "proposals",
+      "proposal_matches",
+      "eois",
+      "saved_searches",
+      "token_transactions",
+      "notifications",
+      "documents",
+      "chat_sessions"
+    ],
+    "db_writes": [
+      "users",
+      "proposals",
+      "proposal_matches",
+      "eois",
+      "saved_searches",
+      "token_transactions",
+      "notifications",
+      "documents",
+      "chat_sessions"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/admin/dashboard/route.ts",
+    "method": "PATCH",
+    "url_pattern": "/api/admin/dashboard",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/lib/admin",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "proposals",
+      "proposal_matches",
+      "eois",
+      "saved_searches",
+      "token_transactions",
+      "notifications",
+      "documents",
+      "chat_sessions"
+    ],
+    "db_writes": [
+      "users",
+      "proposals",
+      "proposal_matches",
+      "eois",
+      "saved_searches",
+      "token_transactions",
+      "notifications",
+      "documents",
+      "chat_sessions"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/admin/diagnose/[proposalID]/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/admin/diagnose/[proposalID]",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/admin",
+      "@/lib/promptRouter",
+      "@/lib/scoringEngine",
+      "@/utils/supabase/server",
+      "crypto",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "proposals",
+      "proposal_matches"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/admin/fix-encoding/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/admin/fix-encoding",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/lib/dataQuality",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "proposals"
+    ],
+    "db_writes": [
+      "proposals"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/admin/rematch/[proposalID]/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/admin/rematch/[proposalID]",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/admin",
+      "@/lib/matchmakingEngine",
+      "@/utils/supabase/server",
+      "crypto",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "proposals",
+      "proposal_matches"
+    ],
+    "db_writes": [
+      "proposals",
+      "proposal_matches"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/auth/[...nextauth]/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/auth/[...nextauth]",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "no top-level try-catch detected"
+  },
+  {
+    "path": "src/app/api/auth/[...nextauth]/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/auth/[...nextauth]",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "no top-level try-catch detected"
+  },
+  {
+    "path": "src/app/api/auth/email-otp/send/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/auth/email-otp/send",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/emailOtp",
+      "@/lib/rateLimit",
+      "@/lib/validation/profile",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/auth/email-otp/verify/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/auth/email-otp/verify",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/emailOtp",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/auth/google-link/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/auth/google-link",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "@/db/schema",
+      "drizzle-orm",
+      "next/headers",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/auth/magic-link/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/auth/magic-link",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/magicLink",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "no top-level try-catch detected"
+  },
+  {
+    "path": "src/app/api/auth/otp/verify/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/auth/otp/verify",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/otp",
+      "@/lib/rateLimit",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/auth/save-phone/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/auth/save-phone",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/db",
+      "@/db/schema",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/auth/whatsapp-otp/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/auth/whatsapp-otp",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/otp",
+      "@/lib/rateLimit",
+      "@/lib/whatsapp",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/[id]/messages/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/chat/[id]/messages",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "chat_sessions",
+      "chat_messages"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/[id]/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/chat/[id]",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages"
+    ],
+    "db_writes": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/[id]/route.ts",
+    "method": "DELETE",
+    "url_pattern": "/api/chat/[id]",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages"
+    ],
+    "db_writes": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/history/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/chat/history",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "chat_sessions"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/latest-document/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/chat/latest-document",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "documents"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/parse-document/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/chat/parse-document",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/documentParser",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "fetch",
+      "Groq",
+      "Supabase"
+    ],
+    "db_reads": [
+      "pdfs",
+      "documents",
+      "chat_sessions"
+    ],
+    "db_writes": [
+      "pdfs",
+      "documents",
+      "chat_sessions"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/chat",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/dataQuality",
+      "@/lib/intelligenceEngine",
+      "@/lib/matchmakingEngine",
+      "@/lib/normalizeMessage",
+      "@/lib/promptRouter",
+      "@/lib/rateLimit",
+      "@/lib/resolveCompletion",
+      "@/lib/responseBuilder",
+      "@/utils/supabase/server",
+      "crypto",
+      "next/server"
+    ],
+    "calls_external": [
+      "OpenAI",
+      "Groq",
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages",
+      "proposals",
+      "mandates",
+      "deals"
+    ],
+    "db_writes": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages",
+      "proposals",
+      "mandates",
+      "deals"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/chat/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/chat",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/dataQuality",
+      "@/lib/intelligenceEngine",
+      "@/lib/matchmakingEngine",
+      "@/lib/normalizeMessage",
+      "@/lib/promptRouter",
+      "@/lib/rateLimit",
+      "@/lib/resolveCompletion",
+      "@/lib/responseBuilder",
+      "@/utils/supabase/server",
+      "crypto",
+      "next/server"
+    ],
+    "calls_external": [
+      "OpenAI",
+      "Groq",
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages",
+      "proposals",
+      "mandates",
+      "deals"
+    ],
+    "db_writes": [
+      "users",
+      "chat_sessions",
+      "documents",
+      "chat_messages",
+      "proposals",
+      "mandates",
+      "deals"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/consent/accept/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/consent/accept",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/consent",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "token_transactions"
+    ],
+    "db_writes": [
+      "users",
+      "token_transactions"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/consent/status/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/consent/status",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/consent",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/cron/rematch/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/cron/rematch",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/lib/scoringEngine",
+      "@/lib/whatsappNotify",
+      "@/utils/supabase/server",
+      "next/server",
+      "openai"
+    ],
+    "calls_external": [
+      "OpenAI",
+      "Supabase"
+    ],
+    "db_reads": [
+      "saved_searches",
+      "notifications"
+    ],
+    "db_writes": [
+      "saved_searches",
+      "notifications"
+    ],
+    "side_effects": [],
+    "error_handling": "no top-level try-catch detected"
+  },
+  {
+    "path": "src/app/api/deals/[proposalID]/search-matches/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/deals/[proposalID]/search-matches",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/matchmakingEngine",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "proposals",
+      "proposal_matches"
+    ],
+    "db_writes": [
+      "users",
+      "proposals",
+      "proposal_matches"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/deals/bulk-upload/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/deals/bulk-upload",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/dataQuality",
+      "@/lib/documentParser",
+      "@/lib/matchmakingEngine",
+      "@/lib/promptRouter",
+      "@/utils/supabase/server",
+      "next/server",
+      "papaparse"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "pdfs"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/deals/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/deals",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/eois/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/eois",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/M5_blindCard",
+      "@/lib/M5_synergy",
+      "@/lib/consent",
+      "@/lib/email/notifications/delivery",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "db_writes": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/eois/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/eois",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/M5_blindCard",
+      "@/lib/M5_synergy",
+      "@/lib/consent",
+      "@/lib/email/notifications/delivery",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "db_writes": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/eois/route.ts",
+    "method": "PATCH",
+    "url_pattern": "/api/eois",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/M5_blindCard",
+      "@/lib/M5_synergy",
+      "@/lib/consent",
+      "@/lib/email/notifications/delivery",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "db_writes": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/eois/route.ts",
+    "method": "DELETE",
+    "url_pattern": "/api/eois",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/M5_blindCard",
+      "@/lib/M5_synergy",
+      "@/lib/consent",
+      "@/lib/email/notifications/delivery",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "db_writes": [
+      "users",
+      "eois",
+      "notifications"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/fix-db/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/fix-db",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/matches/[proposalID]/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/matches/[proposalID]",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "proposals",
+      "proposal_matches",
+      "saved_searches",
+      "match_connections"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/matches/connect/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/matches/connect",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/consent",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "proposal_matches",
+      "eois",
+      "proposals"
+    ],
+    "db_writes": [
+      "users",
+      "proposal_matches",
+      "eois",
+      "proposals"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/matches/detail/[matchId]/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/matches/detail/[matchId]",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/M5_blindCard",
+      "@/lib/M5_synergy",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "proposal_matches",
+      "proposals",
+      "eois"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/matches/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/matches",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "proposals",
+      "proposal_matches"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/notifications/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/notifications",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "notifications"
+    ],
+    "db_writes": [
+      "users",
+      "notifications"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/notifications/route.ts",
+    "method": "PATCH",
+    "url_pattern": "/api/notifications",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "notifications"
+    ],
+    "db_writes": [
+      "users",
+      "notifications"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/profile/create/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/profile/create",
+    "auth_required": false,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "../route"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "no top-level try-catch detected"
+  },
+  {
+    "path": "src/app/api/profile/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/profile",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/profileCompletion",
+      "@/lib/validation/profile",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "token_transactions"
+    ],
+    "db_writes": [
+      "users",
+      "token_transactions"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/profile/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/profile",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/lib/profileCompletion",
+      "@/lib/validation/profile",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "token_transactions"
+    ],
+    "db_writes": [
+      "users",
+      "token_transactions"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/profile/tokens/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/profile/tokens",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/db",
+      "@/db/schema",
+      "@/lib/consent",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/profile/tokens/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/profile/tokens",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/db",
+      "@/db/schema",
+      "@/lib/consent",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/profile/upload/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/profile/upload",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users"
+    ],
+    "db_writes": [
+      "users"
+    ],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/profile/upload/signed-url/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/profile/upload/signed-url",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "no top-level try-catch detected"
+  },
+  {
+    "path": "src/app/api/users/tokens/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/users/tokens",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/auth",
+      "@/utils/supabase/server",
+      "next/server"
+    ],
+    "calls_external": [
+      "Supabase"
+    ],
+    "db_reads": [
+      "users",
+      "token_transactions"
+    ],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/webhooks/whatsapp/route.ts",
+    "method": "GET",
+    "url_pattern": "/api/webhooks/whatsapp",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/magicLink",
+      "@/lib/whatsapp",
+      "@/lib/whatsappConfig",
+      "crypto",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [
+      "fetch"
+    ],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  },
+  {
+    "path": "src/app/api/webhooks/whatsapp/route.ts",
+    "method": "POST",
+    "url_pattern": "/api/webhooks/whatsapp",
+    "auth_required": true,
+    "consumes": [],
+    "produces": [],
+    "calls_modules": [
+      "@/db",
+      "@/db/schema",
+      "@/lib/magicLink",
+      "@/lib/whatsapp",
+      "@/lib/whatsappConfig",
+      "crypto",
+      "drizzle-orm",
+      "next/server"
+    ],
+    "calls_external": [
+      "fetch"
+    ],
+    "db_reads": [],
+    "db_writes": [],
+    "side_effects": [],
+    "error_handling": "try-catch present"
+  }
+]

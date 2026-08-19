@@ -8,15 +8,24 @@ import {
     AlertTriangle,
     ArrowUpRight,
     BellRing,
+    Brain,
+    Calendar,
     CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    ClipboardCheck,
     Clock3,
     Coins,
+    Copy,
     Loader2,
     Lock,
+    Mail,
+    Phone,
     RefreshCw,
     Search,
     SearchX,
     ShieldCheck,
+    SlidersHorizontal,
     Sparkles,
     UserRoundCheck,
     UsersRound,
@@ -278,6 +287,25 @@ export default function AdminPage() {
     const [masterSearchLoading, setMasterSearchLoading] = useState(false);
     const [masterSearchError, setMasterSearchError] = useState<string | null>(null);
 
+    // Proposal Intelligence Search States
+    const [intelSearchInput, setIntelSearchInput] = useState('');
+    const [intelSearchLoading, setIntelSearchLoading] = useState(false);
+    const [intelSearchError, setIntelSearchError] = useState<string | null>(null);
+    const [intelSearchData, setIntelSearchData] = useState<any[] | null>(null);
+    
+    // Extracted / manual filter states
+    const [showIntelFilters, setShowIntelFilters] = useState(false);
+    const [intelFilterIntent, setIntelFilterIntent] = useState('');
+    const [intelFilterSector, setIntelFilterSector] = useState('');
+    const [intelFilterGeography, setIntelFilterGeography] = useState('');
+    const [intelFilterKeyword, setIntelFilterKeyword] = useState('');
+    const [intelFilterStatus, setIntelFilterStatus] = useState('ACTIVE');
+    const [intelFilterStrict, setIntelFilterStrict] = useState(false);
+    
+    // Collapsible / copy indicators
+    const [expandedProposals, setExpandedProposals] = useState<Record<string, boolean>>({});
+    const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
+
     const urgentCount = useMemo(() => data?.actionQueue.filter((item) => item.severity === 'high').length || 0, [data]);
 
     const runMasterSearch = async () => {
@@ -300,6 +328,69 @@ export default function AdminPage() {
 
         setMasterSearchData(result as MasterSearchPayload);
         setMasterSearchLoading(false);
+    };
+
+    const runIntelSearch = async (useManualFilters = false) => {
+        const query = intelSearchInput.trim();
+        if (!query && !intelFilterIntent && !intelFilterSector && !intelFilterGeography && !intelFilterKeyword) {
+            setIntelSearchError('Please provide a query or select at least one manual filter.');
+            return;
+        }
+
+        setIntelSearchLoading(true);
+        setIntelSearchError(null);
+
+        try {
+            const params = new URLSearchParams();
+            if (query) params.append('query', query);
+            
+            if (useManualFilters) {
+                if (intelFilterIntent) params.append('intent', intelFilterIntent);
+                if (intelFilterSector) params.append('sector', intelFilterSector);
+                if (intelFilterGeography) params.append('geography', intelFilterGeography);
+                if (intelFilterKeyword) params.append('keyword', intelFilterKeyword);
+            }
+            
+            params.append('status', intelFilterStatus);
+            params.append('strict', String(intelFilterStrict));
+
+            const res = await fetch(`/api/admin/proposal-intelligence?${params.toString()}`);
+            const result = await res.json();
+            
+            if (!res.ok) {
+                setIntelSearchError(result?.error || result?.message || 'Proposal search failed');
+                setIntelSearchLoading(false);
+                return;
+            }
+
+            setIntelSearchData(result.results);
+            
+            if (result.extractedFilters && !useManualFilters) {
+                setIntelFilterIntent(result.extractedFilters.intent || '');
+                setIntelFilterSector(result.extractedFilters.sector || '');
+                setIntelFilterGeography(result.extractedFilters.geography || '');
+                setIntelFilterKeyword(result.extractedFilters.keyword || '');
+                if (result.extractedFilters.intent || result.extractedFilters.sector || result.extractedFilters.geography || result.extractedFilters.keyword) {
+                    setShowIntelFilters(true);
+                }
+            }
+        } catch (err: any) {
+            setIntelSearchError(err?.message || 'An unexpected error occurred.');
+        } finally {
+            setIntelSearchLoading(false);
+        }
+    };
+
+    const handleCopy = (text: string, id: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedStates(prev => ({ ...prev, [id]: true }));
+        setTimeout(() => {
+            setCopiedStates(prev => ({ ...prev, [id]: false }));
+        }, 2000);
+    };
+
+    const toggleExpandProposal = (id: string) => {
+        setExpandedProposals(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     const runEoiAction = async (eoiId: string, action: 'approve_eoi' | 'decline_eoi' | 'nudge_receiver') => {
@@ -488,6 +579,287 @@ export default function AdminPage() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    )}
+                </section>
+
+                {/* Proposal Intelligence Search */}
+                <section className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-[#F97316]">
+                                <Brain size={14} /> Proposal intelligence search
+                            </div>
+                            <h2 className="text-xl font-black text-gray-950">Search proposals semantically using AI and hybrid keyword matching</h2>
+                            <p className="mt-2 max-w-3xl text-sm font-semibold leading-relaxed text-gray-500">
+                                Ask for specific opportunities (e.g. <i>"debt proposals in manufacturing"</i> or <i>"sell side defence proposals in Mumbai"</i>). 
+                                The system generates an embedding of your query and auto-extracts parameters to rank matching deals.
+                            </p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-[1fr_auto] lg:min-w-[480px]">
+                            <input
+                                value={intelSearchInput}
+                                onChange={(event) => setIntelSearchInput(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') runIntelSearch(false);
+                                }}
+                                placeholder="E.g. debt proposals in manufacturing sector..."
+                                className="h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold text-gray-700 outline-none transition-colors focus:border-orange-200 focus:bg-white"
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowIntelFilters(!showIntelFilters)}
+                                    className={cx(
+                                        "inline-flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors",
+                                        showIntelFilters ? "bg-orange-50 border-orange-200 text-[#F97316]" : "bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100"
+                                    )}
+                                    title="Toggle Advanced Filters"
+                                >
+                                    <SlidersHorizontal size={18} />
+                                </button>
+                                <button
+                                    onClick={() => runIntelSearch(false)}
+                                    disabled={intelSearchLoading}
+                                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#F97316] px-5 text-sm font-black text-white transition-colors hover:bg-[#EA580C] disabled:opacity-60"
+                                >
+                                    {intelSearchLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />} Search
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Advanced Filter Overrides */}
+                    {showIntelFilters && (
+                        <div className="mt-5 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
+                            <div className="mb-3 flex items-center justify-between">
+                                <h3 className="text-xs font-black uppercase tracking-wider text-gray-500">Advanced Filter Overrides</h3>
+                                <button 
+                                    onClick={() => {
+                                        setIntelFilterIntent('');
+                                        setIntelFilterSector('');
+                                        setIntelFilterGeography('');
+                                        setIntelFilterKeyword('');
+                                        setIntelFilterStatus('ACTIVE');
+                                        setIntelFilterStrict(false);
+                                    }}
+                                    className="text-xs font-bold text-orange-600 hover:text-orange-700"
+                                >
+                                    Reset Filters
+                                </button>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">Intent</label>
+                                    <select
+                                        value={intelFilterIntent}
+                                        onChange={(e) => setIntelFilterIntent(e.target.value)}
+                                        className="mt-1 h-10 w-full rounded-xl border border-gray-100 bg-white px-3 text-xs font-bold text-gray-700 outline-none"
+                                    >
+                                        <option value="">All Intents</option>
+                                        <option value="BUY_SIDE">BUY_SIDE</option>
+                                        <option value="SELL_SIDE">SELL_SIDE</option>
+                                        <option value="FUNDRAISING">FUNDRAISING</option>
+                                        <option value="DEBT">DEBT</option>
+                                        <option value="STRATEGIC_PARTNERSHIP">STRATEGIC_PARTNERSHIP</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">Sector</label>
+                                    <input
+                                        value={intelFilterSector}
+                                        onChange={(e) => setIntelFilterSector(e.target.value)}
+                                        placeholder="e.g. Manufacturing"
+                                        className="mt-1 h-10 w-full rounded-xl border border-gray-100 bg-white px-3 text-xs font-bold text-gray-700 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">Geography</label>
+                                    <input
+                                        value={intelFilterGeography}
+                                        onChange={(e) => setIntelFilterGeography(e.target.value)}
+                                        placeholder="e.g. Mumbai"
+                                        className="mt-1 h-10 w-full rounded-xl border border-gray-100 bg-white px-3 text-xs font-bold text-gray-700 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">Keyword</label>
+                                    <input
+                                        value={intelFilterKeyword}
+                                        onChange={(e) => setIntelFilterKeyword(e.target.value)}
+                                        placeholder="e.g. defence"
+                                        className="mt-1 h-10 w-full rounded-xl border border-gray-100 bg-white px-3 text-xs font-bold text-gray-700 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">Status</label>
+                                    <select
+                                        value={intelFilterStatus}
+                                        onChange={(e) => setIntelFilterStatus(e.target.value)}
+                                        className="mt-1 h-10 w-full rounded-xl border border-gray-100 bg-white px-3 text-xs font-bold text-gray-700 outline-none"
+                                    >
+                                        <option value="ACTIVE">ACTIVE</option>
+                                        <option value="INACTIVE">INACTIVE</option>
+                                        <option value="ALL">All Statuses</option>
+                                    </select>
+                                </div>
+                                <div className="flex flex-col justify-end pb-2">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={intelFilterStrict}
+                                            onChange={(e) => setIntelFilterStrict(e.target.checked)}
+                                            className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                        />
+                                        Strict filters
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    onClick={() => runIntelSearch(true)}
+                                    className="rounded-xl bg-[#1F2937] px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-orange-600 transition-colors"
+                                >
+                                    Apply and Re-Search
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {intelSearchError && (
+                        <div className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+                            {intelSearchError}
+                        </div>
+                    )}
+
+                    {/* Proposal Results Feed */}
+                    {intelSearchData && (
+                        <div className="mt-6 space-y-4">
+                            <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm font-bold text-gray-600">
+                                Results for “{intelSearchInput || 'manual filters'}” • {intelSearchData.length} match{intelSearchData.length === 1 ? '' : 'es'} found
+                            </div>
+
+                            {intelSearchData.length === 0 ? (
+                                <div className="rounded-3xl border border-gray-100 bg-gray-50 p-6 text-sm font-bold text-gray-400">
+                                    No proposals matched this query. Try widening filters or simplifying keywords.
+                                </div>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {intelSearchData.map((proposal) => {
+                                        const isExpanded = !!expandedProposals[proposal.id];
+                                        const hasCopySuccess = !!copiedStates[proposal.id];
+                                        const matchPercent = Math.round((proposal.similarity || 0) * 100);
+
+                                        return (
+                                            <div key={proposal.id} className="rounded-3xl border border-gray-100 bg-gray-50/30 p-5 hover:bg-gray-50/60 transition-colors">
+                                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                                    
+                                                    {/* Left: Score, intent and basic details */}
+                                                    <div className="space-y-2">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            {proposal.similarity > 0 && (
+                                                                <span className="rounded-full bg-orange-100 border border-orange-200 px-3 py-1 text-[11px] font-black text-orange-800 uppercase tracking-wider">
+                                                                    {matchPercent}% Semantic Match
+                                                                </span>
+                                                            )}
+                                                            <span className="rounded-full bg-[#1F2937] px-3 py-1 text-[11px] font-black text-white uppercase tracking-wider">
+                                                                {proposal.intent}
+                                                            </span>
+                                                            <span className={cx(
+                                                                "rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wider",
+                                                                proposal.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'
+                                                            )}>
+                                                                {proposal.status}
+                                                            </span>
+                                                            <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-400">
+                                                                <Calendar size={13} /> {formatDate(proposal.created_at)}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Badges for Sectors and Geographies */}
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {proposal.sectors?.map((sec: string) => (
+                                                                <span key={sec} className="rounded-lg bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-black text-blue-700 uppercase">
+                                                                    {sec}
+                                                                </span>
+                                                            ))}
+                                                            {proposal.geographies?.map((geo: string) => (
+                                                                <span key={geo} className="rounded-lg bg-green-50 border border-green-100 px-2 py-0.5 text-[10px] font-black text-green-700 uppercase">
+                                                                    {geo}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Deal Size & Revenue Range if present */}
+                                                        {(proposal.deal_size_min_cr || proposal.deal_size_max_cr || proposal.revenue_min_cr || proposal.revenue_max_cr) && (
+                                                            <p className="text-xs font-bold text-gray-500">
+                                                                {proposal.deal_size_min_cr && `Deal Size: ₹${proposal.deal_size_min_cr}-${proposal.deal_size_max_cr || 'N/A'} Cr`}
+                                                                {proposal.revenue_min_cr && ` • Revenue: ₹${proposal.revenue_min_cr}-${proposal.revenue_max_cr || 'N/A'} Cr`}
+                                                                {proposal.deal_structure && ` • Structure: ${proposal.deal_structure}`}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Right: Contact & User details */}
+                                                    <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-1.5 text-xs text-gray-600 sm:min-w-[280px]">
+                                                        <p className="flex items-center gap-1.5 font-black text-gray-900 border-b border-gray-50 pb-1.5">
+                                                            <UsersRound size={14} className="text-[#F97316]" /> {proposal.user_name || 'No Name'}
+                                                        </p>
+                                                        <p className="flex items-center gap-1.5 font-medium">
+                                                            <Mail size={13} className="text-gray-400" /> {proposal.user_email}
+                                                        </p>
+                                                        {proposal.user_phone && (
+                                                            <p className="flex items-center gap-1.5 font-medium">
+                                                                <Phone size={13} className="text-gray-400" /> {proposal.user_phone}
+                                                            </p>
+                                                        )}
+                                                        {(proposal.advisor_name || proposal.contact_phone) && (
+                                                            <div className="mt-2 pt-1.5 border-t border-gray-100 text-[11px]">
+                                                                <p className="font-bold text-gray-500">Advisor Details:</p>
+                                                                {proposal.advisor_name && <p className="font-semibold text-gray-700">• {proposal.advisor_name}</p>}
+                                                                {proposal.contact_phone && <p className="font-semibold text-gray-700">• {proposal.contact_phone}</p>}
+                                                            </div>
+                                                        )}
+                                                        <div className="mt-2 flex gap-2">
+                                                            <button
+                                                                onClick={() => handleCopy(`${proposal.user_name || ''}\nEmail: ${proposal.user_email || ''}\nPhone: ${proposal.user_phone || ''}`, proposal.id)}
+                                                                className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2 py-1 text-[10px] font-black uppercase text-gray-500 hover:bg-orange-50 hover:text-[#F97316] transition-colors"
+                                                            >
+                                                                {hasCopySuccess ? <ClipboardCheck size={11} className="text-green-600" /> : <Copy size={11} />}
+                                                                {hasCopySuccess ? 'Copied' : 'Copy Contact'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Middle: Normalized text */}
+                                                <div className="mt-4">
+                                                    <p className="text-sm font-semibold leading-relaxed text-gray-800 bg-white border border-gray-100 rounded-2xl p-4">
+                                                        {proposal.normalised_text}
+                                                    </p>
+                                                </div>
+
+                                                {/* Collapsible: Original Raw Query */}
+                                                {proposal.raw_text && proposal.raw_text !== proposal.normalised_text && (
+                                                    <div className="mt-2 border-t border-gray-100/50 pt-2">
+                                                        <button
+                                                            onClick={() => toggleExpandProposal(proposal.id)}
+                                                            className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-400 hover:text-[#F97316] transition-colors"
+                                                        >
+                                                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                                            {isExpanded ? 'Hide Original Query' : 'View Original User Query'}
+                                                        </button>
+                                                        {isExpanded && (
+                                                            <div className="mt-2 rounded-2xl bg-gray-100/50 border border-gray-200/50 p-4 text-xs font-medium leading-relaxed text-gray-500 font-mono break-words font-sans">
+                                                                {proposal.raw_text}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </section>
