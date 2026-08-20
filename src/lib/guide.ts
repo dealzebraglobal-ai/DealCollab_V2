@@ -9,9 +9,9 @@
 import fs from 'fs';
 import path from 'path';
 
-import { GUIDE_DOCS, type GuideDoc } from './guideManifest';
+import { GUIDE_DOCS, GUIDE_CATEGORIES, type GuideDoc } from './guideData';
 
-export { GUIDE_DOCS, type GuideDoc };
+export { GUIDE_DOCS, GUIDE_CATEGORIES, type GuideDoc };
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'guide');
 

@@ -92,4 +92,12 @@ export const GUIDE_DOCS: GuideDoc[] = [
     icon: 'HelpCircle',
     readingTimeMinutes: 4,
   },
+  {
+    slug: 'who-we-are',
+    title: 'Who We Are',
+    description: 'The company behind DealCollab — DealZebra Global Intelligence LLP, its legal existence, and the team.',
+    category: 'support',
+    icon: 'BookOpen',
+    readingTimeMinutes: 3,
+  },
 ];

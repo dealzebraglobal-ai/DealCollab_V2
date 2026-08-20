@@ -23,7 +23,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { GUIDE_DOCS } from '@/lib/guideManifest';
+import { GUIDE_DOCS } from '@/lib/guideData';
 import styles from './GuideMenu.module.css';
 
 function BookIcon() {
