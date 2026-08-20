@@ -3,7 +3,8 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { generateOtp } from '@/lib/otp';
-import { sendWhatsAppOTP } from '@/lib/whatsapp';
+import { sendWhatsAppOTP } from '@/lib/whatsapp/provider';
+import { WhatsAppProvider } from '@/lib/whatsapp/types';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
@@ -44,7 +45,10 @@ export async function POST(req: Request) {
       });
     }
 
-    const res = await sendWhatsAppOTP(phone, otp);
+    // Determine provider from user source, or default to meta
+    const provider: WhatsAppProvider = user?.source === 'whatsapp-wappbiz' ? 'wappbiz' : 'meta';
+
+    const res = await sendWhatsAppOTP(provider, phone, otp);
 
     if (!res.success) {
       return NextResponse.json({ error: 'Failed to send WhatsApp OTP', details: res.error }, { status: 500 });
