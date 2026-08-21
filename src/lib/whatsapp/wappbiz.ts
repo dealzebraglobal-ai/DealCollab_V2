@@ -19,16 +19,15 @@ export function getWappBizConfig(): WappBizConfig | null {
   return { apiKey, apiUrl, phoneNumber };
 }
 
-export async function sendWappBizApiMessage(phone: string, payload: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
+export async function sendWappBizApiMessage(endpointSuffix: string, payload: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
   const config = getWappBizConfig();
   if (!config) {
-    console.log(`[wappbiz:stub] → ${phone}:`, JSON.stringify(payload));
+    console.log(`[wappbiz:stub] → ${endpointSuffix}:`, JSON.stringify(payload));
     return { success: true };
   }
 
   try {
-    // TODO: Verify exact WappBiz send-message endpoint with official documentation
-    const endpoint = `${config.apiUrl.replace(/\/$/, '')}/v1/messages`;
+    const endpoint = `${config.apiUrl.replace(/\/$/, '')}${endpointSuffix}`;
     
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -36,11 +35,7 @@ export async function sendWappBizApiMessage(phone: string, payload: Record<strin
         'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        // TODO: Replace with exact WappBiz payload structure
-        to: phone.replace(/[^\d]/g, ''),
-        ...payload,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -58,8 +53,10 @@ export async function sendWappBizApiMessage(phone: string, payload: Record<strin
 
 /** Plain text message — used for AI chat replies and general notifications. */
 export async function sendWappBizMessage(phone: string, text: string) {
-  // TODO: Verify exact WappBiz text message structure
-  return sendWappBizApiMessage(phone, { type: 'text', text });
+  return sendWappBizApiMessage('/v1/messages/text', { 
+    to: phone.replace(/[^\d]/g, ''), 
+    body: text 
+  });
 }
 
 /** Interactive Button message — allows up to 3 reply buttons per message. */
@@ -70,22 +67,14 @@ export async function sendWappBizButtons(phone: string, text: string, buttons: A
     bodyText = 'Select an option below to view details or proceed:';
   }
   
-  // TODO: Verify exact WappBiz interactive buttons structure
-  return sendWappBizApiMessage(phone, {
-    type: 'interactive',
-    interactive: {
-      type: 'button',
-      body: { text: bodyText },
-      action: {
-        buttons: buttons.slice(0, 3).map(btn => ({
-          type: 'reply',
-          reply: {
-            id: btn.id.slice(0, 256),
-            title: btn.title.slice(0, 20),
-          },
-        })),
-      },
-    },
+  return sendWappBizApiMessage('/v1/messages/interactive', {
+    to: phone.replace(/[^\d]/g, ''),
+    kind: 'buttons',
+    body: bodyText,
+    buttons: buttons.slice(0, 3).map(btn => ({
+      id: btn.id.slice(0, 256),
+      title: btn.title.slice(0, 20),
+    }))
   });
 }
 
