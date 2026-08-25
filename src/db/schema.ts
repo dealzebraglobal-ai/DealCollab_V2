@@ -292,6 +292,23 @@ export const savedSearches = pgTable('saved_searches', {
   userIdx: index('idx_saved_searches_user').on(table.userId),
 }));
 
+// 12. WHATSAPP INBOUND EVENTS — raw capture + idempotency ledger for inbound
+// webhook deliveries (WappBiz's inbound payload/signature format is not
+// documented, so raw_payload is stored as-is; provider_message_id is filled
+// in once a real field is confirmed from an observed payload).
+export const whatsappInboundEvents = pgTable('whatsapp_inbound_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  provider: text('provider').default('wappbiz').notNull(),
+  providerMessageId: text('provider_message_id'),
+  rawPayload: jsonb('raw_payload').notNull(),
+  processed: boolean('processed').default(false).notNull(),
+  processedAt: timestamp('processed_at'),
+  error: text('error'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  providerMessageIdx: index('idx_whatsapp_inbound_provider_msg').on(table.providerMessageId),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
