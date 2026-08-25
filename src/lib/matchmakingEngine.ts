@@ -54,6 +54,14 @@ export interface ProposalInput {
   deal_size_max: string | null;
   revenue_min: string | null;
   revenue_max: string | null;
+  currency?: string | null;
+  urgency?: string | null;
+  buyer_type?: string | null;
+  advisor_name?: string | null;
+  contact_phone?: string | null;
+  inferred_urgency?: string | null;
+  inferred_buyer_type?: string | null;
+  intent_validated?: boolean;
   is_shell_query?: boolean;   // NM5: true = include shells, false = exclude
   document_url?: string | null;   // URL of uploaded PDF/doc (if any)
   document_text?: string | null;  // Extracted text from uploaded document
@@ -693,9 +701,8 @@ export async function executeMatchmaking(
     const { data: proposal, error: propErr } = await supabase
       .from('proposals')
       .upsert([{
-        id: input.id || undefined,
+        ...(input.id ? { id: input.id } : {}),
         user_id: input.userId,
-        mandate_id: input.mandateId,
         raw_text: enrichedRawText || storageText.slice(0, 4000),
         normalised_text: storageText,
         document_text: safeDocText,
@@ -709,6 +716,15 @@ export async function executeMatchmaking(
         revenue_min_cr: parseNum(input.revenue_min),
         revenue_max_cr: parseNum(input.revenue_max),
         special_conditions: input.special_conditions ?? [],
+        currency: input.currency || null,
+        urgency: input.urgency || null,
+        buyer_type: input.buyer_type || null,
+        advisor_name: input.advisor_name || null,
+        contact_phone: input.contact_phone || null,
+        inferred_urgency: input.inferred_urgency || null,
+        inferred_buyer_type: input.inferred_buyer_type || null,
+        intent_validated: input.intent_validated ?? false,
+        summary_text: buildMandateSummary(input),
         metadata: {
           ...(input.industry_data ?? {}),
           ...(safeDocUrl ? { document_url: safeDocUrl } : {}),
@@ -725,7 +741,7 @@ export async function executeMatchmaking(
 
     if (propErr || !proposal) {
       console.error('[M5] Proposal insert failed:', propErr);
-      return null;
+      throw new Error(`Proposal insert failed: ${propErr?.message || 'Unknown error'}`);
     }
     console.log('[M5] Proposal created:', proposal.id);
     console.log('[M5] Document text length:', safeDocText?.length ?? 0);
@@ -933,6 +949,6 @@ export async function executeMatchmaking(
 
   } catch (err) {
     console.error('[M5] CRITICAL FAILURE:', err);
-    return null;
+    throw err;
   }
 }

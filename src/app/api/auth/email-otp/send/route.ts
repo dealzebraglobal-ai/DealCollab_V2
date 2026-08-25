@@ -14,6 +14,7 @@ const RESEND_COOLDOWN_MS = 60 * 1000;
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
+    console.log('[email-otp/send] OTP request started', { email: typeof email === 'string' ? email.replace(/(?<=^.{2}).*(?=@)/, '***') : 'invalid' });
 
     if (!email || typeof email !== 'string' || !isValidEmail(email)) {
       return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     // deliberately do NOT catch it here so a failed send never reports
     // success to the client.
     await sendOtpEmail(normalizedEmail, code);
-    console.log('[email-otp/send] Email sent successfully', { email: normalizedEmail });
+    console.log('[email-otp/send] Email accepted by Brevo', { email: normalizedEmail });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

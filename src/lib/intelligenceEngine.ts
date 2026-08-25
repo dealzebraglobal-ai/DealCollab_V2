@@ -257,18 +257,20 @@ export async function processIntelligence(
 // ─────────────────────────────────────────────────────────────
 
 export interface DocumentIntelligence {
-  company_overview: string;
-  industry: string;
-  location: string;
-  transaction_type: string;
-  deal_size?: string;
-  revenue?: string;
-  products_services: string[];
-  capabilities: string[];
-  market_position: string;
-  competitive_advantages: string[];
-  certifications: string[];
-  growth_drivers: string[];
+  intent: string | null;
+  sectors: string[];
+  geographies: string[];
+  deal_structure: string | null;
+  revenue_min_cr: number | null;
+  revenue_max_cr: number | null;
+  deal_size_min_cr: number | null;
+  deal_size_max_cr: number | null;
+  currency: string | null;
+  urgency: string | null;
+  buyer_type: string | null;
+  special_conditions: string[];
+  advisor_name: string | null;
+  contact_phone: string | null;
   missing_information: string[];
 }
 
@@ -276,18 +278,20 @@ export interface DocumentIntelligence {
 // The parse-document route stores this so the upload still succeeds.
 // missing_information tells engineers (and the bot) why data is absent.
 const EMPTY_INTEL: Omit<DocumentIntelligence, "missing_information"> = {
-  company_overview: "",
-  industry: "",
-  location: "",
-  transaction_type: "",
-  deal_size: "",
-  revenue: "",
-  products_services: [],
-  capabilities: [],
-  market_position: "",
-  competitive_advantages: [],
-  certifications: [],
-  growth_drivers: [],
+  intent: null,
+  sectors: [],
+  geographies: [],
+  deal_structure: null,
+  revenue_min_cr: null,
+  revenue_max_cr: null,
+  deal_size_min_cr: null,
+  deal_size_max_cr: null,
+  currency: null,
+  urgency: null,
+  buyer_type: null,
+  special_conditions: [],
+  advisor_name: null,
+  contact_phone: null,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -309,28 +313,53 @@ export async function cleanAndStructureDocument(
   const SYSTEM_PROMPT = `You are an expert document intelligence engine for M&A (Mergers & Acquisitions).
 Process raw PDF-extracted text into clean, structured, high-quality information.
 
+This is the ONLY document extraction prompt in the system — the same JSON shape below is
+used to seed both the Chat document-intake flow and the Bulk upload flow, so every field
+must be filled the same way regardless of which flow is calling you.
+
 GOALS:
 1. CLEAN: Remove noise, duplicate headers/footers, OCR artifacts.
 2. STRUCTURE: Rebuild logical business sections.
-3. EXTRACT: company overview, industry, location, transaction type, products/services,
-   capabilities, market position, competitive advantages, certifications, growth drivers.
+3. EXTRACT: intent, sectors, geographies, deal_structure, revenue (min/max in crores), deal size (min/max in crores), currency, urgency, buyer_type, special_conditions, advisor_name, contact_phone.
 
 Return ONLY this JSON — no markdown, no explanation:
 {
-  "company_overview": "...",
-  "industry": "...",
-  "location": "...",
-  "transaction_type": "...",
-  "deal_size": "...",
-  "revenue": "...",
-  "products_services": ["..."],
-  "capabilities": ["..."],
-  "market_position": "...",
-  "competitive_advantages": ["..."],
-  "certifications": ["..."],
-  "growth_drivers": ["..."],
+  "intent": "...",
+  "sectors": ["..."],
+  "geographies": ["..."],
+  "deal_structure": "...",
+  "revenue_min_cr": 0,
+  "revenue_max_cr": 0,
+  "deal_size_min_cr": 0,
+  "deal_size_max_cr": 0,
+  "currency": "...",
+  "urgency": "...",
+  "buyer_type": "...",
+  "special_conditions": ["..."],
+  "advisor_name": "...",
+  "contact_phone": "...",
   "missing_information": ["..."]
 }
+
+FIELD RULES (extract only what the document supports — never invent a value; use null or [] when absent):
+- intent: MUST be exactly one of "SELL_SIDE", "BUY_SIDE", "FUNDRAISING", "DEBT", "STRATEGIC_PARTNERSHIP", or null.
+  Selling/divesting/exit → SELL_SIDE. Acquiring/buying/investing in a target → BUY_SIDE.
+  Raising capital/seeking investment → FUNDRAISING. Loan/lending/credit → DEBT.
+  JV/alliance/partnership → STRATEGIC_PARTNERSHIP. Never return a free-text sentence here.
+- sectors: array of the project's coarse sector categories that genuinely apply (e.g. "saas", "pharma",
+  "manufacturing", "healthcare", "finserv", "consumer", "realestate", "logistics", "education", "chemicals",
+  "hospitality", "renewable", "defence", "oil_gas", "ngo", "mixed"). Lowercase. Empty array if none fit.
+- geographies: array of city/state/region/country names exactly as stated in the document.
+- currency: the ISO-style currency the document's numbers are stated in (e.g. "INR", "USD"). Infer INR only
+  when the document uses ₹ or "Cr"/"crore"/"lakh" with no other currency stated — do not invent an exchange rate
+  or convert amounts. null if genuinely ambiguous.
+- urgency: MUST be exactly one of "High", "Medium", "Low", or null. Only set it when the document states or
+  clearly implies a timeline/urgency (e.g. "close within 60 days" → High). Do not guess without a textual signal.
+- buyer_type: a short (1-4 word) label taken from the document's own wording (e.g. "Strategic buyers",
+  "Financial buyers", "Strategic & Financial"). null if not stated.
+- advisor_name / contact_phone: extract only if an advisor/broker/intermediary name or phone number is
+  explicitly present in the document text. null otherwise — never fabricate a contact.
+- Preserve numeric values (revenue/deal size) exactly as stated; do not round or estimate beyond the document.
 
 Rules: Do not hallucinate. Missing data → add field name to missing_information.
 Remove redundancy. Preserve technical terms. Tone: investment banker summarising a deal.`;
@@ -381,19 +410,23 @@ Remove redundancy. Preserve technical terms. Tone: investment banker summarising
     const arr = (v: unknown): string[] =>
       Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
+    const num = (v: unknown): number | null => (typeof v === "number" ? v : null);
+
     return {
-      company_overview: str(r.company_overview),
-      industry: str(r.industry),
-      location: str(r.location),
-      transaction_type: str(r.transaction_type),
-      deal_size: str(r.deal_size),
-      revenue: str(r.revenue),
-      products_services: arr(r.products_services),
-      capabilities: arr(r.capabilities),
-      market_position: str(r.market_position),
-      competitive_advantages: arr(r.competitive_advantages),
-      certifications: arr(r.certifications),
-      growth_drivers: arr(r.growth_drivers),
+      intent: str(r.intent) || null,
+      sectors: arr(r.sectors),
+      geographies: arr(r.geographies),
+      deal_structure: str(r.deal_structure) || null,
+      revenue_min_cr: num(r.revenue_min_cr),
+      revenue_max_cr: num(r.revenue_max_cr),
+      deal_size_min_cr: num(r.deal_size_min_cr),
+      deal_size_max_cr: num(r.deal_size_max_cr),
+      currency: str(r.currency) || null,
+      urgency: str(r.urgency) || null,
+      buyer_type: str(r.buyer_type) || null,
+      special_conditions: arr(r.special_conditions),
+      advisor_name: str(r.advisor_name) || null,
+      contact_phone: str(r.contact_phone) || null,
       missing_information: arr(r.missing_information),
     };
   } catch (err) {

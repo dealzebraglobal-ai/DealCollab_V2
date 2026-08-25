@@ -109,6 +109,15 @@ export interface RouterState {
   quality_gate_attempted: boolean;
   intent_validated:       boolean | null;         // null=not asked, true=yes, false=no
 
+  // Additional canonical fields
+  currency?:              string | null;
+  urgency?:               string | null;
+  inferred_urgency?:      string | null;
+  buyer_type?:            string | null;
+  inferred_buyer_type?:   string | null;
+  advisor_name?:          string | null;
+  contact_phone?:         string | null;
+
   // M4 sector intelligence tracking
   m4_questions_asked: boolean;
 

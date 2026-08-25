@@ -211,6 +211,19 @@ export const proposals = pgTable('proposals', {
   metadata: jsonb('metadata').default({}),
   embeddingStatus: text('embedding_status').default('PENDING'),
   summaryText: text('summary_text'),
+  
+  // Missing canonical fields (newly added)
+  currency: text('currency'),
+  urgency: text('urgency'),
+  inferredUrgency: text('inferred_urgency'),
+  buyerType: text('buyer_type'),
+  inferredBuyerType: text('inferred_buyer_type'),
+  intentValidated: boolean('intent_validated'),
+  
+  // Existing in DB, but previously missing from Drizzle
+  documentUrl: text('document_url'),
+  documentText: text('document_text'),
+  
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
