@@ -5,6 +5,7 @@ import { createMagicLinkToken } from "@/lib/magicLink";
 import { runChatTurn } from "@/lib/chatPipeline";
 import { sendWhatsAppMessage, sendWhatsAppButtons } from "./provider";
 import { WhatsAppProvider } from "./types";
+import { classifyWhatsAppCommand } from "./classifyCommand";
 
 export async function processIncomingMessage(
   rawPhone: string,
@@ -61,9 +62,10 @@ export async function processIncomingMessage(
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const command = classifyWhatsAppCommand(text);
+  console.log(`[WAPPBIZ CHAT] detected command: ${command.type}`);
 
-  // Check if user clicked "Open Website" button or typed web login command
-  if (/^(open_?website|website|login|web|portal)\b/i.test(text.trim())) {
+  if (command.type === "OPEN_WEBSITE") {
     const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
     const webMsg =
       `🌐 *Your Secure DealCollab Portal*\n\n` +
@@ -73,10 +75,32 @@ export async function processIncomingMessage(
     return;
   }
 
-  // Check if user clicked "View P1", "View P2", or "View P3" buttons
-  const viewMatch = text.trim().match(/^view_?p([1-3])/i);
-  if (viewMatch) {
-    const matchIdx = parseInt(viewMatch[1], 10) - 1; // 0 for P1, 1 for P2, 2 for P3
+  // Explicit finish/exit intent — ONLY trigger the "what would you like to do
+  // next" menu here, in reply to the user actually asking to wrap up. It must
+  // never fire automatically just because matches were shown or a
+  // counterparty was inspected.
+  if (command.type === "FINISH") {
+    console.log("[WAPPBIZ CHAT] finish requested — emitting final menu");
+    const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
+    const actionMessage =
+      `💡 *What would you like to do next?*\n\n` +
+      `You can open your pre-loaded DealLog on the website (instant login without password) or start over with a new mandate:\n\n` +
+      `🌐 *Direct Web Portal:* ${magicLinkUrl}`;
+    try {
+      await sendWhatsAppButtons(provider, rawPhone, actionMessage, [
+        { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
+        { id: "START_OVER", title: "🔄 Start Over" },
+      ]);
+    } catch (e) {
+      console.error("Failed to send action buttons:", e);
+      await sendWhatsAppMessage(provider, rawPhone, actionMessage);
+    }
+    return;
+  }
+
+  if (command.type === "VIEW_MATCH") {
+    const matchIdx = command.index;
+    console.log(`[WAPPBIZ CHAT] selected counterparty index=${matchIdx}, finishRequested=false`);
     const userProposals = await db.query.proposals.findMany({
       where: eq(proposals.userId, user.id),
       orderBy: [desc(proposals.createdAt)],
@@ -134,25 +158,24 @@ export async function processIncomingMessage(
     orderBy: [desc(chatSessions.createdAt)],
   });
 
-  const isResetCommand =
-    /^(start over|reset|new mandate|clear|restart|new deal)\b/i.test(
-      text.trim(),
-    );
-  const isSessionComplete = latestSession
-    ? (latestSession.state as Record<string, unknown>)?.is_complete === true
-    : false;
+  const isResetCommand = command.type === "RESET";
 
   let activeChatId: string | undefined = latestSession
     ? latestSession.id
     : undefined;
   let messageToSend = text;
 
-  // If user wants to start over, or if their previous session was already finished/complete,
-  // we do NOT attach to the old session! We pass chatId: undefined so /api/chat creates a fresh session.
-  if (isResetCommand || isSessionComplete) {
+  // Only an EXPLICIT reset command starts a fresh session. A mandate being
+  // marked complete does NOT mean the WhatsApp conversation is over — the
+  // shared pipeline (resolveCompletion.ts's is_captured terminal lock)
+  // already handles "mandate captured, user says something else" by keeping
+  // the same session and returning a fixed steady-state status line.
+  // Force-resetting here on every post-capture message used to wipe that
+  // context and restart intake from scratch on any follow-up.
+  if (isResetCommand) {
     if (latestSession) {
       console.log(
-        `[WHATSAPP] Session ${latestSession.id} complete or reset requested. Starting fresh session.`,
+        `[WHATSAPP] Reset requested for session ${latestSession.id}. Starting fresh session.`,
       );
       await db
         .update(chatSessions)
@@ -165,9 +188,7 @@ export async function processIncomingMessage(
         .where(eq(chatSessions.id, latestSession.id));
     }
     activeChatId = undefined;
-    if (isResetCommand) {
-      messageToSend = "Hi";
-    }
+    messageToSend = "Hi";
   }
 
   // 3. Delegate to the existing chatbot pipeline (src/lib/chatPipeline.ts —
@@ -272,7 +293,10 @@ export async function processIncomingMessage(
         );
       matchMessage += `💡 _Select a button below to inspect individual counterparty teasers:_`;
 
-      // Send matches message with 3 interactive buttons (P1, P2, P3) right after confirmation
+      // Send matches message with 3 interactive buttons (P1, P2, P3) right after confirmation.
+      // Deliberately NOT followed by the "what would you like to do next" menu — that is a
+      // terminal action menu and must only appear when the user explicitly asks to finish
+      // (handled earlier in this function), never automatically after showing matches.
       try {
         await sendWhatsAppButtons(provider, rawPhone, matchMessage, [
           { id: "VIEW_P1", title: "📄 View P1" },
@@ -282,23 +306,6 @@ export async function processIncomingMessage(
       } catch (e) {
         console.error("Failed to send matches buttons:", e);
         await sendWhatsAppMessage(provider, rawPhone, matchMessage);
-      }
-
-      // Send a second interactive message with Start Over and Open Website buttons
-      const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
-      const actionMessage =
-        `💡 *What would you like to do next?*\n\n` +
-        `You can open your pre-loaded DealLog on the website (instant login without password) or start over with a new mandate:\n\n` +
-        `🌐 *Direct Web Portal:* ${magicLinkUrl}`;
-
-      try {
-        await sendWhatsAppButtons(provider, rawPhone, actionMessage, [
-          { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
-          { id: "START_OVER", title: "🔄 Start Over" },
-        ]);
-      } catch (e) {
-        console.error("Failed to send action buttons:", e);
-        await sendWhatsAppMessage(provider, rawPhone, actionMessage);
       }
     }
   }
