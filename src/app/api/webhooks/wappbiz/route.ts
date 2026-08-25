@@ -1,45 +1,126 @@
 import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { whatsappInboundEvents } from '@/db/schema';
+import { processIncomingMessage } from '@/lib/whatsapp/chatbot';
 
 /**
- * WappBiz Inbound Webhook — DISCOVERY MODE
+ * WappBiz Inbound Webhook
  * =================================================================
- * Wappbiz's API docs and Postman collection document no inbound webhook
- * payload or signature mechanism (checked 2026-08-25). Rather than guess a
- * field shape (as the previous version did — data.from/data.sender/...,
- * plus an HMAC check against a WAPPBIZ_WEBHOOK_SECRET Wappbiz never told us
- * to set — which meant inbound messages were never actually processed),
- * this endpoint captures the raw payload verbatim into
- * whatsapp_inbound_events for inspection, and does not attempt any
- * extraction or business logic yet.
+ * WappBiz's API docs and Postman collection document no inbound webhook
+ * payload or signature mechanism. This shape was instead confirmed from two
+ * real inbound deliveries captured verbatim (via a discovery-mode version of
+ * this handler) on 2026-08-25:
  *
- * Next step once a real payload has been observed: parse the confirmed
- * fields, add idempotency via the unique (provider, provider_message_id)
- * index already in place on this table, and hand off to the existing
- * chatbot pipeline (src/lib/whatsapp/chatbot.ts → src/lib/chatPipeline.ts).
+ *   {
+ *     "type": "incoming_message",
+ *     "version": "1.0",
+ *     "data": {
+ *       "id": "wamid.HBgMOTE4ODUwMzMzMjUwFQIA...",  // WhatsApp message id
+ *       "from": "918850333250",                     // sender phone, digits only, no '+'
+ *       "text": { "body": "Hi" },                    // present when data.type === "text"
+ *       "type": "text",
+ *       "api_key": "<the account's own WAPPBIZ_API_KEY>",
+ *       "timestamp": "1787645664",                   // unix seconds, as a string
+ *       "from_user_id": "IN.988413714234800",
+ *       "business_number": "919373036910"
+ *     }
+ *   }
+ *
+ * Authentication: WappBiz echoes the account's own API key back in
+ * data.api_key — that's how it proves the call is really from WappBiz. This
+ * was observed directly from real traffic, not documented and not an
+ * invented HMAC scheme. Every other data.type (media, buttons, etc.) is
+ * acknowledged and ignored rather than guessed at, since only "text" has
+ * been observed so far.
  */
+
+interface WappBizInboundPayload {
+  type?: string;
+  data?: {
+    id?: string;
+    from?: string;
+    text?: { body?: string };
+    type?: string;
+    api_key?: string;
+    timestamp?: string;
+  };
+}
 
 export async function POST(req: Request) {
   const rawBody = await req.text().catch(() => '');
 
-  let parsed: unknown = null;
+  let payload: WappBizInboundPayload | null = null;
   try {
-    parsed = rawBody ? JSON.parse(rawBody) : null;
+    payload = rawBody ? JSON.parse(rawBody) : null;
   } catch {
-    // Not JSON — store the raw text wrapped so raw_payload (jsonb) still accepts it.
-    parsed = { _nonJsonBody: rawBody };
+    console.warn('[Wappbiz Webhook] Received non-JSON body — ignoring.');
+    return new NextResponse('OK', { status: 200 });
   }
 
-  console.log('[Wappbiz Webhook] Incoming event (discovery mode) — captured to whatsapp_inbound_events');
+  const data = payload?.data;
+  if (!data) {
+    console.warn('[Wappbiz Webhook] Payload missing "data" — ignoring.');
+    return new NextResponse('OK', { status: 200 });
+  }
+
+  const expectedApiKey = process.env.WAPPBIZ_API_KEY;
+  const apiKeyValid = !!expectedApiKey && data.api_key === expectedApiKey;
+  if (!apiKeyValid) {
+    console.warn('[Wappbiz Webhook] api_key mismatch — rejecting request.');
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
+
+  console.log('[Wappbiz Webhook] Incoming event');
+
+  // Never persist the live API key at rest — redact before storing.
+  const redactedPayload = {
+    ...payload,
+    data: { ...data, api_key: data.api_key ? '[redacted]' : undefined },
+  };
+
+  const messageId = data.id || null;
+
+  // Idempotency: a retried delivery of the same message id is a no-op.
+  const inserted = await db
+    .insert(whatsappInboundEvents)
+    .values({ provider: 'wappbiz', providerMessageId: messageId, rawPayload: redactedPayload })
+    .onConflictDoNothing({ target: [whatsappInboundEvents.provider, whatsappInboundEvents.providerMessageId] })
+    .returning({ id: whatsappInboundEvents.id });
+
+  if (messageId && inserted.length === 0) {
+    console.log('[Wappbiz Webhook] Duplicate delivery for an already-processed message id — skipping.');
+    return new NextResponse('OK', { status: 200 });
+  }
+
+  if (payload?.type !== 'incoming_message' || data.type !== 'text' || !data.from || !data.text?.body) {
+    console.log(`[Wappbiz Webhook] Ignoring unsupported event (type=${payload?.type}, data.type=${data.type})`);
+    return new NextResponse('OK', { status: 200 });
+  }
+
+  console.log('[Wappbiz Webhook] Message identified');
 
   try {
-    await db.insert(whatsappInboundEvents).values({
-      provider: 'wappbiz',
-      rawPayload: parsed ?? {},
-    });
+    await processIncomingMessage(data.from, data.text.body, 'wappbiz');
   } catch (err) {
-    console.error('[Wappbiz Webhook] Failed to persist raw payload:', err instanceof Error ? err.message : err);
+    console.error('[Wappbiz Chatbot] processing failed:', err instanceof Error ? err.message : err);
+    if (messageId) {
+      await db
+        .update(whatsappInboundEvents)
+        .set({ error: err instanceof Error ? err.message : 'unknown error' })
+        .where(eq(whatsappInboundEvents.providerMessageId, messageId));
+    }
+    // Acknowledge anyway — WappBiz has no documented retry/backoff behavior
+    // to lean on, and the chatbot's own catch already sent the user a
+    // friendly fallback message.
+    return new NextResponse('OK', { status: 200 });
+  }
+
+  if (messageId) {
+    await db
+      .update(whatsappInboundEvents)
+      .set({ processed: true, processedAt: new Date() })
+      .where(eq(whatsappInboundEvents.providerMessageId, messageId));
   }
 
   return new NextResponse('OK', { status: 200 });
@@ -53,5 +134,5 @@ export async function GET(req: Request) {
     return new NextResponse(challenge, { status: 200 });
   }
 
-  return new NextResponse('WappBiz Webhook Endpoint — discovery mode (capturing raw payloads only)', { status: 200 });
+  return new NextResponse('WappBiz Webhook Endpoint Ready', { status: 200 });
 }

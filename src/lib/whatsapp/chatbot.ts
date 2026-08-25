@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { users, chatSessions, proposalMatches, proposals } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { createMagicLinkToken } from "@/lib/magicLink";
+import { runChatTurn } from "@/lib/chatPipeline";
 import { sendWhatsAppMessage, sendWhatsAppButtons } from "./provider";
 import { WhatsAppProvider } from "./types";
 
@@ -10,6 +11,8 @@ export async function processIncomingMessage(
   text: string,
   provider: WhatsAppProvider,
 ) {
+  console.log(`[Wappbiz Chatbot] Inbound message received (provider=${provider})`);
+
   // Auto-format phone to include '+'
   const cleanedPhone = rawPhone.replace(/[^\d+]/g, "");
   const formattedPhone = cleanedPhone.startsWith("+")
@@ -167,75 +170,57 @@ export async function processIncomingMessage(
     }
   }
 
-  // 3. Delegate to existing AI Chat Endpoint
-  const chatResponse = await fetch(`${appUrl}/api/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-secret": process.env.ADMIN_API_KEY || "",
-    },
-    body: JSON.stringify({
+  // 3. Delegate to the existing chatbot pipeline (src/lib/chatPipeline.ts —
+  // the same intake intelligence + matchmaking engine the web chat route
+  // uses), in-process. Previously this made an HTTP self-call to /api/chat
+  // gated on ADMIN_API_KEY, which added a network hop and a credential
+  // dependency for no benefit — runChatTurn is the real entry point.
+  console.log("[Wappbiz Chatbot] Conversation resolved, processing started");
+
+  let result;
+  try {
+    result = await runChatTurn({
       userId: user.id,
-      message: messageToSend,
-      chatId: activeChatId,
-      source: "WHATSAPP",
+      rawMessage: messageToSend,
       channel: "WHATSAPP",
-    }),
-  });
-
-  if (!chatResponse.ok) {
-    throw new Error(`Chat API failed: ${chatResponse.status}`);
-  }
-
-  const aiReply = await chatResponse.json();
-
-  if (aiReply.error) {
-    throw new Error(aiReply.error);
-  }
-
-  // 4. If a new session was created (or reset triggered), we need to stamp it
-  // with our WhatsApp identifier.
-  if (!activeChatId) {
-    const newLatestSession = await db.query.chatSessions.findFirst({
-      where: eq(chatSessions.userId, user.id),
-      orderBy: [desc(chatSessions.createdAt)],
+      chatId: activeChatId ?? null,
+      whatsappPhoneNumber: formattedPhone,
     });
-
-    if (newLatestSession && !newLatestSession.whatsappPhoneNumber) {
-      await db
-        .update(chatSessions)
-        .set({
-          whatsappPhoneNumber: formattedPhone,
-          source: provider === "meta" ? "WHATSAPP" : "WHATSAPP-WAPPBIZ",
-        })
-        .where(eq(chatSessions.id, newLatestSession.id));
-    }
+  } catch (err) {
+    console.error("[Wappbiz Chatbot] processing failed:", err instanceof Error ? err.message : err);
+    await sendWhatsAppMessage(provider, rawPhone, "Sorry, I couldn't process that right now. Please try again.");
+    return;
   }
+
+  console.log("[Wappbiz Chatbot] Response generated");
+
+  // 4. Stamp source once a fresh session exists (runChatTurn already sets
+  // whatsapp_phone_number on creation; this only backfills the provider tag).
+  await db
+    .update(chatSessions)
+    .set({ source: provider === "meta" ? "WHATSAPP" : "WHATSAPP-WAPPBIZ" })
+    .where(eq(chatSessions.id, result.chatId));
 
   // 5. Send AI reply back via WhatsApp
-  const replyText =
-    typeof aiReply === "object" && aiReply.message
-      ? aiReply.message
-      : String(aiReply);
-
-  await sendWhatsAppMessage(provider, rawPhone, replyText);
+  await sendWhatsAppMessage(provider, rawPhone, result.message);
+  console.log("[Wappbiz] Response sent");
 
   // 6. If matching counterparties were found, format and send them as WhatsApp cards!
-  if (typeof aiReply === "object" && aiReply.proposalId) {
+  if (result.proposalId) {
     let matchCards: Array<{
       rank?: string;
       finalScore?: number | string;
       scoreLabel?: string;
       archetype?: string;
-      sector?: string;
+      sector?: string | null;
       matchReason?: string;
-    }> = aiReply.matches || [];
+    }> = result.matchCards || [];
 
-    // If not in API response, try checking DB directly
+    // If not returned by the pipeline result, try checking DB directly
     if (matchCards.length === 0) {
       try {
         const dbMatches = await db.query.proposalMatches.findMany({
-          where: eq(proposalMatches.proposalId, aiReply.proposalId),
+          where: eq(proposalMatches.proposalId, result.proposalId),
           orderBy: [desc(proposalMatches.finalScore)],
           limit: 3,
         });
@@ -263,7 +248,7 @@ export async function processIncomingMessage(
               finalScore?: number | string;
               scoreLabel?: string;
               archetype?: string;
-              sector?: string;
+              sector?: string | null;
               matchReason?: string;
             },
             index: number,

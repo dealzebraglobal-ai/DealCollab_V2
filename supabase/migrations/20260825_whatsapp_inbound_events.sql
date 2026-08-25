@@ -29,7 +29,9 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_inbound_provider_msg
 -- Enforces "process once" at the database level: a second INSERT for the
 -- same (provider, provider_message_id) conflicts and is skipped via
 -- ON CONFLICT DO NOTHING in the webhook handler, rather than a race-prone
--- check-then-insert.
+-- check-then-insert. A plain (non-partial) unique index is used because
+-- Postgres already treats each NULL as distinct within a unique index, and
+-- a partial index's predicate would otherwise have to be repeated verbatim
+-- on every ON CONFLICT clause for constraint inference to match it.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_whatsapp_inbound_provider_msg_unique
-  ON whatsapp_inbound_events (provider, provider_message_id)
-  WHERE provider_message_id IS NOT NULL;
+  ON whatsapp_inbound_events (provider, provider_message_id);
