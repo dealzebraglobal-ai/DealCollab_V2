@@ -242,7 +242,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
 
   // ─── BUILD SYSTEM PROMPT + AI CALL ─────────────────────────
   const helpQueryDetected = detectHelpQuery(message);
-  const { systemPrompt } = buildSystemPrompt(candidateState, matchedMandatesStr, helpQueryDetected);
+  const { systemPrompt, modulesLoaded } = buildSystemPrompt(candidateState, matchedMandatesStr, helpQueryDetected);
 
   let extraction: { intent: DealIntent; state: Partial<RouterState>; is_complete: boolean; message: string };
   const raw = await processIntelligence(message, formattedHistory, '', systemPrompt);
@@ -263,7 +263,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
     extraction: extraction as Extraction,
     message,
     candidateState,
-    modulesLoaded: [],
+    modulesLoaded,
   });
   const updatedState = completion.state;
   extraction = completion.extraction as typeof extraction;
