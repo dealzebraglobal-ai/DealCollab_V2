@@ -7,23 +7,38 @@
  * where they could only be exercised through a real DB + AI call.
  */
 
+export type WhatsAppUiScreen = "PROPOSAL_LIST" | "COUNTERPARTY_DETAIL" | null;
+
 export type WhatsAppCommand =
   | { type: "OPEN_WEBSITE" }
   | { type: "FINISH" }
   | { type: "VIEW_MATCH"; index: number } // 0-based (P1 = 0, P2 = 1, P3 = 2)
+  | { type: "BACK_TO_PROPOSALS" }
   | { type: "RESET" }
   | { type: "CHAT" };
 
 /**
- * FINISH is checked before VIEW_MATCH/RESET intentionally, but note it is
- * NOT the default outcome of a completed mandate — it only matches an
- * explicit wrap-up phrase. Everything else (a completed mandate + an
- * ordinary follow-up message) falls through to CHAT, where the shared
+ * `screen` is the WhatsApp-only UI context the conversation is currently in
+ * (chat_sessions.whatsapp_ui_state) — it disambiguates what a bare "1"/"2"/"3"
+ * reply means, since the counterparty-detail screen and the proposal-list
+ * screen assign different meanings to the same digits:
+ *
+ *   PROPOSAL_LIST:        1/2/3 → View P1/P2/P3
+ *   COUNTERPARTY_DETAIL:  1 → Back to proposals, 2 → Open Website, 3 → Start Over
+ *
+ * An explicit "P2" / "view p2" / "VIEW_P2" (button postback, or a user
+ * typing a specific proposal directly) always means VIEW_MATCH regardless of
+ * screen — only a BARE digit is context-dependent.
+ *
+ * FINISH is checked before the screen-dependent digit handling intentionally,
+ * but note it is NOT the default outcome of a completed mandate — it only
+ * matches an explicit wrap-up phrase. Everything else (a completed mandate +
+ * an ordinary follow-up message) falls through to CHAT, where the shared
  * pipeline's own is_captured terminal lock (resolveCompletion.ts) handles
  * "conversation continues after the mandate is done" without resetting
  * anything in the WhatsApp adapter.
  */
-export function classifyWhatsAppCommand(text: string): WhatsAppCommand {
+export function classifyWhatsAppCommand(text: string, screen: WhatsAppUiScreen = null): WhatsAppCommand {
   const trimmed = text.trim();
 
   if (/^(open_?website|website|login|web|portal)\b/i.test(trimmed)) {
@@ -38,15 +53,28 @@ export function classifyWhatsAppCommand(text: string): WhatsAppCommand {
     return { type: "FINISH" };
   }
 
-  // Real button taps (Meta) post back the literal id ("VIEW_P1"); WappBiz has
-  // no button API, so its buttons degrade to a numbered plain-text list
-  // (src/lib/whatsapp/wappbiz.ts) and the user's actual reply is a bare
-  // "1"/"2"/"3". Match the WHOLE trimmed message so a normal sentence that
-  // happens to start with a digit (e.g. "150 crore budget") is never
-  // misread as a selection.
-  const viewMatch = trimmed.match(/^(?:view[_\s]?p?)?([1-3])$/i);
-  if (viewMatch) {
-    return { type: "VIEW_MATCH", index: parseInt(viewMatch[1], 10) - 1 };
+  if (/^back[_\s]?to[_\s]?proposals$/i.test(trimmed)) {
+    return { type: "BACK_TO_PROPOSALS" };
+  }
+
+  // Explicit proposal reference (button postback like "VIEW_P2", or a user
+  // directly typing "P3") always means VIEW_MATCH, independent of screen.
+  const explicitViewMatch = trimmed.match(/^view[_\s]?p([1-3])$/i) || trimmed.match(/^p([1-3])$/i);
+  if (explicitViewMatch) {
+    return { type: "VIEW_MATCH", index: parseInt(explicitViewMatch[1], 10) - 1 };
+  }
+
+  // A bare digit's meaning depends on which screen is currently displayed.
+  const bareDigit = trimmed.match(/^([1-3])$/);
+  if (bareDigit) {
+    const n = parseInt(bareDigit[1], 10);
+    if (screen === "COUNTERPARTY_DETAIL") {
+      if (n === 1) return { type: "BACK_TO_PROPOSALS" };
+      if (n === 2) return { type: "OPEN_WEBSITE" };
+      return { type: "RESET" }; // n === 3
+    }
+    // PROPOSAL_LIST screen (or no tracked screen — the pre-existing default)
+    return { type: "VIEW_MATCH", index: n - 1 };
   }
 
   if (/^(start over|reset|new mandate|clear|restart|new deal)\b/i.test(trimmed)) {

@@ -276,6 +276,11 @@ export const chatSessions = pgTable('chat_sessions', {
   stateVersion: integer('state_version').default(0).notNull(),  // ADDED for OCC
   source: text('source').default('WEB').notNull(),
   whatsappPhoneNumber: text('whatsapp_phone_number'),
+  // WhatsApp-only UI navigation context (which screen a numbered reply like
+  // "1" should be interpreted against — e.g. { screen: 'COUNTERPARTY_DETAIL',
+  // index: 1 }). Kept as its own column, same pattern as whatsappPhoneNumber
+  // above, rather than folded into the mandate-intake `state` blob.
+  whatsappUiState: jsonb('whatsapp_ui_state'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   whatsappPhoneIdx: index('idx_chat_sessions_whatsapp_phone').on(table.whatsappPhoneNumber),

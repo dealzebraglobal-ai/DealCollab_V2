@@ -5,7 +5,70 @@ import { createMagicLinkToken } from "@/lib/magicLink";
 import { runChatTurn } from "@/lib/chatPipeline";
 import { sendWhatsAppMessage, sendWhatsAppButtons } from "./provider";
 import { WhatsAppProvider } from "./types";
-import { classifyWhatsAppCommand } from "./classifyCommand";
+import { classifyWhatsAppCommand, WhatsAppUiScreen } from "./classifyCommand";
+
+type MatchCardLike = {
+  rank?: string;
+  finalScore?: number | string;
+  scoreLabel?: string;
+  archetype?: string;
+  sector?: string | null;
+  matchReason?: string;
+};
+
+/** Reused by both the initial post-capture display and BACK_TO_PROPOSALS — one renderer, no duplicate format. */
+function formatProposalListMessage(matchCards: MatchCardLike[]): string {
+  let matchMessage = `🏢 *Aligned Counterparties (${matchCards.length})*\n\n`;
+  matchCards.slice(0, 3).forEach((card, index) => {
+    const rank = card.rank || `P${index + 1}`;
+    const score = card.finalScore ? ` | Score: ${Math.round(Number(card.finalScore))}%` : "";
+    const label = card.scoreLabel || (Number(card.finalScore) >= 80 ? "High Confidence" : "Good Fit");
+    const title = card.archetype || card.sector || "Strategic Opportunity";
+    const reason = card.matchReason || "Exact sector and geographic match";
+
+    matchMessage += `*${rank} — ${label}${score}*\n`;
+    matchMessage += `📌 *${title}*\n`;
+    matchMessage += `• ${reason}\n\n`;
+  });
+  matchMessage += `💡 _Select a button below to inspect individual counterparty teasers:_`;
+  return matchMessage;
+}
+
+async function sendProposalList(provider: WhatsAppProvider, rawPhone: string, matchCards: MatchCardLike[]) {
+  const matchMessage = formatProposalListMessage(matchCards);
+  try {
+    await sendWhatsAppButtons(provider, rawPhone, matchMessage, [
+      { id: "VIEW_P1", title: "📄 View P1" },
+      { id: "VIEW_P2", title: "📄 View P2" },
+      { id: "VIEW_P3", title: "📄 View P3" },
+    ]);
+  } catch (e) {
+    console.error("Failed to send matches buttons:", e);
+    await sendWhatsAppMessage(provider, rawPhone, matchMessage);
+  }
+}
+
+/** Fetches the user's latest proposal + its persisted matches — never reruns matching. */
+async function fetchLatestProposalMatches(userId: string) {
+  const userProposals = await db.query.proposals.findMany({
+    where: eq(proposals.userId, userId),
+    orderBy: [desc(proposals.createdAt)],
+    limit: 1,
+  });
+  if (userProposals.length === 0) return null;
+
+  const latestProp = userProposals[0];
+  const matches = await db.query.proposalMatches.findMany({
+    where: eq(proposalMatches.proposalId, latestProp.id),
+    orderBy: [desc(proposalMatches.finalScore)],
+    limit: 3,
+  });
+  return { latestProp, matches };
+}
+
+async function setWhatsAppUiState(sessionId: string, state: { screen: WhatsAppUiScreen; index?: number } | null) {
+  await db.update(chatSessions).set({ whatsappUiState: state }).where(eq(chatSessions.id, sessionId));
+}
 
 export async function processIncomingMessage(
   rawPhone: string,
@@ -61,9 +124,18 @@ export async function processIncomingMessage(
     }
   }
 
+  // Find the active chat session early — its whatsapp_ui_state tells us which
+  // screen a bare "1"/"2"/"3" reply should be interpreted against.
+  const latestSession = await db.query.chatSessions.findFirst({
+    where: eq(chatSessions.whatsappPhoneNumber, formattedPhone),
+    orderBy: [desc(chatSessions.createdAt)],
+  });
+  const currentScreen: WhatsAppUiScreen =
+    (latestSession?.whatsappUiState as { screen?: WhatsAppUiScreen } | null)?.screen ?? null;
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const command = classifyWhatsAppCommand(text);
-  console.log(`[WAPPBIZ CHAT] detected command: ${command.type}`);
+  const command = classifyWhatsAppCommand(text, currentScreen);
+  console.log(`[WAPPBIZ CHAT] detected command: ${command.type} (screen=${currentScreen ?? "none"})`);
 
   if (command.type === "OPEN_WEBSITE") {
     const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
@@ -78,7 +150,8 @@ export async function processIncomingMessage(
   // Explicit finish/exit intent — ONLY trigger the "what would you like to do
   // next" menu here, in reply to the user actually asking to wrap up. It must
   // never fire automatically just because matches were shown or a
-  // counterparty was inspected.
+  // counterparty was inspected. This is a DIFFERENT menu from the
+  // counterparty-detail screen's navigation options below.
   if (command.type === "FINISH") {
     console.log("[WAPPBIZ CHAT] finish requested — emitting final menu");
     const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
@@ -98,51 +171,63 @@ export async function processIncomingMessage(
     return;
   }
 
+  if (command.type === "BACK_TO_PROPOSALS") {
+    console.log("[WAPPBIZ CHAT] back to proposals requested");
+    const found = await fetchLatestProposalMatches(user.id);
+    if (found && found.matches.length > 0) {
+      const matchCards: MatchCardLike[] = found.matches.map((m, idx) => ({
+        rank: `P${idx + 1}`,
+        scoreLabel: Number(m.finalScore) >= 80 ? "High Confidence" : "Good Fit",
+        finalScore: Number(m.finalScore),
+        archetype: m.matchArchetype || "Strategic Opportunity",
+        matchReason: m.matchReason || "Strong mandate-level alignment",
+      }));
+      await sendProposalList(provider, rawPhone, matchCards);
+      if (latestSession) await setWhatsAppUiState(latestSession.id, { screen: "PROPOSAL_LIST" });
+    } else {
+      await sendWhatsAppMessage(
+        provider,
+        rawPhone,
+        "❌ We couldn't find your proposal list. Try checking your full DealLog on the website!",
+      );
+    }
+    return;
+  }
+
   if (command.type === "VIEW_MATCH") {
     const matchIdx = command.index;
     console.log(`[WAPPBIZ CHAT] selected counterparty index=${matchIdx}, finishRequested=false`);
-    const userProposals = await db.query.proposals.findMany({
-      where: eq(proposals.userId, user.id),
-      orderBy: [desc(proposals.createdAt)],
-      limit: 1,
-    });
+    const found = await fetchLatestProposalMatches(user.id);
 
-    if (userProposals.length > 0) {
-      const latestProp = userProposals[0];
-      const matches = await db.query.proposalMatches.findMany({
-        where: eq(proposalMatches.proposalId, latestProp.id),
-        orderBy: [desc(proposalMatches.finalScore)],
-        limit: 3,
+    if (found && found.matches[matchIdx]) {
+      const m = found.matches[matchIdx];
+      const targetProposal = await db.query.proposals.findFirst({
+        where: eq(proposals.id, m.matchedProposalId),
       });
 
-      if (matches[matchIdx]) {
-        const m = matches[matchIdx];
-        const targetProposal = await db.query.proposals.findFirst({
-          where: eq(proposals.id, m.matchedProposalId),
-        });
+      const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
+      const teaserMsg =
+        `🏢 *Counterparty Details — P${matchIdx + 1}*\n\n` +
+        `📌 *Title:* ${targetProposal?.summaryText || targetProposal?.normalisedText?.slice(0, 60) || m.matchArchetype || "Strategic Opportunity"}\n` +
+        `🎯 *Match Score:* ${Math.round(Number(m.finalScore))}%\n` +
+        `💼 *Sector:* ${targetProposal?.sectors?.join(", ") || "General Business"}\n` +
+        `📍 *Location:* ${targetProposal?.geographies?.join(", ") || "India"}\n` +
+        `💰 *Revenue Range:* ${targetProposal?.revenueMinCr ? "₹" + targetProposal.revenueMinCr + "–" + (targetProposal.revenueMaxCr || "") + " Cr" : "Undisclosed"}\n\n` +
+        `*Why this matched:* ${m.matchReason}\n\n` +
+        `💡 *Next Step:* Click below to view full teaser documents and request a direct introduction on your DealLog:\n` +
+        `👉 ${magicLinkUrl}`;
 
-        const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
-        const teaserMsg =
-          `🏢 *Counterparty Details — P${matchIdx + 1}*\n\n` +
-          `📌 *Title:* ${targetProposal?.summaryText || targetProposal?.normalisedText?.slice(0, 60) || m.matchArchetype || "Strategic Opportunity"}\n` +
-          `🎯 *Match Score:* ${Math.round(Number(m.finalScore))}%\n` +
-          `💼 *Sector:* ${targetProposal?.sectors?.join(", ") || "General Business"}\n` +
-          `📍 *Location:* ${targetProposal?.geographies?.join(", ") || "India"}\n` +
-          `💰 *Revenue Range:* ${targetProposal?.revenueMinCr ? "₹" + targetProposal.revenueMinCr + "–" + (targetProposal.revenueMaxCr || "") + " Cr" : "Undisclosed"}\n\n` +
-          `*Why this matched:* ${m.matchReason}\n\n` +
-          `💡 *Next Step:* Click below to view full teaser documents and request a direct introduction on your DealLog:\n` +
-          `👉 ${magicLinkUrl}`;
-
-        try {
-          await sendWhatsAppButtons(provider, rawPhone, teaserMsg, [
-            { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
-            { id: "START_OVER", title: "🔄 Start Over" },
-          ]);
-        } catch {
-          await sendWhatsAppMessage(provider, rawPhone, teaserMsg);
-        }
-        return;
+      try {
+        await sendWhatsAppButtons(provider, rawPhone, teaserMsg, [
+          { id: "BACK_TO_PROPOSALS", title: "⬅️ Back to View Proposals" },
+          { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
+          { id: "START_OVER", title: "🔄 Start Over" },
+        ]);
+      } catch {
+        await sendWhatsAppMessage(provider, rawPhone, teaserMsg);
       }
+      if (latestSession) await setWhatsAppUiState(latestSession.id, { screen: "COUNTERPARTY_DETAIL", index: matchIdx });
+      return;
     }
     await sendWhatsAppMessage(
       provider,
@@ -151,12 +236,6 @@ export async function processIncomingMessage(
     );
     return;
   }
-
-  // 2. Find active chat session for this WhatsApp number
-  const latestSession = await db.query.chatSessions.findFirst({
-    where: eq(chatSessions.whatsappPhoneNumber, formattedPhone),
-    orderBy: [desc(chatSessions.createdAt)],
-  });
 
   const isResetCommand = command.type === "RESET";
 
@@ -228,14 +307,7 @@ export async function processIncomingMessage(
 
   // 6. If matching counterparties were found, format and send them as WhatsApp cards!
   if (result.proposalId) {
-    let matchCards: Array<{
-      rank?: string;
-      finalScore?: number | string;
-      scoreLabel?: string;
-      archetype?: string;
-      sector?: string | null;
-      matchReason?: string;
-    }> = result.matchCards || [];
+    let matchCards: MatchCardLike[] = result.matchCards || [];
 
     // If not returned by the pipeline result, try checking DB directly
     if (matchCards.length === 0) {
@@ -259,54 +331,11 @@ export async function processIncomingMessage(
     }
 
     if (matchCards.length > 0) {
-      let matchMessage = `🏢 *Aligned Counterparties (${matchCards.length})*\n\n`;
-      matchCards
-        .slice(0, 3)
-        .forEach(
-          (
-            card: {
-              rank?: string;
-              finalScore?: number | string;
-              scoreLabel?: string;
-              archetype?: string;
-              sector?: string | null;
-              matchReason?: string;
-            },
-            index: number,
-          ) => {
-            const rank = card.rank || `P${index + 1}`;
-            const score = card.finalScore
-              ? ` | Score: ${Math.round(Number(card.finalScore))}%`
-              : "";
-            const label =
-              card.scoreLabel ||
-              (Number(card.finalScore) >= 80 ? "High Confidence" : "Good Fit");
-            const title =
-              card.archetype || card.sector || "Strategic Opportunity";
-            const reason =
-              card.matchReason || "Exact sector and geographic match";
-
-            matchMessage += `*${rank} — ${label}${score}*\n`;
-            matchMessage += `📌 *${title}*\n`;
-            matchMessage += `• ${reason}\n\n`;
-          },
-        );
-      matchMessage += `💡 _Select a button below to inspect individual counterparty teasers:_`;
-
-      // Send matches message with 3 interactive buttons (P1, P2, P3) right after confirmation.
       // Deliberately NOT followed by the "what would you like to do next" menu — that is a
       // terminal action menu and must only appear when the user explicitly asks to finish
       // (handled earlier in this function), never automatically after showing matches.
-      try {
-        await sendWhatsAppButtons(provider, rawPhone, matchMessage, [
-          { id: "VIEW_P1", title: "📄 View P1" },
-          { id: "VIEW_P2", title: "📄 View P2" },
-          { id: "VIEW_P3", title: "📄 View P3" },
-        ]);
-      } catch (e) {
-        console.error("Failed to send matches buttons:", e);
-        await sendWhatsAppMessage(provider, rawPhone, matchMessage);
-      }
+      await sendProposalList(provider, rawPhone, matchCards);
+      await setWhatsAppUiState(result.chatId, { screen: "PROPOSAL_LIST" });
     }
   }
 }
