@@ -8,6 +8,17 @@ export function hashOtp(code: string): string {
   return createHash('sha256').update(code).digest('hex');
 }
 
+/**
+ * A short, non-reversible fingerprint of the API key — never the key itself.
+ * Lets ops compare "does Vercel's BREVO_API_KEY match what's in my local
+ * .env / what's shown in the Brevo dashboard I'm looking at" by hashing the
+ * same value locally (`node -e "console.log(require('crypto').createHash('sha256').update('KEY').digest('hex').slice(0,8))"`)
+ * and comparing the 8-char prefix — without ever exposing the secret in logs.
+ */
+function fingerprint(secret: string): string {
+  return createHash('sha256').update(secret).digest('hex').slice(0, 8);
+}
+
 function requireBrevoEnv(): { apiKey: string; senderEmail: string } {
   const apiKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
@@ -19,6 +30,14 @@ function requireBrevoEnv(): { apiKey: string; senderEmail: string } {
     });
     throw new Error('Email service is not configured. Please contact support.');
   }
+
+  // Diagnostic for the "Brevo reports success but the email never shows up
+  // in the dashboard I'm checking" symptom — that combination means the API
+  // call is succeeding against a DIFFERENT Brevo account/key than expected,
+  // not a code bug. senderEmail is not sensitive (it's a public from-address);
+  // apiKeyFingerprint lets ops confirm which key is actually live in this
+  // environment without ever logging the key itself.
+  console.log('[emailOtp] Brevo config in use', { senderEmail, apiKeyFingerprint: fingerprint(apiKey) });
 
   return { apiKey, senderEmail };
 }
