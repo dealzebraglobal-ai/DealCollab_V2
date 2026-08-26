@@ -84,3 +84,25 @@ export const trackChatMessage = (channel: 'WEB' | 'WHATSAPP', turnCount: number)
 
 export const trackChatConversion = (channel: 'WEB' | 'WHATSAPP') =>
   trackEvent('chat_conversion', { channel });
+
+// ── Payments / token economy — event metadata only. NEVER pass card
+// details, CVV, bank information, Razorpay secrets, API keys, OTPs, or any
+// other sensitive financial data — only package/amount/status metadata. ──
+export const trackPaymentStarted = (packageId: string) => trackEvent('payment_started', { package_id: packageId });
+
+export const trackPromoCodeAttempted = (packageId: string) => trackEvent('promo_code_attempted', { package_id: packageId });
+
+export const trackPromoCodeApplied = (packageId: string, discountAmountInr: number) =>
+  trackEvent('promo_code_applied', { package_id: packageId, discount_amount_inr: discountAmountInr });
+
+export const trackPaymentSuccess = (packageId: string, amountInr: number) =>
+  trackEvent('payment_success', { package_id: packageId, amount_inr: amountInr });
+
+export const trackPaymentFailed = (packageId: string, reason?: string) =>
+  trackEvent('payment_failed', { package_id: packageId, ...(reason ? { reason } : {}) });
+
+export const trackTokenPurchase = (packageId: string, tokenQuantity: number) =>
+  trackEvent('token_purchase', { package_id: packageId, token_quantity: tokenQuantity });
+
+export const trackTokenSpent = (action: string, amount: number) =>
+  trackEvent('token_spent', { action, amount });

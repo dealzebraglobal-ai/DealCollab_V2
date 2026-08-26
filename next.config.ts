@@ -17,14 +17,18 @@ const contentSecurityPolicy = [
   // src/components/GoogleAnalytics.tsx only when NEXT_PUBLIC_GA_MEASUREMENT_ID is set,
   // but the CSP itself is static, so the domain is allowed unconditionally rather than
   // maintaining two CSP variants.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
+  // https://checkout.razorpay.com/v1/checkout.js is the official Razorpay Checkout
+  // script, loaded by the token-purchase UI (src/app/(dashboard)/profile/billing).
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://checkout.razorpay.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://www.google-analytics.com",
+  "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://www.google-analytics.com https://*.razorpay.com",
   "font-src 'self' data:",
   // GA4 sends event beacons to google-analytics.com (and regional subdomains like
   // region1.google-analytics.com) in addition to the googletagmanager.com script host.
-  "connect-src 'self' https://*.supabase.co https://accounts.google.com https://www.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com",
-  "frame-src 'self' https://accounts.google.com",
+  // Razorpay Checkout's own script calls api.razorpay.com and lumberjack.razorpay.com.
+  "connect-src 'self' https://*.supabase.co https://accounts.google.com https://www.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com https://*.razorpay.com",
+  // Razorpay Checkout opens its payment form (card entry, 3D-Secure, UPI) in an iframe.
+  "frame-src 'self' https://accounts.google.com https://*.razorpay.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
