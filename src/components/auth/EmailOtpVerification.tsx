@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { ArrowLeft, AlertCircle, ShieldCheck } from 'lucide-react';
 import OTPInput from './OTPInput';
+import { parseJsonResponse } from '@/lib/fetchJson';
 
 interface EmailOtpVerificationProps {
   email: string;
@@ -36,7 +37,7 @@ export default function EmailOtpVerification({ email, onVerify, onBack }: EmailO
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code }),
       });
-      const verifyData = await verifyRes.json();
+      const verifyData = await parseJsonResponse<{ error?: string; hasPhone?: boolean }>(verifyRes);
 
       if (!verifyRes.ok) {
         console.warn('[EmailOtpVerification] verify failed:', verifyData.error);
@@ -92,15 +93,15 @@ export default function EmailOtpVerification({ email, onVerify, onBack }: EmailO
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ success?: boolean; error?: string }>(res);
       if (res.ok && data.success) {
         setDigits(Array(6).fill(''));
         setCooldown(RESEND_COOLDOWN_SECONDS);
       } else {
         setError(data.error || 'Failed to resend code');
       }
-    } catch {
-      setError('Failed to resend code');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to resend code');
     }
     setIsResending(false);
   };

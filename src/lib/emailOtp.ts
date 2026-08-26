@@ -23,32 +23,56 @@ function requireBrevoEnv(): { apiKey: string; senderEmail: string } {
   return { apiKey, senderEmail };
 }
 
+// Vercel's default serverless function timeout is 10s (Hobby) / configurable
+// up to much higher on Pro, but this route has no maxDuration override, so
+// it runs under the platform default. Without a bound here, a slow/hanging
+// Brevo request could let Vercel's OWN timeout fire first — which returns an
+// HTML platform error page, not this file's JSON error handling. Aborting at
+// 8s guarantees our try/catch (and its JSON response) always wins that race.
+const BREVO_REQUEST_TIMEOUT_MS = 8000;
+
 export async function sendOtpEmail(email: string, code: string): Promise<void> {
   const { apiKey, senderEmail } = requireBrevoEnv();
 
   console.log('[emailOtp] Sending OTP email...', { to: email });
 
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'api-key': apiKey,
-    },
-    body: JSON.stringify({
-      sender: { email: senderEmail, name: 'DealCollab AI' },
-      to: [{ email }],
-      subject: `${code} is your DealCollab verification code`,
-      htmlContent: `
-        <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #1F2937;">Your verification code</h2>
-          <p style="color: #6B7280; font-size: 14px;">Use this code to sign in to DealCollab AI. It expires in 5 minutes.</p>
-          <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #F97316; margin: 24px 0;">${code}</div>
-          <p style="color: #9CA3AF; font-size: 12px;">If you didn't request this, you can safely ignore this email.</p>
-        </div>
-      `,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BREVO_REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'api-key': apiKey,
+      },
+      body: JSON.stringify({
+        sender: { email: senderEmail, name: 'DealCollab AI' },
+        to: [{ email }],
+        subject: `${code} is your DealCollab verification code`,
+        htmlContent: `
+          <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #1F2937;">Your verification code</h2>
+            <p style="color: #6B7280; font-size: 14px;">Use this code to sign in to DealCollab AI. It expires in 5 minutes.</p>
+            <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #F97316; margin: 24px 0;">${code}</div>
+            <p style="color: #9CA3AF; font-size: 12px;">If you didn't request this, you can safely ignore this email.</p>
+          </div>
+        `,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error('[emailOtp] Brevo request timed out after', BREVO_REQUEST_TIMEOUT_MS, 'ms');
+      throw new Error('Verification email service is temporarily unavailable. Please try again.');
+    }
+    console.error('[emailOtp] Brevo request threw:', err instanceof Error ? err.message : err);
+    throw new Error('Unable to send the verification email right now. Please try again.');
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const bodyText = await res.text();
   console.log('[emailOtp] Brevo response:', { status: res.status, body: bodyText });

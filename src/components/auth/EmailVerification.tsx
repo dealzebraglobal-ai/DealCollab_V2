@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Mail, Send, ArrowLeft, AlertCircle } from 'lucide-react';
 import { isValidEmail } from '@/lib/validation/profile';
+import { parseJsonResponse } from '@/lib/fetchJson';
 
 interface EmailVerificationProps {
   onSent: (email: string) => void;
@@ -32,7 +33,7 @@ export default function EmailVerification({ onSent, onBack, initialEmail }: Emai
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<{ success?: boolean; error?: string }>(res);
 
       if (res.ok && data.success) {
         onSent(trimmedEmail);
