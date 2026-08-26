@@ -13,11 +13,17 @@ import type { NextConfig } from "next";
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // https://www.googletagmanager.com serves gtag.js (Google Analytics 4) — loaded by
+  // src/components/GoogleAnalytics.tsx only when NEXT_PUBLIC_GA_MEASUREMENT_ID is set,
+  // but the CSP itself is static, so the domain is allowed unconditionally rather than
+  // maintaining two CSP variants.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
+  "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://www.google-analytics.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co https://accounts.google.com",
+  // GA4 sends event beacons to google-analytics.com (and regional subdomains like
+  // region1.google-analytics.com) in addition to the googletagmanager.com script host.
+  "connect-src 'self' https://*.supabase.co https://accounts.google.com https://www.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com",
   "frame-src 'self' https://accounts.google.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
@@ -32,6 +38,34 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+];
+
+// Every authenticated/private route surface — belt-and-suspenders alongside
+// the Disallow rules in src/app/robots.ts. A response header is honored by
+// well-behaved crawlers even if they never fetch robots.txt for some reason,
+// and unlike robots.txt this is NOT advisory-only for indexing purposes
+// (Google explicitly documents X-Robots-Tag as authoritative for this).
+const noIndexHeader = [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }];
+const privatePathPatterns = [
+  '/home',
+  '/home/:path*',
+  '/profile',
+  '/profile/:path*',
+  '/deal',
+  '/deal/:path*',
+  '/deal-log',
+  '/deal-log/:path*',
+  '/deal-dashboard',
+  '/deal-dashboard/:path*',
+  '/deal-intelligence',
+  '/eoi-review/:path*',
+  '/notifications',
+  '/analytics',
+  '/admin',
+  '/admin/:path*',
+  '/cartography',
+  '/signup',
+  '/verify',
 ];
 
 const nextConfig: NextConfig = {
@@ -78,6 +112,7 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: securityHeaders,
       },
+      ...privatePathPatterns.map((source) => ({ source, headers: noIndexHeader })),
     ];
   },
 };

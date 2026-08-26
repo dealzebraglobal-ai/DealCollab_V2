@@ -1,8 +1,14 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import VideoBackground from '@/components/auth/VideoBackground';
 import VideoLogo from '@/components/auth/VideoLogo';
 import { ArrowLeft } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'How DealCollab collects, uses, and protects your information.',
+};
 
 export default function PrivacyPolicy() {
   return (
