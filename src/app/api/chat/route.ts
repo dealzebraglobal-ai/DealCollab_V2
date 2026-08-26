@@ -30,6 +30,7 @@ import { type MatchCard, type MatchmakingResult } from '@/lib/matchmakingEngine'
 import crypto from 'crypto';
 import { resolveCompletion, type Extraction } from '@/lib/resolveCompletion';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { isValidAdminSecret } from '@/lib/adminSecret';
 
 /**
  * DealCollab Chat Route
@@ -58,17 +59,6 @@ import { checkRateLimit } from '@/lib/rateLimit';
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
-
-function isValidAdminSecret(header: string | null): boolean {
-  const expected = process.env.ADMIN_API_KEY;
-  if (!expected || !header) return false;
-
-  const expectedBuf = Buffer.from(expected);
-  const headerBuf = Buffer.from(header);
-  if (expectedBuf.length !== headerBuf.length) return false;
-
-  return crypto.timingSafeEqual(expectedBuf, headerBuf);
-}
 
 // ─────────────────────────────────────────────────────────────
 // GET — chat history list

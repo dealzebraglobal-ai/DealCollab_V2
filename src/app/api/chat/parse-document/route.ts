@@ -2,6 +2,8 @@ import { auth } from '@/auth';
 import { extractTextFromFile } from '@/lib/documentParser';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { isAllowedFileUrl } from '@/lib/ssrfGuard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +31,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
+
+    // SECURITY: this route makes real OpenAI/Groq calls and Supabase Storage
+    // uploads per request — previously unbounded, so an authenticated user
+    // (or a compromised session) could flood it for cost/DoS. Per-user,
+    // not per-IP, since it requires auth and users can be behind shared IPs.
+    const rl = checkRateLimit(`parse-document:user:${userId}`, 10, 10 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'Too many document uploads — please wait before trying again' }, { status: 429 });
+    }
+
     const supabase = await createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
@@ -49,6 +61,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      if (!isAllowedFileUrl(fileUrl, process.env.NEXT_PUBLIC_SUPABASE_URL)) {
+        console.error('[PARSE] Rejected fileUrl outside the allowed Supabase storage host:', fileUrl);
+        return NextResponse.json({ error: 'Invalid file URL' }, { status: 400 });
+      }
+
+      // fileSize here is a client-supplied number, not yet verified against
+      // the real download — file.size is overwritten below with the actual
+      // buffer length before the MAX_FILE_SIZE check runs.
       file = { name: fileName, type: fileType || '', size: fileSize || 0 };
       publicUrl = fileUrl;
       isDirectUpload = true;
@@ -60,8 +80,23 @@ export async function POST(req: NextRequest) {
       if (!fileRes.ok) {
         throw new Error(`Failed to fetch pre-uploaded file from URL: ${fileRes.statusText}`);
       }
+
+      // SECURITY: reject an oversized download before buffering it into
+      // memory, using the server-reported Content-Length — don't rely on
+      // the client-supplied fileSize field for this decision.
+      const contentLength = Number(fileRes.headers.get('content-length') || 0);
+      if (contentLength > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: `File too large. Maximum size is 10MB. Your file is ${(contentLength / 1024 / 1024).toFixed(1)}MB.` },
+          { status: 400 }
+        );
+      }
+
       const arrayBuffer = await fileRes.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
+      // Re-derive size from the actual downloaded bytes — never trust the
+      // client-supplied fileSize for the size-limit check below.
+      file.size = buffer.length;
     } else {
       // Parse multipart form data
       let formData: FormData;

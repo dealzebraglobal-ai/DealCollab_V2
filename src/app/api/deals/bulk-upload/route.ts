@@ -30,6 +30,7 @@ import type { DealIntent, SectorKey } from '@/lib/promptRouter';
 import { executeMatchmaking, type ProposalInput } from '@/lib/matchmakingEngine';
 import { NextRequest, NextResponse } from 'next/server';
 import Papa from 'papaparse';
+import { isValidAdminSecret } from '@/lib/adminSecret';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -122,7 +123,9 @@ function buildProposalInputFromRow(row: Record<string, string>, userId: string):
 
 export async function POST(req: NextRequest) {
   try {
-    const isAdmin = req.headers.get('x-admin-secret') === process.env.ADMIN_API_KEY;
+    // SECURITY: was a plain `===` comparison — vulnerable to a timing
+    // side-channel. Now uses the same constant-time compare as chat/route.ts.
+    const isAdmin = isValidAdminSecret(req.headers.get('x-admin-secret'));
     let userId: string;
     
     const supabase = createServerSupabaseClient();

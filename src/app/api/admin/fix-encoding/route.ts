@@ -13,6 +13,7 @@
 
 import { fixEncoding } from '@/lib/dataQuality';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
+import { getAdminAccess } from '@/lib/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -28,14 +29,18 @@ function hasMojibake(text: string | null): boolean {
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json().catch(() => ({}));
-
-        // Simple secret guard — set ADMIN_SECRET in env
-        const secret = process.env.ADMIN_SECRET || process.env.NEXTAUTH_SECRET;
-        if (!secret || body.secret !== secret) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // SECURITY: previously guarded by a body-supplied `secret` compared
+        // with `!==` (not timing-safe) against ADMIN_SECRET, falling back to
+        // NEXTAUTH_SECRET if unset — reusing the session-signing secret as an
+        // API credential is a real anti-pattern (a leak here would also
+        // compromise session integrity). Switched to the same admin-session
+        // check every other /api/admin/* route already uses.
+        const access = await getAdminAccess();
+        if (!access.allowed) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
+        const body = await req.json().catch(() => ({}));
         const batchSize = Math.min(Number(body.batch) || 100, 200);
         const supabase = createServerSupabaseClient();
         if (!supabase) throw new Error('Supabase client init failed');

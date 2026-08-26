@@ -10,14 +10,22 @@ import { processIncomingMessage } from '@/lib/whatsapp/chatbot';
  * pipeline as if it came from WhatsApp. Signature must be read from the RAW
  * body (before JSON.parse) since Meta signs the exact bytes sent.
  *
- * If WHATSAPP_APP_SECRET isn't configured, this warns and allows the request
- * through rather than hard-failing — that keeps existing deployments working
- * until the secret is added to the environment (see security report).
+ * SECURITY: previously, a missing WHATSAPP_APP_SECRET made this fail OPEN
+ * (return true, allowing any unsigned request through) — this session has
+ * already found two other providers (WAPPBIZ_API_KEY, BREVO_API_KEY) where
+ * the local .env had a value but Vercel Production did not, so "the secret
+ * might not actually be configured in production" is a real, demonstrated
+ * risk here, not a hypothetical. Now fails CLOSED in production/preview;
+ * local dev (no VERCEL_ENV) still allows testing without the secret set.
  */
 function isValidWhatsAppSignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = getWhatsAppAppSecret();
   if (!appSecret) {
-    console.warn('[whatsapp webhook] WHATSAPP_APP_SECRET not set — skipping signature verification (INSECURE, configure this in production).');
+    if (process.env.VERCEL_ENV) {
+      console.error('[whatsapp webhook] WHATSAPP_APP_SECRET not set in a deployed environment — rejecting all requests.');
+      return false;
+    }
+    console.warn('[whatsapp webhook] WHATSAPP_APP_SECRET not set — skipping signature verification (local dev only).');
     return true;
   }
 

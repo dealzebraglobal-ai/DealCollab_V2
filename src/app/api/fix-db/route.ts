@@ -1,8 +1,18 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { getAdminAccess } from "@/lib/admin";
 
+// SECURITY: this route runs destructive schema DDL (including DROP TABLE
+// ... CASCADE) against production. It previously had NO authentication —
+// any unauthenticated GET request could trigger it. Gated behind the same
+// admin-session check used by every other /api/admin/* route.
 export async function GET() {
+  const access = await getAdminAccess();
+  if (!access.allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     console.log('API: Running database migration to merge Profile into Users...');
     
@@ -48,11 +58,11 @@ export async function GET() {
       success: true, 
       message: "Database migration successful: Users table extended and user_profiles table dropped." 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('API: Migration failed:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message 
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
