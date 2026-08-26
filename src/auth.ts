@@ -103,7 +103,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "database" },
+  // JWT, not database, sessions — required because this app's primary
+  // sign-in methods (email-otp and phone Credentials providers below) use
+  // Auth.js's Credentials provider, which cannot create a persisted
+  // database session row (documented Auth.js limitation: Credentials
+  // logins always issue a JWT regardless of the configured strategy). Under
+  // "database" strategy, the very next real session lookup against the
+  // `sessions` table finds nothing for a Credentials-issued JWT cookie, so
+  // useSession() flips to 'unauthenticated' shortly after a successful
+  // login — this was the root cause of users landing on /home then
+  // immediately bouncing back to "/" (auth.config.ts's pages.signIn).
+  // Google OAuth (auth.config.ts) is unaffected: DrizzleAdapter still
+  // manages the users/accounts tables for account linkage under JWT
+  // strategy, it just stops writing to the sessions table. The jwt/session
+  // callbacks below already fully populate token.*/session.user for the
+  // "token" branch — they were written for JWT strategy, not "database".
+  session: { strategy: "jwt" },
   callbacks: {
     // @ts-expect-error - callbacks might not be present in authConfig
     ...authConfig.callbacks,
