@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { isAllowedFileUrl } from '@/lib/ssrfGuard';
+import { checkFileSignature } from '@/lib/fileSignature';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -75,8 +76,14 @@ export async function POST(req: NextRequest) {
 
       console.log(`[PARSE] Processing pre-uploaded file from URL: ${fileUrl} | Name: ${fileName}`);
 
-      // Fetch file content into buffer
-      const fileRes = await fetch(fileUrl);
+      // SECURITY (SSRF): fetch() follows redirects by default — the
+      // allowlist check above only validates the URL we're ABOUT to
+      // request, not wherever a 3xx response might point next. A
+      // compromised/misconfigured intermediary could redirect an
+      // allowlisted Supabase URL to an internal address. redirect: 'error'
+      // makes fetch throw instead of silently following, since legitimate
+      // Supabase Storage public URLs never redirect cross-origin.
+      const fileRes = await fetch(fileUrl, { redirect: 'error' });
       if (!fileRes.ok) {
         throw new Error(`Failed to fetch pre-uploaded file from URL: ${fileRes.statusText}`);
       }
@@ -144,6 +151,16 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // SECURITY: Content-Type (browser-supplied) and filename extension are
+    // both trivially spoofable — a renamed executable claiming to be a PDF
+    // would previously sail through. Verify the actual file bytes match the
+    // claimed type before it's uploaded to storage or handed to the parser.
+    const sigCheck = checkFileSignature(buffer, mimeType);
+    if (!sigCheck.valid) {
+      console.error(`[PARSE] Rejected file with mismatched signature: claimed=${mimeType} name=${file.name} reason=${sigCheck.reason}`);
+      return NextResponse.json({ error: 'File content does not match the declared file type.' }, { status: 400 });
     }
 
     if (!isDirectUpload) {

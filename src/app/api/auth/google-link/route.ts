@@ -3,16 +3,37 @@ import { db } from '@/db';
 import { users, accounts } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { cookies } from 'next/headers';
+import { auth } from '@/auth';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
+    // SECURITY: this route was completely unauthenticated and trusted a
+    // client-supplied google_id/email to create or link accounts —
+    // returning the full target user row (name, phone, image, etc.) with
+    // no verification the caller actually authenticated as that person.
+    // An unauthenticated caller could pre-register/hijack a google_id, or
+    // read another user's profile data by supplying their known email.
+    // No current frontend code calls this route (dead code today), so
+    // rather than remove it outright (something external may still target
+    // it), it now requires a real session and only allows linking against
+    // that session's OWN email — the client-supplied email/google_id can
+    // no longer name an arbitrary target.
+    const session = await auth();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { google_id, email, name, image } = await req.json();
 
     if (!google_id || !email) {
       return NextResponse.json({ error: 'Google ID and Email are required' }, { status: 400 });
+    }
+
+    if (email.trim().toLowerCase() !== session.user.email.trim().toLowerCase()) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Extract verified phone from the secure session cookie

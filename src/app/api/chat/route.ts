@@ -95,8 +95,9 @@ export async function GET() {
   } catch (error: unknown) {
     const err = error as Error;
     console.error("🔥 HISTORY FETCH ERROR:", err);
+    // SECURITY: stack traces must never reach the client — kept server-side only.
     return NextResponse.json(
-      { success: false, error: err.message, stack: err.stack },
+      { success: false, error: err.message },
       { status: 500 },
     );
   }
@@ -859,12 +860,11 @@ export async function POST(req: NextRequest) {
     console.error("❌ CHAT ERROR:", error);
 
     let errorMessage = "An unknown error occurred";
-    let errorStack: string | undefined = undefined;
 
     if (error instanceof Error) {
       errorMessage = error.message;
-      errorStack = error.stack;
-      console.error("STACK:", errorStack);
+      // SECURITY: stack traces must never reach the client — logged server-side only.
+      console.error("STACK:", error.stack);
     } else if (typeof error === 'string') {
       errorMessage = error;
     }
@@ -872,7 +872,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: false,
       error: errorMessage,
-      stack: errorStack,
       is_document_intake: updatedState.is_document_intake,
     }, { status: 500 });
   }

@@ -206,7 +206,10 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { dealId, matchId, receiverId } = body;
+    const { dealId, matchId } = body;
+    if (!dealId || !matchId) {
+      return NextResponse.json({ error: 'dealId and matchId are required' }, { status: 400 });
+    }
 
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
@@ -224,13 +227,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // SECURITY (IDOR): previously dealId, matchId, AND receiverId were all
+    // taken directly from the client body with no verification at all — a
+    // caller could reference a proposal they don't own, or set receiverId to
+    // an arbitrary user id (which approve_eoi_and_charge later uses to move
+    // real tokens between sender/receiver). Both dealId ownership and the
+    // real receiver are now derived and verified server-side.
+    const { data: dealProposal, error: dealErr } = await supabase
+      .from('proposals')
+      .select('id, user_id')
+      .eq('id', dealId)
+      .single();
+
+    if (dealErr || !dealProposal || dealProposal.user_id !== dbUser.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { data: matchRow, error: matchErr } = await supabase
+      .from('proposal_matches')
+      .select('id, proposal_id, matched_proposal_id')
+      .eq('id', matchId)
+      .single();
+
+    if (matchErr || !matchRow || matchRow.proposal_id !== dealId) {
+      return NextResponse.json({ error: 'Match does not correspond to this proposal' }, { status: 400 });
+    }
+
+    const { data: counterpartyProposal, error: cpErr } = await supabase
+      .from('proposals')
+      .select('user_id')
+      .eq('id', matchRow.matched_proposal_id)
+      .single();
+
+    if (cpErr || !counterpartyProposal) {
+      return NextResponse.json({ error: 'Counterparty proposal not found' }, { status: 404 });
+    }
+
     const { data: eoi, error: eoiErr } = await supabase
       .from('eois')
       .insert([{
         deal_id: dealId,
         match_id: matchId,
         sender_id: dbUser.id,
-        receiver_id: receiverId,
+        receiver_id: counterpartyProposal.user_id,
         status: 'sent'
       }])
       .select()
@@ -238,11 +277,11 @@ export async function POST(req: NextRequest) {
 
     if (eoiErr) throw eoiErr;
 
-    // Trigger Notification for Receiver if exists
-    if (receiverId) {
+    // Trigger Notification for Receiver
+    {
       const { data: notification, error: notificationErr } =
         await supabase.from('notifications').insert([{
-          user_id: receiverId,
+          user_id: counterpartyProposal.user_id,
           type: 'EOI_RECEIVED',
           message: 'You have received a new Expression of Interest.',
 
