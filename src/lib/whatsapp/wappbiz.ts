@@ -221,7 +221,24 @@ export async function sendWappBizButtons(phone: string, text: string, buttons: A
   return sendServiceTextMessage(phone, combined);
 }
 
-/** OTP delivery via the documented sendAuthTemplate endpoint (not a free-form text message). */
+/**
+ * OTP delivery — via the documented sendAuthTemplate endpoint ONLY.
+ *
+ * DELIBERATELY does not fall back to sendServiceTextMessage / the 24h
+ * customer-window check. An OTP login must work for ANY valid WhatsApp
+ * number, including one that has never messaged the business before —
+ * gating delivery on "has this number messaged us recently" would make
+ * login impossible for a brand-new user, which defeats the purpose of the
+ * feature (an earlier version of this function did exactly that as a
+ * stopgap; removed — it was a workaround, not the required behavior).
+ *
+ * Confirmed live via fetchAuthTemplates on 2026-08-27: this WappBiz
+ * account has ZERO approved authentication templates, so this currently
+ * always fails with a clear, actionable error. That is a WappBiz dashboard
+ * configuration gap (approve an authentication template, or set
+ * WAPPBIZ_OTP_TEMPLATE_NAME to pin one), not a code defect — see the
+ * deployment report for exactly what needs to be configured.
+ */
 export async function sendWappBizOTP(phone: string, otp: string) {
   const config = getWappBizConfig();
   if (!config) {

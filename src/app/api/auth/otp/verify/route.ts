@@ -4,6 +4,7 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { validateOtp } from '@/lib/otp';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { hashOtp } from '@/lib/emailOtp';
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
 
+    // Normalize phone number to E.164
+    let normalizedPhone = phone.replace(/[^\d+]/g, '');
+    if (!normalizedPhone.startsWith('+')) {
+      if (normalizedPhone.length === 10) {
+        normalizedPhone = '+91' + normalizedPhone;
+      } else {
+        normalizedPhone = '+' + normalizedPhone;
+      }
+    }
+
     const user = await db.query.users.findFirst({
-      where: eq(users.phone, phone),
+      where: eq(users.phone, normalizedPhone),
     });
 
     // A code must have actually been issued (via /api/auth/whatsapp-otp) for this
@@ -37,12 +48,27 @@ export async function POST(req: Request) {
     // sign in as that user (the Credentials provider trusts isPhoneVerified with
     // no further check). There is no safe mock path — verification must always
     // check a real, issued code.
-    const result = validateOtp({
-      submittedCode: code,
+    
+    const hashedCode = hashOtp(code);
+    let result = validateOtp({
+      submittedCode: hashedCode,
       storedCode: user?.otpCode,
       storedExpires: user?.otpExpires,
       attemptsSoFar: user?.otpAttempts,
     });
+
+    if (!result.valid && result.reason === 'incorrect') {
+      // Fallback for unhashed OTPs during rollout
+      const fallbackResult = validateOtp({
+        submittedCode: code,
+        storedCode: user?.otpCode,
+        storedExpires: user?.otpExpires,
+        attemptsSoFar: user?.otpAttempts,
+      });
+      if (fallbackResult.valid) {
+        result = fallbackResult;
+      }
+    }
 
     if (!result.valid) {
       if (user) {
