@@ -25,7 +25,9 @@ const AuthContent = () => {
   const logoutSuccess = searchParams.get('logout') === 'success';
   const isFromWhatsApp = source === 'whatsapp';
   
-  const [step, setStep] = useState<'google' | 'email' | 'otp' | 'phone' | 'verified'>('google');
+  const [step, setStep] = useState<'google' | 'email' | 'otp' | 'phone' | 'verified'>(
+    isFromWhatsApp ? 'phone' : 'google'
+  );
   const [pendingEmail, setPendingEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -224,14 +226,25 @@ const AuthContent = () => {
                   <div className="flex-grow border-t border-border" />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setStep('email')}
-                  className="w-full bg-white text-foreground py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-border hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
-                >
-                  <Mail size={18} className="text-gray-400 group-hover:text-primary-hover transition-colors" />
-                  <span className="font-semibold tracking-tight">Sign in with Email</span>
-                </button>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep('phone')}
+                    className="w-full bg-[#25D366] text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-[#1EBE5D] transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
+                  >
+                    <MessageSquare size={18} className="text-white group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold tracking-tight">Sign in with WhatsApp</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStep('email')}
+                    className="w-full bg-white text-foreground py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-border hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
+                  >
+                    <Mail size={18} className="text-gray-400 group-hover:text-primary-hover transition-colors" />
+                    <span className="font-semibold tracking-tight">Sign in with Email</span>
+                  </button>
+                </div>
 
                 <p className="text-[10px] text-center text-gray-300 font-bold uppercase tracking-[0.2em] pt-2">
                   Secured by Google Identity
