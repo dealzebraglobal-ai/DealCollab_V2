@@ -109,7 +109,18 @@ const nextConfig: NextConfig = {
   },
   // Setting the tracing root can help avoid scanning outside the project
   outputFileTracingRoot: process.cwd(),
-  serverExternalPackages: ['pdf-parse'],
+  // pdf-parse was already external (needed for its @napi-rs/canvas native
+  // binding, used by getScreenshot() for OCR page rendering, to resolve via
+  // normal Node module resolution at runtime instead of being bundled).
+  // tesseract.js/mammoth are dynamically/statically imported directly by
+  // documentParser.ts and were NOT excluded — a very common source of
+  // "works in `next dev`, breaks only in the production build" failures for
+  // packages with WASM/worker-thread loading or other filesystem-relative
+  // module resolution the bundler can silently break. This is the leading,
+  // evidence-based (not confirmed via a captured stack trace) hypothesis
+  // for the production 500 on /api/chat/parse-document — see the
+  // documentParser.ts history comment for the incident this addresses.
+  serverExternalPackages: ['pdf-parse', 'tesseract.js', 'mammoth'],
   async headers() {
     return [
       {

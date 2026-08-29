@@ -1,4 +1,5 @@
 import mammoth from 'mammoth';
+import type { PDFParse } from 'pdf-parse';
 
 /**
  * 🛠️ ROBUST DOCUMENT PARSING SYSTEM (v3.0)
@@ -98,23 +99,34 @@ export async function extractDocxText(fileBuffer: Buffer): Promise<string> {
  * always terminated, even on failure.
  */
 async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
-  const pdfParseModule = await import('pdf-parse');
-  const parser = new pdfParseModule.PDFParse({ data: buffer });
+  console.error('[parse-document] STEP parser-init:start');
+  let parser: PDFParse;
+  try {
+    const pdfParseModule = await import('pdf-parse');
+    parser = new pdfParseModule.PDFParse({ data: buffer });
+  } catch (initErr) {
+    const e = initErr instanceof Error ? initErr : new Error(String(initErr));
+    console.error(`[parse-document] FAILURE step=parser-init error_name=${e.name} error_message=${e.message}`);
+    throw new Error(`IMAGE_BASED_PDF: PDF parser initialization failed (${e.message})`);
+  }
+  console.error('[parse-document] STEP parser-init:success');
 
   type TesseractWorker = Awaited<ReturnType<typeof import('tesseract.js')['createWorker']>>;
   let worker: TesseractWorker | null = null;
 
   try {
+    console.error('[parse-document] STEP native-extraction:start');
     const nativeStart = Date.now();
     let textResult: { total: number; pages: Array<{ num: number; text: string }> };
     try {
       textResult = await withTimeout(parser.getText(), PDF_EXTRACTION_TIMEOUT_MS, 'PDF text extraction');
     } catch (pdfErr) {
-      throw new Error(
-        `IMAGE_BASED_PDF: Native PDF text extraction failed (${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)})`,
-      );
+      const e = pdfErr instanceof Error ? pdfErr : new Error(String(pdfErr));
+      console.error(`[parse-document] FAILURE step=native-extraction error_name=${e.name} error_message=${e.message}`);
+      throw new Error(`IMAGE_BASED_PDF: Native PDF text extraction failed (${e.message})`);
     }
-    console.log(`[parse-document] native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
+    console.error(`[parse-document] native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
+    console.error('[parse-document] STEP native-extraction:success');
 
     const totalPages = textResult.total || textResult.pages.length || 0;
     if (totalPages > DOCUMENT_HARD_MAX_PAGES) {
@@ -152,10 +164,13 @@ async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
 
       try {
         if (!worker) {
+          console.error('[parse-document] STEP ocr:start');
           const { createWorker } = await import('tesseract.js');
           worker = await withTimeout(createWorker('eng'), OCR_WORKER_INIT_TIMEOUT_MS, 'OCR worker initialization');
+          console.error('[parse-document] STEP ocr:success');
         }
 
+        console.error(`[parse-document] STEP screenshot:start page=${pageNum}`);
         const shot = await withTimeout(
           parser.getScreenshot({ partial: [pageNum], imageDataUrl: true, imageBuffer: false }),
           OCR_PAGE_TIMEOUT_MS,
@@ -163,6 +178,7 @@ async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
         );
         const dataUrl = shot.pages[0]?.dataUrl;
         if (!dataUrl) throw new Error('page render produced no image data');
+        console.error(`[parse-document] STEP screenshot:success page=${pageNum}`);
 
         const { data: { text: ocrText } } = await withTimeout(
           worker.recognize(dataUrl),
@@ -179,12 +195,14 @@ async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
         }
       } catch (pageErr) {
         ocrPagesUsed++;
-        warnings.push(`Page ${pageNum} could not be processed: ${pageErr instanceof Error ? pageErr.message : String(pageErr)}`);
+        const e = pageErr instanceof Error ? pageErr : new Error(String(pageErr));
+        console.error(`[parse-document] FAILURE step=ocr-or-screenshot page=${pageNum} error_name=${e.name} error_message=${e.message}`);
+        warnings.push(`Page ${pageNum} could not be processed: ${e.message}`);
       }
     }
 
     if (ocrPagesUsed > 0) {
-      console.log(`[parse-document] OCR: ${Date.now() - ocrStart}ms pages=${ocrPagesUsed}`);
+      console.error(`[parse-document] OCR: ${Date.now() - ocrStart}ms pages=${ocrPagesUsed}`);
     }
 
     let text = perPageText.join('\n\n');
@@ -216,7 +234,7 @@ export async function extractTextFromFile(
   buffer: Buffer,
   mimeType: string
 ): Promise<ExtractionResult> {
-  console.log(`[PARSER] Received ${mimeType} (${buffer.length} bytes)`);
+  console.error(`[PARSER] Received ${mimeType} (${buffer.length} bytes)`);
 
   try {
     let result: ExtractionResult;
@@ -257,7 +275,7 @@ export async function extractTextFromFile(
       throw new Error("EXTRACTION_FAILED: Document content could not be fully extracted. It may be an empty file or protected.");
     }
 
-    console.log(
+    console.error(
       `[PARSER] Final extraction: ${finalText.length} chars, method=${result.extractionMethod}, pages=${result.pagesProcessed}/${result.pageCount ?? 'n/a'}, warnings=${result.warnings.length}`,
     );
 

@@ -43,11 +43,13 @@ export async function POST(req: NextRequest) {
   const requestStart = Date.now();
   try {
     // Auth check
+    console.error('[parse-document] STEP auth:start');
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
+    console.error('[parse-document] STEP auth:success');
 
     // SECURITY: this route makes real OpenAI/Groq calls and Supabase Storage
     // uploads per request — previously unbounded, so an authenticated user
@@ -66,6 +68,7 @@ export async function POST(req: NextRequest) {
     let publicUrl = '';
     let isDirectUpload = false;
 
+    console.error('[parse-document] STEP file-acquisition:start');
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const body = await req.json();
@@ -121,7 +124,7 @@ export async function POST(req: NextRequest) {
       if (!fileRes.ok) {
         throw new Error(`Failed to fetch pre-uploaded file from URL: ${fileRes.statusText}`);
       }
-      console.log(`[parse-document] file acquisition: ${Date.now() - downloadStart}ms`);
+      console.error(`[parse-document] file acquisition: ${Date.now() - downloadStart}ms`);
 
       // SECURITY: reject an oversized download before buffering it into
       // memory, using the server-reported Content-Length — don't rely on
@@ -168,6 +171,7 @@ export async function POST(req: NextRequest) {
       const arrayBuffer = await formFile.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
     }
+    console.error('[parse-document] STEP file-acquisition:success');
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
@@ -261,7 +265,7 @@ export async function POST(req: NextRequest) {
         extractTextFromFile(buffer, mimeType),
         new Promise<ExtractionResult>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT: Document parsing timed out. Please try a smaller or text-based document.")), DOCUMENT_EXTRACTION_TIMEOUT_MS))
       ]);
-      console.log(
+      console.error(
         `[document-parse] extraction_ms=${Date.now() - extractionStart} chars=${extraction.text.length} method=${extraction.extractionMethod} pages=${extraction.pagesProcessed}/${extraction.pageCount ?? 'n/a'} warnings=${extraction.warnings.length}`,
       );
     } catch (parseErr) {
@@ -276,6 +280,7 @@ export async function POST(req: NextRequest) {
     const { cleanAndStructureDocument } = await import('@/lib/intelligenceEngine');
     let structuredData: Record<string, unknown> = {};
     const aiStart = Date.now();
+    console.error('[parse-document] STEP ai:start');
     try {
       const raw = await Promise.race([
         cleanAndStructureDocument(cleanText),
@@ -287,8 +292,10 @@ export async function POST(req: NextRequest) {
       } else {
         console.warn('[PARSE] cleanAndStructureDocument returned non-object — using empty fallback');
       }
-      console.log(`[parse-document] AI extraction: ${Date.now() - aiStart}ms`);
+      console.error(`[parse-document] AI extraction: ${Date.now() - aiStart}ms`);
+      console.error('[parse-document] STEP ai:success');
     } catch (intelligenceErr) {
+      console.error(`[parse-document] FAILURE step=ai error_name=${intelligenceErr instanceof Error ? intelligenceErr.name : 'Unknown'} error_message=${intelligenceErr instanceof Error ? intelligenceErr.message : String(intelligenceErr)}`);
       console.error(`[PARSE] cleanAndStructureDocument failed after ${Date.now() - aiStart}ms:`, intelligenceErr);
       // Continue with empty structuredData — document text is still usable
     }
@@ -370,7 +377,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`[parse-document] completed total_ms=${Date.now() - requestStart} method=${extraction.extractionMethod}`);
+    console.error(`[parse-document] completed total_ms=${Date.now() - requestStart} method=${extraction.extractionMethod}`);
+    console.error('[parse-document] STEP response:success');
 
     return NextResponse.json({
       success: true,
@@ -395,6 +403,12 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     const err = error instanceof Error ? error : new Error(String(error));
     console.error(`[parse-document] failed total_ms=${Date.now() - requestStart}`, err);
+    // documentParser.ts logs its own more specific STEP FAILURE (parser-init/
+    // native-extraction/screenshot/ocr) before this error ever reaches here;
+    // this top-level marker guarantees a FAILURE line is emitted even for a
+    // failure this route doesn't have a named step for (auth, storage, DB,
+    // or a genuinely unclassified exception).
+    console.error(`[parse-document] FAILURE step=unclassified error_name=${err.name} error_message=${err.message}`);
 
     // Classify the failure so the response is never an ambiguous 500 for
     // things that are really "this document can't be parsed" (422) or
