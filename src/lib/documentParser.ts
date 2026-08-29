@@ -25,6 +25,10 @@ import type { PDFParse } from 'pdf-parse';
  *   each page is independently classified as native-text-sufficient or
  *   OCR-needed (e.g. page 1 native, page 2 OCR, page 3 native, page 4 OCR),
  *   instead of OCR-ing the whole document as a unit.
+ * - 2026-08-29: added STEP/FAILURE diagnostic markers (console.error, since
+ *   next.config.ts strips console.log/warn in production) so the exact
+ *   failing operation in a real production 500 can finally be identified —
+ *   this is diagnostic-only, no parsing behavior changed.
  */
 
 function envInt(name: string, fallback: number): number {
@@ -69,6 +73,39 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 /**
+ * Strips anything that could be a credential/signed-URL token before an
+ * error message ever reaches the logs — some thrown errors interpolate the
+ * failing URL or raw provider response verbatim (e.g. a fetch() failure
+ * message can include the request URL).
+ */
+function sanitizeErrorMessage(message: string): string {
+  return message
+    .replace(/([?&](?:token|signature|key|secret|auth|apikey)=)[^&\s]+/gi, '$1[REDACTED]')
+    .replace(/https?:\/\/\S+/gi, (url) => url.split('?')[0]);
+}
+
+/**
+ * Single place every "this step failed" log goes through, so every failure
+ * is reported in the same safe, greppable shape and never leaks a raw
+ * error/stack that might contain a signed URL or credential fragment.
+ * Deliberately logs name+message only — never `error.stack` (stack frames
+ * can echo argument values, including buffers/URLs, depending on the
+ * throwing library) and never document content.
+ */
+export function logParseFailure(
+  requestId: string,
+  step: string,
+  error: unknown,
+  extra?: Record<string, string | number>,
+): void {
+  const e = error instanceof Error ? error : new Error(String(error));
+  const extraStr = extra ? ' ' + Object.entries(extra).map(([k, v]) => `${k}=${v}`).join(' ') : '';
+  console.error(
+    `[parse-document][request=${requestId}] FAILURE step=${step}${extraStr} error_name=${e.name} error_message=${sanitizeErrorMessage(e.message)}`,
+  );
+}
+
+/**
  * Clean and normalize extracted text
  */
 function cleanText(text: string): string {
@@ -86,7 +123,7 @@ export async function extractDocxText(fileBuffer: Buffer): Promise<string> {
     const result = await mammoth.extractRawText({ buffer: fileBuffer });
     return cleanText(result.value);
   } catch (err) {
-    console.error("[DOCX] Extraction failed:", err);
+    console.error("[DOCX] Extraction failed:", err instanceof Error ? err.message : String(err));
     return "";
   }
 }
@@ -98,35 +135,35 @@ export async function extractDocxText(fileBuffer: Buffer): Promise<string> {
  * created lazily — only if at least one page actually needs OCR — and is
  * always terminated, even on failure.
  */
-async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
-  console.error('[parse-document] STEP parser-init:start');
+async function extractPdf(buffer: Buffer, requestId: string): Promise<ExtractionResult> {
+  const tag = `[parse-document][request=${requestId}]`;
+
+  console.error(`${tag} STEP parser-init:start`);
   let parser: PDFParse;
   try {
     const pdfParseModule = await import('pdf-parse');
     parser = new pdfParseModule.PDFParse({ data: buffer });
   } catch (initErr) {
-    const e = initErr instanceof Error ? initErr : new Error(String(initErr));
-    console.error(`[parse-document] FAILURE step=parser-init error_name=${e.name} error_message=${e.message}`);
-    throw new Error(`IMAGE_BASED_PDF: PDF parser initialization failed (${e.message})`);
+    logParseFailure(requestId, 'parser-init', initErr);
+    throw new Error(`IMAGE_BASED_PDF: PDF parser initialization failed (${initErr instanceof Error ? initErr.message : String(initErr)})`);
   }
-  console.error('[parse-document] STEP parser-init:success');
+  console.error(`${tag} STEP parser-init:success`);
 
   type TesseractWorker = Awaited<ReturnType<typeof import('tesseract.js')['createWorker']>>;
   let worker: TesseractWorker | null = null;
 
   try {
-    console.error('[parse-document] STEP native-extraction:start');
+    console.error(`${tag} STEP native-extraction:start`);
     const nativeStart = Date.now();
     let textResult: { total: number; pages: Array<{ num: number; text: string }> };
     try {
       textResult = await withTimeout(parser.getText(), PDF_EXTRACTION_TIMEOUT_MS, 'PDF text extraction');
     } catch (pdfErr) {
-      const e = pdfErr instanceof Error ? pdfErr : new Error(String(pdfErr));
-      console.error(`[parse-document] FAILURE step=native-extraction error_name=${e.name} error_message=${e.message}`);
-      throw new Error(`IMAGE_BASED_PDF: Native PDF text extraction failed (${e.message})`);
+      logParseFailure(requestId, 'native-extraction', pdfErr);
+      throw new Error(`IMAGE_BASED_PDF: Native PDF text extraction failed (${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)})`);
     }
-    console.error(`[parse-document] native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
-    console.error('[parse-document] STEP native-extraction:success');
+    console.error(`${tag} native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
+    console.error(`${tag} STEP native-extraction:success`);
 
     const totalPages = textResult.total || textResult.pages.length || 0;
     if (totalPages > DOCUMENT_HARD_MAX_PAGES) {
@@ -164,13 +201,13 @@ async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
 
       try {
         if (!worker) {
-          console.error('[parse-document] STEP ocr:start');
+          console.error(`${tag} STEP ocr:start`);
           const { createWorker } = await import('tesseract.js');
           worker = await withTimeout(createWorker('eng'), OCR_WORKER_INIT_TIMEOUT_MS, 'OCR worker initialization');
-          console.error('[parse-document] STEP ocr:success');
+          console.error(`${tag} STEP ocr:success`);
         }
 
-        console.error(`[parse-document] STEP screenshot:start page=${pageNum}`);
+        console.error(`${tag} STEP screenshot:start page=${pageNum}`);
         const shot = await withTimeout(
           parser.getScreenshot({ partial: [pageNum], imageDataUrl: true, imageBuffer: false }),
           OCR_PAGE_TIMEOUT_MS,
@@ -178,7 +215,7 @@ async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
         );
         const dataUrl = shot.pages[0]?.dataUrl;
         if (!dataUrl) throw new Error('page render produced no image data');
-        console.error(`[parse-document] STEP screenshot:success page=${pageNum}`);
+        console.error(`${tag} STEP screenshot:success page=${pageNum}`);
 
         const { data: { text: ocrText } } = await withTimeout(
           worker.recognize(dataUrl),
@@ -195,14 +232,13 @@ async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
         }
       } catch (pageErr) {
         ocrPagesUsed++;
-        const e = pageErr instanceof Error ? pageErr : new Error(String(pageErr));
-        console.error(`[parse-document] FAILURE step=ocr-or-screenshot page=${pageNum} error_name=${e.name} error_message=${e.message}`);
-        warnings.push(`Page ${pageNum} could not be processed: ${e.message}`);
+        logParseFailure(requestId, 'ocr-or-screenshot', pageErr, { page: pageNum });
+        warnings.push(`Page ${pageNum} could not be processed: ${pageErr instanceof Error ? pageErr.message : String(pageErr)}`);
       }
     }
 
     if (ocrPagesUsed > 0) {
-      console.error(`[parse-document] OCR: ${Date.now() - ocrStart}ms pages=${ocrPagesUsed}`);
+      console.error(`${tag} OCR: ${Date.now() - ocrStart}ms pages=${ocrPagesUsed}`);
     }
 
     let text = perPageText.join('\n\n');
@@ -232,9 +268,11 @@ async function extractPdf(buffer: Buffer): Promise<ExtractionResult> {
 
 export async function extractTextFromFile(
   buffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  requestId: string = crypto.randomUUID(),
 ): Promise<ExtractionResult> {
-  console.error(`[PARSER] Received ${mimeType} (${buffer.length} bytes)`);
+  const tag = `[parse-document][request=${requestId}]`;
+  console.error(`${tag} Received ${mimeType} (${buffer.length} bytes)`);
 
   try {
     let result: ExtractionResult;
@@ -255,7 +293,7 @@ export async function extractTextFromFile(
 
     // 3. PDF Handling — native-first, per-page OCR fallback
     else if (mimeType === 'application/pdf') {
-      result = await extractPdf(buffer);
+      result = await extractPdf(buffer, requestId);
     }
 
     // 4. Unsupported Handling — the route layer's SUPPORTED_TYPES list
@@ -276,13 +314,13 @@ export async function extractTextFromFile(
     }
 
     console.error(
-      `[PARSER] Final extraction: ${finalText.length} chars, method=${result.extractionMethod}, pages=${result.pagesProcessed}/${result.pageCount ?? 'n/a'}, warnings=${result.warnings.length}`,
+      `${tag} Final extraction: ${finalText.length} chars, method=${result.extractionMethod}, pages=${result.pagesProcessed}/${result.pageCount ?? 'n/a'}, warnings=${result.warnings.length}`,
     );
 
     return { ...result, text: finalText };
 
   } catch (globalErr) {
-    console.error("[PARSER] Fatal error:", globalErr);
+    logParseFailure(requestId, 'extract-text-from-file', globalErr);
     // Preserve specific, classifiable error messages (IMAGE_BASED_PDF: /
     // EXTRACTION_FAILED: / UNSUPPORTED_FILE_TYPE: / DOCUMENT_TOO_LARGE: /
     // timed out) for the caller to map to the right HTTP status — never
