@@ -215,8 +215,8 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const extractedText = await extractTextFromFile(buffer, file.type);
-        const cleanText = extractedText.trim();
+        const extraction = await extractTextFromFile(buffer, file.type);
+        const cleanText = extraction.text.trim();
         if (!cleanText) {
           results.push({ file: file.name, status: 'error', reason: 'No text could be extracted from this document' });
           continue;

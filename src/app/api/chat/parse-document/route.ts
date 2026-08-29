@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { extractTextFromFile } from '@/lib/documentParser';
+import { extractTextFromFile, type ExtractionResult } from '@/lib/documentParser';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
@@ -8,10 +8,25 @@ import { checkFileSignature } from '@/lib/fileSignature';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // Allow up to 5 minutes (300 seconds) for processing
+export const maxDuration = 300; // Hard platform ceiling — actual processing is now bounded well below this (see timeouts below)
 
-// Maximum file size: 10MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+function envInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+// Maximum file size — configurable via env, defaults preserve prior behavior.
+const MAX_FILE_SIZE = envInt('DOCUMENT_MAX_FILE_SIZE_MB', 10) * 1024 * 1024;
+
+// Timeouts — every external/native operation is bounded so a request can
+// never sit for minutes with an ambiguous outcome. documentParser.ts bounds
+// its own internal steps (pdf-parse, OCR worker init, per-page OCR); this
+// extraction timeout is the outer safety net.
+const DOCUMENT_DOWNLOAD_TIMEOUT_MS = envInt('DOCUMENT_DOWNLOAD_TIMEOUT_MS', 20_000);
+const DOCUMENT_EXTRACTION_TIMEOUT_MS = envInt('DOCUMENT_PARSE_TIMEOUT_MS', 120_000);
+const AI_STRUCTURING_TIMEOUT_MS = envInt('AI_STRUCTURING_TIMEOUT_MS', 15_000);
 
 // Supported MIME types
 const SUPPORTED_TYPES: Record<string, string> = {
@@ -25,11 +40,12 @@ const SUPPORTED_TYPES: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  const requestStart = Date.now();
   try {
     // Auth check
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
 
@@ -39,7 +55,7 @@ export async function POST(req: NextRequest) {
     // not per-IP, since it requires auth and users can be behind shared IPs.
     const rl = checkRateLimit(`parse-document:user:${userId}`, 10, 10 * 60 * 1000);
     if (!rl.allowed) {
-      return NextResponse.json({ error: 'Too many document uploads — please wait before trying again' }, { status: 429 });
+      return NextResponse.json({ success: false, error: 'Too many document uploads — please wait before trying again' }, { status: 429 });
     }
 
     const supabase = await createServerSupabaseClient();
@@ -57,14 +73,14 @@ export async function POST(req: NextRequest) {
 
       if (!fileUrl || !fileName) {
         return NextResponse.json(
-          { error: 'Missing fileUrl or fileName in request body' },
+          { success: false, error: 'Missing fileUrl or fileName in request body' },
           { status: 400 }
         );
       }
 
       if (!isAllowedFileUrl(fileUrl, process.env.NEXT_PUBLIC_SUPABASE_URL)) {
         console.error('[PARSE] Rejected fileUrl outside the allowed Supabase storage host:', fileUrl);
-        return NextResponse.json({ error: 'Invalid file URL' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'Invalid file URL' }, { status: 400 });
       }
 
       // fileSize here is a client-supplied number, not yet verified against
@@ -83,10 +99,29 @@ export async function POST(req: NextRequest) {
       // allowlisted Supabase URL to an internal address. redirect: 'error'
       // makes fetch throw instead of silently following, since legitimate
       // Supabase Storage public URLs never redirect cross-origin.
-      const fileRes = await fetch(fileUrl, { redirect: 'error' });
+      //
+      // Bounded with an explicit timeout — an unbounded download here would
+      // let a slow/stalled storage response hold the whole request open
+      // with no controlled failure (this was one of the four unbounded
+      // external calls behind the ~247s production hangs).
+      const downloadStart = Date.now();
+      const downloadController = new AbortController();
+      const downloadTimeout = setTimeout(() => downloadController.abort(), DOCUMENT_DOWNLOAD_TIMEOUT_MS);
+      let fileRes: Response;
+      try {
+        fileRes = await fetch(fileUrl, { redirect: 'error', signal: downloadController.signal });
+      } catch (downloadErr) {
+        if (downloadErr instanceof Error && downloadErr.name === 'AbortError') {
+          throw new Error(`DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`);
+        }
+        throw downloadErr;
+      } finally {
+        clearTimeout(downloadTimeout);
+      }
       if (!fileRes.ok) {
         throw new Error(`Failed to fetch pre-uploaded file from URL: ${fileRes.statusText}`);
       }
+      console.log(`[parse-document] file acquisition: ${Date.now() - downloadStart}ms`);
 
       // SECURITY: reject an oversized download before buffering it into
       // memory, using the server-reported Content-Length — don't rely on
@@ -94,8 +129,8 @@ export async function POST(req: NextRequest) {
       const contentLength = Number(fileRes.headers.get('content-length') || 0);
       if (contentLength > MAX_FILE_SIZE) {
         return NextResponse.json(
-          { error: `File too large. Maximum size is 10MB. Your file is ${(contentLength / 1024 / 1024).toFixed(1)}MB.` },
-          { status: 400 }
+          { success: false, error: `File too large. Maximum size is 10MB. Your file is ${(contentLength / 1024 / 1024).toFixed(1)}MB.` },
+          { status: 413 }
         );
       }
 
@@ -111,7 +146,7 @@ export async function POST(req: NextRequest) {
         formData = await req.formData();
       } catch {
         return NextResponse.json(
-          { error: 'Invalid form data. Make sure the file is sent as multipart/form-data.' },
+          { success: false, error: 'Invalid form data. Make sure the file is sent as multipart/form-data.' },
           { status: 400 }
         );
       }
@@ -119,7 +154,7 @@ export async function POST(req: NextRequest) {
       const formFile = formData.get('file') as File | null;
       if (!formFile) {
         return NextResponse.json(
-          { error: 'No file provided. Send the file as a "file" field in the form data.' },
+          { success: false, error: 'No file provided. Send the file as a "file" field in the form data.' },
           { status: 400 }
         );
       }
@@ -137,8 +172,8 @@ export async function POST(req: NextRequest) {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.` },
-        { status: 400 }
+        { success: false, error: `File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.` },
+        { status: 413 }
       );
     }
 
@@ -147,6 +182,7 @@ export async function POST(req: NextRequest) {
     if (!SUPPORTED_TYPES[mimeType]) {
       return NextResponse.json(
         {
+          success: false,
           error: `Unsupported file type: ${mimeType || 'unknown'}. Supported types: PDF, DOCX, PPTX, TXT, JPG, PNG, WEBP.`,
         },
         { status: 400 }
@@ -160,7 +196,7 @@ export async function POST(req: NextRequest) {
     const sigCheck = checkFileSignature(buffer, mimeType);
     if (!sigCheck.valid) {
       console.error(`[PARSE] Rejected file with mismatched signature: claimed=${mimeType} name=${file.name} reason=${sigCheck.reason}`);
-      return NextResponse.json({ error: 'File content does not match the declared file type.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'File content does not match the declared file type.' }, { status: 400 });
     }
 
     if (!isDirectUpload) {
@@ -215,27 +251,35 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. EXTRACT TEXT
-    let extractedText = '';
+    // documentParser.ts bounds its own internal steps (pdf-parse, OCR worker
+    // init, per-page OCR) to well under a minute total; this is the outer
+    // safety net in case a future extraction path doesn't self-bound.
+    let extraction: ExtractionResult;
+    const extractionStart = Date.now();
     try {
-      extractedText = await Promise.race([
+      extraction = await Promise.race([
         extractTextFromFile(buffer, mimeType),
-        new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Document parsing timed out. Please try a smaller or text-based document.")), 285000))
+        new Promise<ExtractionResult>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT: Document parsing timed out. Please try a smaller or text-based document.")), DOCUMENT_EXTRACTION_TIMEOUT_MS))
       ]);
+      console.log(
+        `[document-parse] extraction_ms=${Date.now() - extractionStart} chars=${extraction.text.length} method=${extraction.extractionMethod} pages=${extraction.pagesProcessed}/${extraction.pageCount ?? 'n/a'} warnings=${extraction.warnings.length}`,
+      );
     } catch (parseErr) {
       const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
-      console.error('[PARSE] Extraction failed:', errMsg);
+      console.error(`[PARSE] Extraction failed after ${Date.now() - extractionStart}ms:`, errMsg);
       throw new Error(`Extraction failed: ${errMsg}`);
     }
 
-    const cleanText = extractedText.trim();
+    const cleanText = extraction.text.trim();
 
     // 4. GENERATE STRUCTURED INTELLIGENCE (Expert Engine)
     const { cleanAndStructureDocument } = await import('@/lib/intelligenceEngine');
     let structuredData: Record<string, unknown> = {};
+    const aiStart = Date.now();
     try {
       const raw = await Promise.race([
         cleanAndStructureDocument(cleanText),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Structuring timed out")), 15000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Structuring timed out")), AI_STRUCTURING_TIMEOUT_MS))
       ]);
       // Guard: if Groq returned HTML or a non-object, discard it
       if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
@@ -243,8 +287,9 @@ export async function POST(req: NextRequest) {
       } else {
         console.warn('[PARSE] cleanAndStructureDocument returned non-object — using empty fallback');
       }
+      console.log(`[parse-document] AI extraction: ${Date.now() - aiStart}ms`);
     } catch (intelligenceErr) {
-      console.error('[PARSE] cleanAndStructureDocument failed:', intelligenceErr);
+      console.error(`[PARSE] cleanAndStructureDocument failed after ${Date.now() - aiStart}ms:`, intelligenceErr);
       // Continue with empty structuredData — document text is still usable
     }
 
@@ -291,6 +336,10 @@ export async function POST(req: NextRequest) {
         success: true, // Partial success (extraction worked)
         text: cleanText,
         documentUrl: publicUrl,
+        pageCount: extraction.pageCount,
+        extractionMethod: extraction.extractionMethod,
+        pagesProcessed: extraction.pagesProcessed,
+        warnings: extraction.warnings,
         warning: 'Document text was extracted but could not be saved to history. Please check database schema.',
         error: errorMsg
       });
@@ -321,6 +370,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    console.log(`[parse-document] completed total_ms=${Date.now() - requestStart} method=${extraction.extractionMethod}`);
+
     return NextResponse.json({
       success: true,
       text: cleanText,
@@ -328,6 +379,11 @@ export async function POST(req: NextRequest) {
       documentId: docData?.id || null,
       chatId: chatData?.id || null,
       structured: structuredData,
+      pageCount: extraction.pageCount,
+      extractionMethod: extraction.extractionMethod,
+      pagesProcessed: extraction.pagesProcessed,
+      partial: extraction.warnings.length > 0,
+      warnings: extraction.warnings,
       metadata: {
         fileName: file.name,
         fileType: SUPPORTED_TYPES[mimeType],
@@ -338,10 +394,34 @@ export async function POST(req: NextRequest) {
 
   } catch (error: unknown) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error('[PARSE] Unhandled error:', err);
+    console.error(`[parse-document] failed total_ms=${Date.now() - requestStart}`, err);
+
+    // Classify the failure so the response is never an ambiguous 500 for
+    // things that are really "this document can't be parsed" (422) or
+    // "an external step ran out of time" (504) — see documentParser.ts and
+    // the download/extraction timeouts above for where these are thrown.
+    const msg = err.message;
+    let status = 500;
+    let code = 'PARSE_FAILED';
+    let retryable = false;
+    if (msg.includes('DOCUMENT_TOO_LARGE')) {
+      status = 413;
+      code = 'DOCUMENT_TOO_LARGE';
+    } else if (msg.includes('IMAGE_BASED_PDF') || msg.includes('EXTRACTION_FAILED') || msg.includes('UNSUPPORTED_FILE_TYPE')) {
+      status = 422;
+      code = msg.includes('IMAGE_BASED_PDF') ? 'IMAGE_BASED_PDF' : msg.includes('UNSUPPORTED_FILE_TYPE') ? 'UNSUPPORTED_FILE_TYPE' : 'EXTRACTION_FAILED';
+    } else if (msg.includes('TIMEOUT') || msg.toLowerCase().includes('timed out')) {
+      status = 504;
+      code = 'DOCUMENT_PARSE_TIMEOUT';
+      retryable = true;
+    } else {
+      // Genuinely unexpected (DB, storage, provider) failures — worth a retry.
+      retryable = true;
+    }
+
     return NextResponse.json(
-      { error: `Document processing failed: ${err.message}` },
-      { status: 500 }
+      { success: false, error: `Document processing failed: ${err.message}`, code, retryable },
+      { status }
     );
   }
 }

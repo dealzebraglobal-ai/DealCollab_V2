@@ -125,8 +125,12 @@ export default function Home() {
         console.log("=== PARSE RESPONSE BODY ===", JSON.stringify(parseData).slice(0, 300));
 
         if (!parseRes.ok || !parseData.success) {
-          // Surface the error to the user clearly instead of swallowing it
-          throw new Error(parseData.error || `Document parsing failed with status ${parseRes.status}`);
+          // Surface the error to the user clearly instead of swallowing it.
+          // Keep the backend's machine-readable `code` in the message so the
+          // catch block below can show a specific, accurate reason instead
+          // of one generic "extraction failed" message for every case.
+          const baseMsg = parseData.error || `Document parsing failed with status ${parseRes.status}`;
+          throw new Error(parseData.code ? `${parseData.code}: ${baseMsg}` : baseMsg);
         }
 
         documentText = parseData.text || '';
@@ -222,19 +226,34 @@ export default function Home() {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       console.error('[CHAT ERROR]', errorMessage);
 
-      // Format document errors more helpfully
-      const isDocError = errorMessage.includes('image-based') ||
-        errorMessage.includes('IMAGE_BASED_PDF') ||
-        errorMessage.includes('extract text');
-
-      const displayMessage = isDocError
-        ? '❌ This PDF contains images rather than text, so I cannot read it directly.\n\n' +
+      // Format document errors more helpfully — a specific, accurate message
+      // per failure reason instead of one generic "extraction failed" line
+      // for every case (large file, scanned PDF, timeout, unsupported type
+      // are all different problems with different user-facing fixes).
+      let displayMessage: string;
+      if (errorMessage.includes('image-based') || errorMessage.includes('IMAGE_BASED_PDF') || errorMessage.includes('extract text')) {
+        displayMessage =
+          '❌ This PDF contains images rather than text, so I cannot read it directly.\n\n' +
           'To fix this:\n' +
           '• Open the PDF in Word or Google Docs\n' +
           '• Save/Export as DOCX format\n' +
           '• Upload the DOCX file instead\n\n' +
-          'Alternatively, paste the key deal details directly in the chat.'
-        : `❌ ${errorMessage}`;
+          'Alternatively, paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('DOCUMENT_TOO_LARGE')) {
+        displayMessage =
+          "❌ Your PDF is readable, but it's too large to process in one request.\n\n" +
+          'Please upload a smaller document or split it into sections, or paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('DOCUMENT_PARSE_TIMEOUT')) {
+        displayMessage =
+          '❌ This document is taking too long to process (it may be very large or have many scanned pages).\n\n' +
+          'Please try a smaller or text-based document, or paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('UNSUPPORTED_FILE_TYPE')) {
+        displayMessage = '❌ This file type is not supported yet. Please upload a PDF, DOCX, or TXT file, or paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('EXTRACTION_FAILED')) {
+        displayMessage = "❌ We couldn't read this file — it may be empty, corrupted, or password-protected. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else {
+        displayMessage = `❌ ${errorMessage}`;
+      }
 
       setMessages(prev => [...prev, {
         role: 'assistant' as const,
