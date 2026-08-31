@@ -52,6 +52,11 @@ function jsonRequest(body: unknown, contentType = 'application/json') {
 describe('POST /api/chat/parse-document — request-contract validation (400/401/403 paths)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks() only clears call history, not queued
+    // mockResolvedValueOnce() implementations — reset this one explicitly so
+    // an exhausted/unconsumed retry-sequence from one test can never bleed
+    // into the next.
+    downloadFromStorageMock.mockReset();
     checkRateLimitMock.mockReturnValue({ allowed: true });
     authMock.mockResolvedValue({ user: { id: 'user-1', email: 'diagnostic-test@dealcollab.ai' } });
   });
@@ -66,7 +71,7 @@ describe('POST /api/chat/parse-document — request-contract validation (400/401
     expect(downloadFromStorageMock).not.toHaveBeenCalled();
   });
 
-  it('JSON body missing "path" (e.g. an older client still on the pre-storagePath contract, or a truncated payload): 400 "Missing bucket, path, or fileName", zero storage calls — this is the exact signature of the reported production 400 (fast, no external GET)', async () => {
+  it('JSON body missing "path" (e.g. an older client still on the pre-storagePath contract, or a truncated payload): 400 MISSING_PATH, zero storage calls — this is the exact signature of the reported production 400 (fast, no external GET)', async () => {
     const { POST } = await import('./route');
 
     const res = await POST(jsonRequest({ bucket: 'pdfs', fileName: 'Project_Damodar.pdf', fileType: 'application/pdf', fileSize: 975694 }));
@@ -74,32 +79,36 @@ describe('POST /api/chat/parse-document — request-contract validation (400/401
 
     expect(res.status).toBe(400);
     expect(data.success).toBe(false);
-    expect(data.error).toMatch(/Missing bucket, path, or fileName/);
+    expect(data.code).toBe('MISSING_PATH');
     expect(downloadFromStorageMock).not.toHaveBeenCalled();
   });
 
-  it('JSON body sent in the OLD fileUrl-only shape (no bucket/path at all — a stale pre-deploy client): 400, zero storage calls', async () => {
+  it('JSON body sent in the OLD fileUrl-only shape (no bucket/path at all — a stale pre-deploy client): 400 MISSING_BUCKET, zero storage calls', async () => {
     const { POST } = await import('./route');
 
     const res = await POST(jsonRequest({ fileUrl: 'https://example.test/storage/v1/object/public/pdfs/x.pdf', fileName: 'Project_Damodar.pdf', fileType: 'application/pdf', fileSize: 975694 }));
     const data = await res.json();
 
     expect(res.status).toBe(400);
-    expect(data.error).toMatch(/Missing bucket, path, or fileName/);
+    expect(data.code).toBe('MISSING_BUCKET');
     expect(downloadFromStorageMock).not.toHaveBeenCalled();
   });
 
-  it('JSON body missing "bucket": 400, zero storage calls', async () => {
+  it('JSON body missing "bucket": 400 MISSING_BUCKET, zero storage calls', async () => {
     const { POST } = await import('./route');
     const res = await POST(jsonRequest({ path: 'diagnostic_test_dealcollab_ai/x.pdf', fileName: 'x.pdf' }));
+    const data = await res.json();
     expect(res.status).toBe(400);
+    expect(data.code).toBe('MISSING_BUCKET');
     expect(downloadFromStorageMock).not.toHaveBeenCalled();
   });
 
-  it('JSON body missing "fileName": 400, zero storage calls', async () => {
+  it('JSON body missing "fileName": 400 MISSING_FILE_NAME, zero storage calls', async () => {
     const { POST } = await import('./route');
     const res = await POST(jsonRequest({ bucket: 'pdfs', path: 'diagnostic_test_dealcollab_ai/x.pdf' }));
+    const data = await res.json();
     expect(res.status).toBe(400);
+    expect(data.code).toBe('MISSING_FILE_NAME');
     expect(downloadFromStorageMock).not.toHaveBeenCalled();
   });
 
@@ -125,7 +134,7 @@ describe('POST /api/chat/parse-document — request-contract validation (400/401
     vi.useFakeTimers();
     downloadFromStorageMock.mockResolvedValue({
       success: false,
-      code: 'FILE_NOT_FOUND',
+      code: 'STORAGE_OBJECT_NOT_FOUND',
       status: 404,
       message: 'Document not found in storage: not found',
     });
@@ -144,7 +153,7 @@ describe('POST /api/chat/parse-document — request-contract validation (400/401
   it('FILE_NOT_FOUND that resolves on the second attempt (eventual-consistency race just after upload) succeeds without surfacing an error', async () => {
     vi.useFakeTimers();
     downloadFromStorageMock
-      .mockResolvedValueOnce({ success: false, code: 'FILE_NOT_FOUND', status: 404, message: 'not found yet' })
+      .mockResolvedValueOnce({ success: false, code: 'STORAGE_OBJECT_NOT_FOUND', status: 404, message: 'not found yet' })
       .mockResolvedValueOnce({ success: true, buffer: Buffer.from('%PDF-1.4 minimal'), contentType: 'application/pdf' });
     const { extractTextFromFile } = await import('@/lib/documentParser');
     vi.mocked(extractTextFromFile).mockResolvedValue({ text: 'hello world extracted text', pageCount: 1, extractionMethod: 'native', pagesProcessed: 1, warnings: [] });
@@ -174,13 +183,13 @@ describe('POST /api/chat/parse-document — request-contract validation (400/401
     expect(res.status).toBe(502);
   });
 
-  it('path containing ".." is rejected as 400 before any storage call (defense-in-depth against path traversal)', async () => {
+  it('path containing ".." is rejected as 400 INVALID_PATH before any storage call (defense-in-depth against path traversal)', async () => {
     const { POST } = await import('./route');
     const res = await POST(jsonRequest({ bucket: 'pdfs', path: 'diagnostic_test_dealcollab_ai/../someone_else/x.pdf', fileName: 'x.pdf' }));
     const data = await res.json();
 
     expect(res.status).toBe(400);
-    expect(data.code).toBe('INVALID_REQUEST');
+    expect(data.code).toBe('INVALID_PATH');
     expect(downloadFromStorageMock).not.toHaveBeenCalled();
   });
 
@@ -207,24 +216,32 @@ describe('POST /api/chat/parse-document — request-contract validation (400/401
     expect(data.code).toBe('UNSUPPORTED_FILE_TYPE');
   });
 
-  it('CRITICAL: a genuine, valid PDF whose client-declared MIME type is wrong (e.g. "image/png") is rejected as 422 INVALID_FILE_CONTENT — NEVER as IMAGE_BASED_PDF, since a MIME/byte mismatch is not evidence the document is scanned. Uses the REAL checkFileSignature implementation, not the mock.', async () => {
+  it('CRITICAL: a genuine, valid PDF whose client-declared MIME type is wrong (e.g. "image/png") is rejected as 422 FILE_CONTENT_TYPE_MISMATCH — NEVER as IMAGE_BASED_PDF, since a MIME/byte mismatch is not evidence the document is scanned. Uses the REAL checkFileSignature implementation, not the mock.', async () => {
     const { checkFileSignature: realCheckFileSignature } = await vi.importActual<typeof import('../../../../lib/fileSignature')>('../../../../lib/fileSignature');
     const fileSignatureModule = await import('@/lib/fileSignature');
     vi.mocked(fileSignatureModule.checkFileSignature).mockImplementation(realCheckFileSignature);
 
-    const realPdfBytes = Buffer.from('%PDF-1.4\n%%EOF');
-    downloadFromStorageMock.mockResolvedValue({ success: true, buffer: realPdfBytes, contentType: 'application/pdf' });
-    const { POST } = await import('./route');
+    try {
+      const realPdfBytes = Buffer.from('%PDF-1.4\n%%EOF');
+      downloadFromStorageMock.mockResolvedValue({ success: true, buffer: realPdfBytes, contentType: 'application/pdf' });
+      const { POST } = await import('./route');
 
-    const res = await POST(jsonRequest({ bucket: 'pdfs', path: 'diagnostic_test_dealcollab_ai/x.png', fileName: 'x.png', fileType: 'image/png', fileSize: realPdfBytes.length }));
-    const data = await res.json();
+      const res = await POST(jsonRequest({ bucket: 'pdfs', path: 'diagnostic_test_dealcollab_ai/x.png', fileName: 'x.png', fileType: 'image/png', fileSize: realPdfBytes.length }));
+      const data = await res.json();
 
-    // image/png IS a SUPPORTED_TYPES entry, so this reaches byte-validation,
-    // where the real signature check rejects real PDF bytes against a
-    // declared image/png type.
-    expect(res.status).toBe(422);
-    expect(data.code).toBe('INVALID_FILE_CONTENT');
-    expect(data.code).not.toBe('IMAGE_BASED_PDF');
+      // image/png IS a SUPPORTED_TYPES entry, so this reaches byte-validation,
+      // where the real signature check rejects real PDF bytes against a
+      // declared image/png type.
+      expect(res.status).toBe(422);
+      expect(data.code).toBe('FILE_CONTENT_TYPE_MISMATCH');
+      expect(data.code).not.toBe('IMAGE_BASED_PDF');
+    } finally {
+      // vi.clearAllMocks() (beforeEach) clears call history but NOT a
+      // mockImplementation override — restore the always-valid stub
+      // explicitly so later tests aren't unexpectedly subjected to the real
+      // signature check.
+      vi.mocked(fileSignatureModule.checkFileSignature).mockImplementation(() => ({ valid: true }));
+    }
   });
 
   it('CRITICAL: a storage/network download failure is NEVER classified as IMAGE_BASED_PDF', async () => {
@@ -276,5 +293,58 @@ describe('POST /api/chat/parse-document — request-contract validation (400/401
     expect(res.status).toBe(400);
     expect(data.error).toMatch(/Invalid JSON/);
     expect(downloadFromStorageMock).not.toHaveBeenCalled();
+  });
+
+  it('an empty downloaded object is rejected as 422 CORRUPTED_FILE, not passed to the parser', async () => {
+    downloadFromStorageMock.mockResolvedValue({ success: false, code: 'CORRUPTED_FILE', status: 422, message: 'Downloaded file is empty' });
+    const { extractTextFromFile } = await import('@/lib/documentParser');
+    const { POST } = await import('./route');
+
+    const res = await POST(jsonRequest({ bucket: 'pdfs', path: 'diagnostic_test_dealcollab_ai/x.pdf', fileName: 'x.pdf', fileType: 'application/pdf', fileSize: 0 }));
+    const data = await res.json();
+
+    expect(res.status).toBe(422);
+    expect(data.code).toBe('CORRUPTED_FILE');
+    expect(extractTextFromFile).not.toHaveBeenCalled();
+  });
+
+  it('a valid DOCX upload is extracted and returned successfully end-to-end through the route', async () => {
+    downloadFromStorageMock.mockResolvedValue({ success: true, buffer: Buffer.from('PK\x03\x04 fake docx zip'), contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const { extractTextFromFile } = await import('@/lib/documentParser');
+    vi.mocked(extractTextFromFile).mockResolvedValue({ text: 'Company XYZ is seeking acquisition.', pageCount: null, extractionMethod: 'native', pagesProcessed: 1, warnings: [] });
+    const { POST } = await import('./route');
+
+    const res = await POST(jsonRequest({
+      bucket: 'pdfs',
+      path: 'diagnostic_test_dealcollab_ai/x.docx',
+      fileName: 'x.docx',
+      fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      fileSize: 100,
+    }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.text).toContain('Company XYZ');
+  });
+
+  it('a valid TXT upload is extracted and returned successfully end-to-end through the route', async () => {
+    downloadFromStorageMock.mockResolvedValue({ success: true, buffer: Buffer.from('Deal mandate: sell-side, SaaS, Bangalore.'), contentType: 'text/plain' });
+    const { extractTextFromFile } = await import('@/lib/documentParser');
+    vi.mocked(extractTextFromFile).mockResolvedValue({ text: 'Deal mandate: sell-side, SaaS, Bangalore.', pageCount: null, extractionMethod: 'native', pagesProcessed: 1, warnings: [] });
+    const { POST } = await import('./route');
+
+    const res = await POST(jsonRequest({
+      bucket: 'pdfs',
+      path: 'diagnostic_test_dealcollab_ai/x.txt',
+      fileName: 'x.txt',
+      fileType: 'text/plain',
+      fileSize: 100,
+    }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.text).toContain('Deal mandate');
   });
 });

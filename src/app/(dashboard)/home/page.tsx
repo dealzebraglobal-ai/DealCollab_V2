@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { useChat } from '@/components/ChatProvider';
 import { useRouter } from 'next/navigation';
 import { MatchPanel } from '@/components/MatchPanel';
+import { validateParseDocumentRequest, type ParseDocumentRequest } from '@/lib/parseDocumentContract';
 
 export default function Home() {
   const {
@@ -80,6 +81,25 @@ export default function Home() {
         }
         console.log("[CLIENT] Uploading directly to Supabase storage path:", path);
 
+        // The exact bucket/path from THIS signed-upload response is carried
+        // straight through to the parse request below, in the same async
+        // chain — never re-derived, never read back from component state,
+        // so there is no way for a stale/previous file's path to leak in.
+        const parseDocumentRequest: ParseDocumentRequest = {
+          bucket: 'pdfs',
+          path,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        };
+        const clientShapeCheck = validateParseDocumentRequest(parseDocumentRequest);
+        if (!clientShapeCheck.valid) {
+          // Should be unreachable given the checks above, but fails fast
+          // with the server's own validation logic rather than sending a
+          // request already known to be malformed.
+          throw new Error(clientShapeCheck.message || 'Invalid upload request');
+        }
+
         // 2. Upload file directly using PUT
         const uploadRes = await fetch(uploadUrl, {
           method: 'PUT',
@@ -108,13 +128,7 @@ export default function Home() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              bucket: 'pdfs',
-              path,
-              fileName: file.name,
-              fileType: file.type,
-              fileSize: file.size,
-            }),
+            body: JSON.stringify(parseDocumentRequest),
           });
         } catch (fetchErr) {
           throw new Error(`Parse request failed: ${fetchErr}`);
@@ -253,18 +267,24 @@ export default function Home() {
       let displayMessage: string;
       if (errorMessage.includes('UNAUTHORIZED')) {
         displayMessage = '❌ Your session has expired. Please refresh the page and sign in again.';
-      } else if (errorMessage.includes('FORBIDDEN')) {
+      } else if (errorMessage.includes('STORAGE_ACCESS_DENIED')) {
         displayMessage = "❌ We couldn't verify access to this file. Please upload it again.";
       } else if (errorMessage.includes('RATE_LIMITED')) {
         displayMessage = '❌ Too many uploads in a short time. Please wait a few minutes and try again.';
       } else if (errorMessage.includes('FILE_TOO_LARGE')) {
         displayMessage = "❌ This file is too large to upload (max 10MB). Please upload a smaller file, or paste the key deal details directly in the chat.";
-      } else if (errorMessage.includes('INVALID_FILE_CONTENT')) {
-        displayMessage = "❌ The uploaded file appears to be invalid or incomplete. Please upload the original file again, or paste the key deal details directly in the chat.";
-      } else if (errorMessage.includes('FILE_NOT_FOUND')) {
+      } else if (errorMessage.includes('FILE_CONTENT_TYPE_MISMATCH')) {
+        displayMessage = "❌ The uploaded file's content doesn't match its file type. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('CORRUPTED_FILE')) {
+        displayMessage = "❌ The uploaded file appears to be empty or corrupted. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('STORAGE_OBJECT_NOT_FOUND')) {
         displayMessage = "❌ We couldn't find the uploaded file. Please try uploading it again.";
+      } else if (errorMessage.includes('STORAGE_DOWNLOAD_TIMEOUT')) {
+        displayMessage = "❌ Retrieving the uploaded file took too long. Please try again in a moment.";
       } else if (errorMessage.includes('STORAGE_DOWNLOAD_FAILED')) {
         displayMessage = "❌ Document storage is temporarily unavailable. Please try again in a moment.";
+      } else if (errorMessage.includes('MISSING_BUCKET') || errorMessage.includes('MISSING_PATH') || errorMessage.includes('INVALID_PATH') || errorMessage.includes('MISSING_FILE_NAME')) {
+        displayMessage = "❌ The upload request was incomplete. Please refresh the page and try uploading again.";
       } else if (errorMessage.includes('OCR_FAILED')) {
         // Distinct from the image-based/IMAGE_BASED_PDF case below: OCR
         // support exists and was genuinely attempted here — it just didn't

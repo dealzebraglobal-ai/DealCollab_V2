@@ -27,8 +27,8 @@ export interface StorageDownloadSuccess {
 
 export interface StorageDownloadFailure {
   success: false;
-  code: 'FILE_NOT_FOUND' | 'STORAGE_DOWNLOAD_FAILED' | 'INVALID_FILE_CONTENT';
-  status: 404 | 502 | 422;
+  code: 'STORAGE_OBJECT_NOT_FOUND' | 'STORAGE_ACCESS_DENIED' | 'STORAGE_DOWNLOAD_FAILED' | 'CORRUPTED_FILE';
+  status: 404 | 403 | 502 | 422;
   message: string;
 }
 
@@ -54,6 +54,12 @@ function isNotFoundError(error: StorageErrorLike): boolean {
   return msg.includes('not found') || msg.includes('does not exist') || error.status === 404 || String(error.statusCode) === '404';
 }
 
+/** Distinct from "not found": the object exists but this client/policy isn't permitted to read it (e.g. an RLS/storage policy denial). */
+function isPermissionError(error: StorageErrorLike): boolean {
+  const msg = (error.message || '').toLowerCase();
+  return msg.includes('permission') || msg.includes('not authorized') || msg.includes('access denied') || error.status === 403 || String(error.statusCode) === '403';
+}
+
 export async function downloadFromStorage(
   supabase: DownloadableStorageClient,
   bucket: string,
@@ -63,9 +69,13 @@ export async function downloadFromStorage(
 
   if (error) {
     const message = error.message || 'Unknown storage error';
-    return isNotFoundError(error)
-      ? { success: false, code: 'FILE_NOT_FOUND', status: 404, message: `Document not found in storage: ${message}` }
-      : { success: false, code: 'STORAGE_DOWNLOAD_FAILED', status: 502, message: `Storage download failed: ${message}` };
+    if (isNotFoundError(error)) {
+      return { success: false, code: 'STORAGE_OBJECT_NOT_FOUND', status: 404, message: `Document not found in storage: ${message}` };
+    }
+    if (isPermissionError(error)) {
+      return { success: false, code: 'STORAGE_ACCESS_DENIED', status: 403, message: `Storage access denied: ${message}` };
+    }
+    return { success: false, code: 'STORAGE_DOWNLOAD_FAILED', status: 502, message: `Storage download failed: ${message}` };
   }
 
   if (!data) {
@@ -74,7 +84,7 @@ export async function downloadFromStorage(
 
   const buffer = Buffer.from(await data.arrayBuffer());
   if (buffer.length === 0) {
-    return { success: false, code: 'INVALID_FILE_CONTENT', status: 422, message: 'Downloaded file is empty' };
+    return { success: false, code: 'CORRUPTED_FILE', status: 422, message: 'Downloaded file is empty' };
   }
 
   return { success: true, buffer, contentType: data.type || null };

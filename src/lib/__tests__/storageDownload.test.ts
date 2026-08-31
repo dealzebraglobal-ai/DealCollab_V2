@@ -30,13 +30,13 @@ describe('downloadFromStorage', () => {
     }
   });
 
-  it('classifies a "not found" storage error as FILE_NOT_FOUND (404), not a generic failure', async () => {
+  it('classifies a "not found" storage error as STORAGE_OBJECT_NOT_FOUND (404), not a generic failure', async () => {
     const supabase = fakeSupabase(async () => ({ data: null, error: { message: 'Object not found' } }));
     const result = await downloadFromStorage(supabase, 'pdfs', 'user_x/missing.pdf');
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.code).toBe('FILE_NOT_FOUND');
+      expect(result.code).toBe('STORAGE_OBJECT_NOT_FOUND');
       expect(result.status).toBe(404);
     }
   });
@@ -52,15 +52,26 @@ describe('downloadFromStorage', () => {
     }
   });
 
-  it('classifies a successful-but-empty download as INVALID_FILE_CONTENT (422), never as a successful parse', async () => {
+  it('classifies a successful-but-empty download as CORRUPTED_FILE (422), never as a successful parse', async () => {
     const blob = new Blob([], { type: 'application/pdf' });
     const supabase = fakeSupabase(async () => ({ data: blob, error: null }));
     const result = await downloadFromStorage(supabase, 'pdfs', 'user_x/empty.pdf');
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.code).toBe('INVALID_FILE_CONTENT');
+      expect(result.code).toBe('CORRUPTED_FILE');
       expect(result.status).toBe(422);
+    }
+  });
+
+  it('classifies a permission-denied storage error as STORAGE_ACCESS_DENIED (403), distinct from not-found', async () => {
+    const supabase = fakeSupabase(async () => ({ data: null, error: { message: 'Permission denied for this object' } }));
+    const result = await downloadFromStorage(supabase, 'pdfs', 'user_x/file.pdf');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe('STORAGE_ACCESS_DENIED');
+      expect(result.status).toBe(403);
     }
   });
 

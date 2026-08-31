@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { checkFileSignature } from '@/lib/fileSignature';
 import { downloadFromStorage } from '@/lib/storageDownload';
+import { validateParseDocumentRequest, type ParseDocumentRequest } from '@/lib/parseDocumentContract';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -104,9 +105,7 @@ export async function POST(req: NextRequest) {
         console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'invalid-json-body' })}`);
         return NextResponse.json({ success: false, error: 'Invalid JSON in request body', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
       }
-      const { bucket, path, fileName, fileType, fileSize } = body as {
-        bucket?: string; path?: string; fileName?: string; fileType?: string; fileSize?: number;
-      };
+      const { bucket, path, fileName, fileType, fileSize } = body as Partial<ParseDocumentRequest>;
       // Diagnostic only — reports which fields were present, never the
       // actual path/URL/token values (path can reveal another user's email
       // prefix if logged in full; fileName is user-controlled but harmless).
@@ -114,15 +113,28 @@ export async function POST(req: NextRequest) {
         `${tag} REQUEST:body-parsed ${JSON.stringify({ contentType: 'application/json', hasBucket: Boolean(bucket), hasPath: Boolean(path), fileName: fileName || null, fileType: fileType || null, fileSize: fileSize || null })}`,
       );
 
-      if (!bucket || !path || !fileName) {
-        console.error(
-          `${tag} HTTP400 ${JSON.stringify({ reason: 'missing-bucket-path-or-filename', hasBucket: Boolean(bucket), hasPath: Boolean(path), hasFileName: Boolean(fileName) })}`,
-        );
+      // Single shared validator (src/lib/parseDocumentContract.ts) — the
+      // exact same function the client runs before ever sending this
+      // request, so "the request the client sends" and "the request the
+      // server accepts" can never silently diverge into two different
+      // contracts again.
+      const shapeCheck = validateParseDocumentRequest({ bucket, path, fileName });
+      if (!shapeCheck.valid) {
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: shapeCheck.code, hasBucket: Boolean(bucket), hasPath: Boolean(path), hasFileName: Boolean(fileName) })}`);
         return NextResponse.json(
-          { success: false, error: 'Missing bucket, path, or fileName in request body', code: 'INVALID_REQUEST', retryable: false },
+          { success: false, error: shapeCheck.message, code: shapeCheck.code, retryable: false },
           { status: 400 }
         );
       }
+
+      // Narrowed, non-optional locals now that validateParseDocumentRequest
+      // has confirmed bucket/path/fileName are all present strings — TS
+      // can't infer this from a function call on the original variables,
+      // so this is the one place that makes it explicit for everything
+      // below.
+      const validBucket: string = bucket!;
+      const validPath: string = path!;
+      const validFileName: string = fileName!;
 
       // SECURITY: this route only ever reads from the 'pdfs' bucket, and
       // only an object path namespaced under the CALLING user's own upload
@@ -132,34 +144,21 @@ export async function POST(req: NextRequest) {
       // the server download and parse their document (IDOR). This replaces
       // the previous "fetch whatever URL the browser sends" approach, which
       // had no such check at all (any allowlisted-host URL was fetched).
-      if (bucket !== 'pdfs') {
-        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'invalid-bucket', bucket })}`);
+      if (validBucket !== 'pdfs') {
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'invalid-bucket', bucket: validBucket })}`);
         return NextResponse.json({ success: false, error: 'Invalid storage bucket', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
       }
-      if (typeof path !== 'string') {
-        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'path-not-a-string' })}`);
-        return NextResponse.json({ success: false, error: 'Invalid storage path', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
-      }
-      // Defense-in-depth: Supabase Storage keys are opaque strings, not
-      // filesystem paths, so ".." has no special meaning to the storage
-      // backend itself — the owner-prefix check below is what actually
-      // prevents cross-user access. Still, reject it outright rather than
-      // rely solely on that check being bug-free forever.
-      if (path.includes('..')) {
-        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'path-traversal-rejected' })}`);
-        return NextResponse.json({ success: false, error: 'Invalid storage path', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
-      }
       const ownerPrefix = `${(session.user.email || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}/`;
-      if (!session.user.email || !path.startsWith(ownerPrefix)) {
+      if (!session.user.email || !validPath.startsWith(ownerPrefix)) {
         console.error(`${tag} FAILURE step=storage-download error_name=Forbidden error_message=path does not belong to the authenticated user`);
         console.error(`${tag} HTTP403 ${JSON.stringify({ reason: 'path-owner-mismatch', hasSessionEmail: Boolean(session.user.email) })}`);
-        return NextResponse.json({ success: false, error: 'You do not have access to this file', code: 'FORBIDDEN', retryable: false }, { status: 403 });
+        return NextResponse.json({ success: false, error: 'You do not have access to this file', code: 'STORAGE_ACCESS_DENIED', retryable: false }, { status: 403 });
       }
 
       // fileSize here is a client-supplied number, not yet verified against
       // the real download — file.size is overwritten below with the actual
       // buffer length before the MAX_FILE_SIZE check runs.
-      file = { name: fileName, type: fileType || '', size: fileSize || 0 };
+      file = { name: validFileName, type: fileType || '', size: fileSize || 0 };
       isDirectUpload = true;
 
       // Server-authenticated download via the Supabase Storage SDK —
@@ -168,24 +167,24 @@ export async function POST(req: NextRequest) {
       // open indefinitely.
       console.error(`${tag} STEP storage-download:start`);
       const downloadStart = Date.now();
-      // Bounded retry ONLY for FILE_NOT_FOUND: Supabase Storage reads can
-      // very briefly race a just-completed client-side PUT (eventual
-      // consistency between the upload path and the read path). This does
-      // NOT retry malformed requests, auth/ownership failures, or genuine
-      // download errors (STORAGE_DOWNLOAD_FAILED) — those are not transient
-      // and retrying them would just waste the request's time budget.
+      // Bounded retry ONLY for STORAGE_OBJECT_NOT_FOUND: Supabase Storage
+      // reads can very briefly race a just-completed client-side PUT
+      // (eventual consistency between the upload path and the read path).
+      // This does NOT retry malformed requests, auth/ownership failures, or
+      // genuine download errors (STORAGE_DOWNLOAD_FAILED) — those are not
+      // transient and retrying them would just waste the request's time
+      // budget.
       const NOT_FOUND_RETRY_DELAYS_MS = [250, 500];
-      let downloadResult = await Promise.race([
-        downloadFromStorage(supabase, bucket, path),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`)), DOCUMENT_DOWNLOAD_TIMEOUT_MS)),
-      ]);
-      for (let i = 0; !downloadResult.success && downloadResult.code === 'FILE_NOT_FOUND' && i < NOT_FOUND_RETRY_DELAYS_MS.length; i++) {
+      const downloadWithTimeout = () =>
+        Promise.race([
+          downloadFromStorage(supabase, validBucket, validPath),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`STORAGE_DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`)), DOCUMENT_DOWNLOAD_TIMEOUT_MS)),
+        ]);
+      let downloadResult = await downloadWithTimeout();
+      for (let i = 0; !downloadResult.success && downloadResult.code === 'STORAGE_OBJECT_NOT_FOUND' && i < NOT_FOUND_RETRY_DELAYS_MS.length; i++) {
         console.error(`${tag} STEP storage-download:retry attempt=${i + 1} delay_ms=${NOT_FOUND_RETRY_DELAYS_MS[i]}`);
         await new Promise((resolve) => setTimeout(resolve, NOT_FOUND_RETRY_DELAYS_MS[i]));
-        downloadResult = await Promise.race([
-          downloadFromStorage(supabase, bucket, path),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`)), DOCUMENT_DOWNLOAD_TIMEOUT_MS)),
-        ]);
+        downloadResult = await downloadWithTimeout();
       }
 
       if (!downloadResult.success) {
@@ -204,7 +203,7 @@ export async function POST(req: NextRequest) {
       // For the DB record / client display only — never used to fetch the
       // file for parsing (that's the whole point of this fix). Uses the
       // SDK's own URL builder rather than string-concatenating one.
-      publicUrl = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+      publicUrl = supabase.storage.from(validBucket).getPublicUrl(validPath).data.publicUrl;
       console.error(
         `${tag} STEP storage-download:success duration_ms=${Date.now() - downloadStart}`,
       );
@@ -282,18 +281,18 @@ export async function POST(req: NextRequest) {
     // would previously sail through. Verify the actual file bytes match the
     // claimed type before it's uploaded to storage or handed to the parser.
     //
-    // This is deliberately classified as INVALID_FILE_CONTENT (422), never
-    // IMAGE_BASED_PDF — a MIME/byte mismatch is not evidence the PDF is
-    // scanned, and telling the user to "convert this PDF to DOCX" would be
-    // actively wrong when the actual problem is that the bytes aren't a PDF
-    // at all.
+    // This is deliberately classified as FILE_CONTENT_TYPE_MISMATCH (422),
+    // never IMAGE_BASED_PDF — a MIME/byte mismatch is not evidence the PDF
+    // is scanned, and telling the user to "convert this PDF to DOCX" would
+    // be actively wrong when the actual problem is that the bytes aren't a
+    // PDF at all.
     console.error(`${tag} STEP byte-validation:start`);
     const sigCheck = checkFileSignature(buffer, mimeType);
     if (!sigCheck.valid) {
       logParseFailure(requestId, 'byte-validation', new Error(sigCheck.reason));
-      console.error(`${tag} HTTP422 ${JSON.stringify({ reason: 'invalid-file-content', mimeType, size: buffer.length })}`);
+      console.error(`${tag} HTTP422 ${JSON.stringify({ reason: 'file-content-type-mismatch', mimeType, size: buffer.length })}`);
       return NextResponse.json(
-        { success: false, error: 'The uploaded file content does not match its declared file type.', code: 'INVALID_FILE_CONTENT', retryable: false },
+        { success: false, error: 'The uploaded file content does not match its declared file type.', code: 'FILE_CONTENT_TYPE_MISMATCH', retryable: false },
         { status: 422 },
       );
     }
@@ -542,6 +541,10 @@ export async function POST(req: NextRequest) {
     } else if (msg.includes('IMAGE_BASED_PDF') || msg.includes('EXTRACTION_FAILED') || msg.includes('UNSUPPORTED_FILE_TYPE')) {
       status = 422;
       code = msg.includes('IMAGE_BASED_PDF') ? 'IMAGE_BASED_PDF' : msg.includes('UNSUPPORTED_FILE_TYPE') ? 'UNSUPPORTED_FILE_TYPE' : 'EXTRACTION_FAILED';
+    } else if (msg.includes('STORAGE_DOWNLOAD_TIMEOUT')) {
+      status = 504;
+      code = 'STORAGE_DOWNLOAD_TIMEOUT';
+      retryable = true;
     } else if (msg.includes('TIMEOUT') || msg.toLowerCase().includes('timed out')) {
       status = 504;
       code = 'DOCUMENT_PARSE_TIMEOUT';
