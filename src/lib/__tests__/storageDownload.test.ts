@@ -30,24 +30,24 @@ describe('downloadFromStorage', () => {
     }
   });
 
-  it('classifies a "not found" storage error as DOCUMENT_NOT_FOUND (404), not a generic failure', async () => {
+  it('classifies a "not found" storage error as FILE_NOT_FOUND (404), not a generic failure', async () => {
     const supabase = fakeSupabase(async () => ({ data: null, error: { message: 'Object not found' } }));
     const result = await downloadFromStorage(supabase, 'pdfs', 'user_x/missing.pdf');
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.code).toBe('DOCUMENT_NOT_FOUND');
+      expect(result.code).toBe('FILE_NOT_FOUND');
       expect(result.status).toBe(404);
     }
   });
 
-  it('classifies any other storage error as DOCUMENT_DOWNLOAD_FAILED (502) — an upstream problem, not the user\'s file', async () => {
+  it('classifies any other storage error as STORAGE_DOWNLOAD_FAILED (502) — an upstream problem, not the user\'s file', async () => {
     const supabase = fakeSupabase(async () => ({ data: null, error: { message: 'connection reset' } }));
     const result = await downloadFromStorage(supabase, 'pdfs', 'user_x/file.pdf');
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.code).toBe('DOCUMENT_DOWNLOAD_FAILED');
+      expect(result.code).toBe('STORAGE_DOWNLOAD_FAILED');
       expect(result.status).toBe(502);
     }
   });
@@ -64,13 +64,13 @@ describe('downloadFromStorage', () => {
     }
   });
 
-  it('classifies a null data response (no error, no blob) as DOCUMENT_DOWNLOAD_FAILED rather than crashing', async () => {
+  it('classifies a null data response (no error, no blob) as STORAGE_DOWNLOAD_FAILED rather than crashing', async () => {
     const supabase = fakeSupabase(async () => ({ data: null, error: null }));
     const result = await downloadFromStorage(supabase, 'pdfs', 'user_x/weird.pdf');
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.code).toBe('DOCUMENT_DOWNLOAD_FAILED');
+      expect(result.code).toBe('STORAGE_DOWNLOAD_FAILED');
     }
   });
 });

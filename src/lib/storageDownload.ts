@@ -27,7 +27,7 @@ export interface StorageDownloadSuccess {
 
 export interface StorageDownloadFailure {
   success: false;
-  code: 'DOCUMENT_NOT_FOUND' | 'DOCUMENT_DOWNLOAD_FAILED' | 'INVALID_FILE_CONTENT';
+  code: 'FILE_NOT_FOUND' | 'STORAGE_DOWNLOAD_FAILED' | 'INVALID_FILE_CONTENT';
   status: 404 | 502 | 422;
   message: string;
 }
@@ -64,12 +64,12 @@ export async function downloadFromStorage(
   if (error) {
     const message = error.message || 'Unknown storage error';
     return isNotFoundError(error)
-      ? { success: false, code: 'DOCUMENT_NOT_FOUND', status: 404, message: `Document not found in storage: ${message}` }
-      : { success: false, code: 'DOCUMENT_DOWNLOAD_FAILED', status: 502, message: `Storage download failed: ${message}` };
+      ? { success: false, code: 'FILE_NOT_FOUND', status: 404, message: `Document not found in storage: ${message}` }
+      : { success: false, code: 'STORAGE_DOWNLOAD_FAILED', status: 502, message: `Storage download failed: ${message}` };
   }
 
   if (!data) {
-    return { success: false, code: 'DOCUMENT_DOWNLOAD_FAILED', status: 502, message: 'Storage returned no data for this object' };
+    return { success: false, code: 'STORAGE_DOWNLOAD_FAILED', status: 502, message: 'Storage returned no data for this object' };
   }
 
   const buffer = Buffer.from(await data.arrayBuffer());

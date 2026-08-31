@@ -144,6 +144,17 @@ export default function Home() {
         if (!documentText || documentText.trim().length < 10) {
           throw new Error('Document appears empty or unreadable. Try a different file.');
         }
+
+        // AI structuring is separate from document extraction — the document
+        // itself was read successfully, so this is a distinct, non-fatal
+        // notice rather than an error bubble.
+        if (parseData.aiStructuringFailed) {
+          setMessages(prev => [...prev, {
+            role: 'assistant' as const,
+            content: 'ℹ️ The document was read successfully, but structured deal-field extraction didn\'t complete. You can still continue — just confirm the details as we go.',
+            id: (Date.now() + 3).toString(),
+          }]);
+        }
       }
 
       // Build the message to send to the AI
@@ -231,11 +242,19 @@ export default function Home() {
       // for every case (large file, scanned PDF, timeout, unsupported type
       // are all different problems with different user-facing fixes).
       let displayMessage: string;
-      if (errorMessage.includes('INVALID_FILE_CONTENT')) {
+      if (errorMessage.includes('UNAUTHORIZED')) {
+        displayMessage = '❌ Your session has expired. Please refresh the page and sign in again.';
+      } else if (errorMessage.includes('FORBIDDEN')) {
+        displayMessage = "❌ We couldn't verify access to this file. Please upload it again.";
+      } else if (errorMessage.includes('RATE_LIMITED')) {
+        displayMessage = '❌ Too many uploads in a short time. Please wait a few minutes and try again.';
+      } else if (errorMessage.includes('FILE_TOO_LARGE')) {
+        displayMessage = "❌ This file is too large to upload (max 10MB). Please upload a smaller file, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('INVALID_FILE_CONTENT')) {
         displayMessage = "❌ The uploaded file appears to be invalid or incomplete. Please upload the original file again, or paste the key deal details directly in the chat.";
-      } else if (errorMessage.includes('DOCUMENT_NOT_FOUND')) {
+      } else if (errorMessage.includes('FILE_NOT_FOUND')) {
         displayMessage = "❌ We couldn't find the uploaded file. Please try uploading it again.";
-      } else if (errorMessage.includes('DOCUMENT_DOWNLOAD_FAILED')) {
+      } else if (errorMessage.includes('STORAGE_DOWNLOAD_FAILED')) {
         displayMessage = "❌ Document storage is temporarily unavailable. Please try again in a moment.";
       } else if (errorMessage.includes('OCR_FAILED')) {
         // Distinct from the image-based/IMAGE_BASED_PDF case below: OCR
@@ -265,6 +284,10 @@ export default function Home() {
         displayMessage = '❌ This file type is not supported yet. Please upload a PDF, DOCX, or TXT file, or paste the key deal details directly in the chat.';
       } else if (errorMessage.includes('EXTRACTION_FAILED')) {
         displayMessage = "❌ We couldn't read this file — it may be empty, corrupted, or password-protected. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('INVALID_REQUEST')) {
+        displayMessage = "❌ The upload request was invalid. Please try uploading the file again.";
+      } else if (errorMessage.includes('INTERNAL_PARSING_ERROR')) {
+        displayMessage = "❌ Something went wrong while processing this document. Please try again, or paste the key deal details directly in the chat.";
       } else {
         displayMessage = `❌ ${errorMessage}`;
       }

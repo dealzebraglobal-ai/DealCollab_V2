@@ -67,7 +67,8 @@ export async function POST(req: NextRequest) {
     console.error(`${tag} STEP auth:start`);
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      console.error(`${tag} HTTP401 reason=no-session`);
+      return NextResponse.json({ success: false, error: 'Unauthorized', code: 'UNAUTHORIZED', retryable: false }, { status: 401 });
     }
     const userId = session.user.id;
     console.error(`${tag} STEP auth:success`);
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
     // not per-IP, since it requires auth and users can be behind shared IPs.
     const rl = checkRateLimit(`parse-document:user:${userId}`, 10, 10 * 60 * 1000);
     if (!rl.allowed) {
-      return NextResponse.json({ success: false, error: 'Too many document uploads — please wait before trying again' }, { status: 429 });
+      return NextResponse.json({ success: false, error: 'Too many document uploads — please wait before trying again', code: 'RATE_LIMITED', retryable: true }, { status: 429 });
     }
 
     const supabase = await createServerSupabaseClient();
@@ -92,12 +93,33 @@ export async function POST(req: NextRequest) {
     console.error(`${tag} STEP file-acquisition:start`);
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      const body = await req.json();
-      const { bucket, path, fileName, fileType, fileSize } = body;
+      let body: Record<string, unknown>;
+      try {
+        body = await req.json();
+      } catch {
+        // A malformed/empty JSON body previously fell through uncaught into
+        // the generic catch-all below, which returns 500 for anything it
+        // doesn't recognize — a client-side mistake shouldn't look like a
+        // server failure.
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'invalid-json-body' })}`);
+        return NextResponse.json({ success: false, error: 'Invalid JSON in request body', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
+      }
+      const { bucket, path, fileName, fileType, fileSize } = body as {
+        bucket?: string; path?: string; fileName?: string; fileType?: string; fileSize?: number;
+      };
+      // Diagnostic only — reports which fields were present, never the
+      // actual path/URL/token values (path can reveal another user's email
+      // prefix if logged in full; fileName is user-controlled but harmless).
+      console.error(
+        `${tag} REQUEST:body-parsed ${JSON.stringify({ contentType: 'application/json', hasBucket: Boolean(bucket), hasPath: Boolean(path), fileName: fileName || null, fileType: fileType || null, fileSize: fileSize || null })}`,
+      );
 
       if (!bucket || !path || !fileName) {
+        console.error(
+          `${tag} HTTP400 ${JSON.stringify({ reason: 'missing-bucket-path-or-filename', hasBucket: Boolean(bucket), hasPath: Boolean(path), hasFileName: Boolean(fileName) })}`,
+        );
         return NextResponse.json(
-          { success: false, error: 'Missing bucket, path, or fileName in request body' },
+          { success: false, error: 'Missing bucket, path, or fileName in request body', code: 'INVALID_REQUEST', retryable: false },
           { status: 400 }
         );
       }
@@ -111,12 +133,27 @@ export async function POST(req: NextRequest) {
       // the previous "fetch whatever URL the browser sends" approach, which
       // had no such check at all (any allowlisted-host URL was fetched).
       if (bucket !== 'pdfs') {
-        return NextResponse.json({ success: false, error: 'Invalid storage bucket' }, { status: 400 });
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'invalid-bucket', bucket })}`);
+        return NextResponse.json({ success: false, error: 'Invalid storage bucket', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
+      }
+      if (typeof path !== 'string') {
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'path-not-a-string' })}`);
+        return NextResponse.json({ success: false, error: 'Invalid storage path', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
+      }
+      // Defense-in-depth: Supabase Storage keys are opaque strings, not
+      // filesystem paths, so ".." has no special meaning to the storage
+      // backend itself — the owner-prefix check below is what actually
+      // prevents cross-user access. Still, reject it outright rather than
+      // rely solely on that check being bug-free forever.
+      if (path.includes('..')) {
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'path-traversal-rejected' })}`);
+        return NextResponse.json({ success: false, error: 'Invalid storage path', code: 'INVALID_REQUEST', retryable: false }, { status: 400 });
       }
       const ownerPrefix = `${(session.user.email || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}/`;
-      if (!session.user.email || typeof path !== 'string' || !path.startsWith(ownerPrefix)) {
+      if (!session.user.email || !path.startsWith(ownerPrefix)) {
         console.error(`${tag} FAILURE step=storage-download error_name=Forbidden error_message=path does not belong to the authenticated user`);
-        return NextResponse.json({ success: false, error: 'You do not have access to this file' }, { status: 403 });
+        console.error(`${tag} HTTP403 ${JSON.stringify({ reason: 'path-owner-mismatch', hasSessionEmail: Boolean(session.user.email) })}`);
+        return NextResponse.json({ success: false, error: 'You do not have access to this file', code: 'FORBIDDEN', retryable: false }, { status: 403 });
       }
 
       // fileSize here is a client-supplied number, not yet verified against
@@ -131,15 +168,31 @@ export async function POST(req: NextRequest) {
       // open indefinitely.
       console.error(`${tag} STEP storage-download:start`);
       const downloadStart = Date.now();
-      const downloadResult = await Promise.race([
+      // Bounded retry ONLY for FILE_NOT_FOUND: Supabase Storage reads can
+      // very briefly race a just-completed client-side PUT (eventual
+      // consistency between the upload path and the read path). This does
+      // NOT retry malformed requests, auth/ownership failures, or genuine
+      // download errors (STORAGE_DOWNLOAD_FAILED) — those are not transient
+      // and retrying them would just waste the request's time budget.
+      const NOT_FOUND_RETRY_DELAYS_MS = [250, 500];
+      let downloadResult = await Promise.race([
         downloadFromStorage(supabase, bucket, path),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`)), DOCUMENT_DOWNLOAD_TIMEOUT_MS)),
       ]);
+      for (let i = 0; !downloadResult.success && downloadResult.code === 'FILE_NOT_FOUND' && i < NOT_FOUND_RETRY_DELAYS_MS.length; i++) {
+        console.error(`${tag} STEP storage-download:retry attempt=${i + 1} delay_ms=${NOT_FOUND_RETRY_DELAYS_MS[i]}`);
+        await new Promise((resolve) => setTimeout(resolve, NOT_FOUND_RETRY_DELAYS_MS[i]));
+        downloadResult = await Promise.race([
+          downloadFromStorage(supabase, bucket, path),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`)), DOCUMENT_DOWNLOAD_TIMEOUT_MS)),
+        ]);
+      }
 
       if (!downloadResult.success) {
         logParseFailure(requestId, 'storage-download', new Error(downloadResult.message));
+        console.error(`${tag} HTTP${downloadResult.status} ${JSON.stringify({ reason: 'storage-download-failed', code: downloadResult.code })}`);
         return NextResponse.json(
-          { success: false, error: downloadResult.message, code: downloadResult.code, retryable: downloadResult.code === 'DOCUMENT_DOWNLOAD_FAILED' },
+          { success: false, error: downloadResult.message, code: downloadResult.code, retryable: downloadResult.code === 'STORAGE_DOWNLOAD_FAILED' },
           { status: downloadResult.status },
         );
       }
@@ -165,19 +218,24 @@ export async function POST(req: NextRequest) {
       try {
         formData = await req.formData();
       } catch {
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'invalid-form-data', contentType })}`);
         return NextResponse.json(
-          { success: false, error: 'Invalid form data. Make sure the file is sent as multipart/form-data.' },
+          { success: false, error: 'Invalid form data. Make sure the file is sent as multipart/form-data.', code: 'INVALID_REQUEST', retryable: false },
           { status: 400 }
         );
       }
 
       const formFile = formData.get('file') as File | null;
       if (!formFile) {
+        console.error(`${tag} HTTP400 ${JSON.stringify({ reason: 'no-file-field-in-form-data', contentType })}`);
         return NextResponse.json(
-          { success: false, error: 'No file provided. Send the file as a "file" field in the form data.' },
+          { success: false, error: 'No file provided. Send the file as a "file" field in the form data.', code: 'INVALID_REQUEST', retryable: false },
           { status: 400 }
         );
       }
+      console.error(
+        `${tag} REQUEST:body-parsed ${JSON.stringify({ contentType: 'multipart/form-data', fileName: formFile.name, fileType: formFile.type || null, fileSize: formFile.size })}`,
+      );
 
       file = { name: formFile.name, type: formFile.type || '', size: formFile.size };
       isDirectUpload = false;
@@ -195,21 +253,27 @@ export async function POST(req: NextRequest) {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
+      console.error(`${tag} HTTP413 ${JSON.stringify({ reason: 'file-too-large', size: file.size, maxSize: MAX_FILE_SIZE })}`);
       return NextResponse.json(
-        { success: false, error: `File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.` },
+        { success: false, error: `File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`, code: 'FILE_TOO_LARGE', retryable: false },
         { status: 413 }
       );
     }
 
-    // Validate file type
+    // Validate file type — 415 (Unsupported Media Type) is the more precise
+    // status for "the declared content-type isn't one we handle," distinct
+    // from 400 (malformed request shape) used elsewhere in this route.
     const mimeType = file.type || '';
     if (!SUPPORTED_TYPES[mimeType]) {
+      console.error(`${tag} HTTP415 ${JSON.stringify({ reason: 'unsupported-mime-type', mimeType: mimeType || null })}`);
       return NextResponse.json(
         {
           success: false,
           error: `Unsupported file type: ${mimeType || 'unknown'}. Supported types: PDF, DOCX, PPTX, TXT, JPG, PNG, WEBP.`,
+          code: 'UNSUPPORTED_FILE_TYPE',
+          retryable: false,
         },
-        { status: 400 }
+        { status: 415 }
       );
     }
 
@@ -227,6 +291,7 @@ export async function POST(req: NextRequest) {
     const sigCheck = checkFileSignature(buffer, mimeType);
     if (!sigCheck.valid) {
       logParseFailure(requestId, 'byte-validation', new Error(sigCheck.reason));
+      console.error(`${tag} HTTP422 ${JSON.stringify({ reason: 'invalid-file-content', mimeType, size: buffer.length })}`);
       return NextResponse.json(
         { success: false, error: 'The uploaded file content does not match its declared file type.', code: 'INVALID_FILE_CONTENT', retryable: false },
         { status: 422 },
@@ -314,6 +379,13 @@ export async function POST(req: NextRequest) {
     // 4. GENERATE STRUCTURED INTELLIGENCE (Expert Engine)
     const { cleanAndStructureDocument } = await import('@/lib/intelligenceEngine');
     let structuredData: Record<string, unknown> = {};
+    // AI structuring is a separate concern from document extraction — the
+    // document itself was already read successfully by this point, so an AI
+    // failure here must never surface as "the document could not be read."
+    // Tracked explicitly (rather than inferred from an empty structuredData,
+    // which a document with genuinely no structurable content would also
+    // produce) so the frontend can show an accurate, distinct message.
+    let aiStructuringFailed = false;
     const aiStart = Date.now();
     console.error(`${tag} STEP ai:start`);
     try {
@@ -326,6 +398,7 @@ export async function POST(req: NextRequest) {
         structuredData = raw as unknown as Record<string, unknown>;
       } else {
         console.warn('[PARSE] cleanAndStructureDocument returned non-object — using empty fallback');
+        aiStructuringFailed = true;
       }
       console.error(`${tag} AI extraction: ${Date.now() - aiStart}ms`);
       console.error(`${tag} STEP ai:success`);
@@ -333,6 +406,7 @@ export async function POST(req: NextRequest) {
       logParseFailure(requestId, 'ai', intelligenceErr);
       console.error(`[PARSE] cleanAndStructureDocument failed after ${Date.now() - aiStart}ms:`, intelligenceErr);
       // Continue with empty structuredData — document text is still usable
+      aiStructuringFailed = true;
     }
 
     // 5. PERSIST IN DOCUMENTS TABLE (Resilient Insertion)
@@ -382,6 +456,7 @@ export async function POST(req: NextRequest) {
         extractionMethod: extraction.extractionMethod,
         pagesProcessed: extraction.pagesProcessed,
         warnings: extraction.warnings,
+        aiStructuringFailed,
         warning: 'Document text was extracted but could not be saved to history. Please check database schema.',
         error: errorMsg
       });
@@ -427,6 +502,7 @@ export async function POST(req: NextRequest) {
       pagesProcessed: extraction.pagesProcessed,
       partial: extraction.warnings.length > 0,
       warnings: extraction.warnings,
+      aiStructuringFailed,
       metadata: {
         fileName: file.name,
         fileType: SUPPORTED_TYPES[mimeType],
@@ -451,7 +527,7 @@ export async function POST(req: NextRequest) {
     // the download/extraction timeouts above for where these are thrown.
     const msg = err.message;
     let status = 500;
-    let code = 'PARSE_FAILED';
+    let code = 'INTERNAL_PARSING_ERROR';
     let retryable = false;
     if (msg.includes('DOCUMENT_TOO_LARGE')) {
       status = 413;
