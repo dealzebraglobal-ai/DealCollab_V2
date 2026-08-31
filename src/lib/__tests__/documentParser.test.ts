@@ -28,6 +28,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const pdfParseGetText = vi.hoisted(() => vi.fn());
 const pdfParseGetScreenshot = vi.hoisted(() => vi.fn());
+const pdfParseGetInfo = vi.hoisted(() => vi.fn());
 const pdfParseDestroy = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const tesseractRecognize = vi.hoisted(() => vi.fn());
 const tesseractTerminate = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
@@ -41,6 +42,9 @@ vi.mock('pdf-parse', () => ({
     }
     getScreenshot(params: unknown) {
       return pdfParseGetScreenshot(params);
+    }
+    getInfo() {
+      return pdfParseGetInfo();
     }
     destroy() {
       return pdfParseDestroy();
@@ -205,10 +209,56 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
     ).rejects.toThrow(/EXTRACTION_FAILED/);
   });
 
-  it('10. corrupted PDF: native extraction throws entirely — fails cleanly as IMAGE_BASED_PDF', async () => {
+  it('10. corrupted PDF: native extraction AND the getInfo() page-count fallback both throw — genuinely unrecoverable, fails cleanly as EXTRACTION_FAILED, NOT IMAGE_BASED_PDF (a parse exception is evidence of corruption, not evidence the PDF is scanned)', async () => {
     pdfParseGetText.mockRejectedValue(new Error('bad XRef table'));
+    pdfParseGetInfo.mockRejectedValue(new Error('bad XRef table'));
     const { extractTextFromFile } = await import('../documentParser');
-    await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/IMAGE_BASED_PDF/);
+    await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/EXTRACTION_FAILED/);
+    expect(pdfParseGetScreenshot).not.toHaveBeenCalled();
+  });
+
+  it('10c. CRITICAL FIX: native extraction throws for the whole document, but page rendering still works — falls back to OCR-ing every page instead of giving up, and recovers usable text', async () => {
+    pdfParseGetText.mockRejectedValue(new Error('bad XRef table'));
+    pdfParseGetInfo.mockResolvedValue({ total: 2 });
+    pdfParseGetScreenshot.mockImplementation((params: { partial: number[] }) => Promise.resolve(screenshotFor(params.partial[0])));
+    tesseractRecognize
+      .mockResolvedValueOnce({ data: { text: 'Recovered page one text' } })
+      .mockResolvedValueOnce({ data: { text: 'Recovered page two text' } });
+
+    const { extractTextFromFile } = await import('../documentParser');
+    const result = await extractTextFromFile(Buffer.from('pdf'), 'application/pdf');
+
+    expect(result.text).toContain('Recovered page one text');
+    expect(result.text).toContain('Recovered page two text');
+    expect(result.extractionMethod).toBe('ocr');
+    expect(result.pageCount).toBe(2);
+    expect(pdfParseGetScreenshot).toHaveBeenCalledTimes(2);
+  });
+
+  it('10d. native extraction throws, getInfo() recovers a page count, but OCR itself then fails on every page — reported as OCR_FAILED (OCR was genuinely attempted), not IMAGE_BASED_PDF or a silent EXTRACTION_FAILED', async () => {
+    pdfParseGetText.mockRejectedValue(new Error('bad XRef table'));
+    pdfParseGetInfo.mockResolvedValue({ total: 1 });
+    pdfParseGetScreenshot.mockRejectedValue(new Error('native canvas binding not available'));
+
+    const { extractTextFromFile } = await import('../documentParser');
+    await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/OCR_FAILED/);
+  });
+
+  it('10b. pdf-parse constructor itself throwing (parser-init failure) is also classified as EXTRACTION_FAILED, not IMAGE_BASED_PDF', async () => {
+    const pdfParseModule = await import('pdf-parse');
+    const OriginalPDFParse = pdfParseModule.PDFParse;
+    // @ts-expect-error — intentionally replacing the mocked constructor for this one test
+    pdfParseModule.PDFParse = class {
+      constructor() {
+        throw new Error('unsupported PDF version');
+      }
+    };
+    try {
+      const { extractTextFromFile } = await import('../documentParser');
+      await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/EXTRACTION_FAILED/);
+    } finally {
+      pdfParseModule.PDFParse = OriginalPDFParse;
+    }
   });
 
   // Note: an "OCR never attempted, but still IMAGE_BASED_PDF" test was

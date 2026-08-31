@@ -43,6 +43,16 @@ import type { PDFParse } from 'pdf-parse';
  *   image or the recognized text), and added a minimum-alphanumeric-content
  *   gate so a page that OCRs to a few garbage characters isn't counted as
  *   "usable text" just because Tesseract didn't throw.
+ * - 2026-08-31 (later same day): closed a remaining gap in the above fix —
+ *   when parser.getText() threw for the WHOLE document (not just returning
+ *   low-text pages), the code gave up immediately with EXTRACTION_FAILED
+ *   and never attempted OCR at all. getText() throwing is not evidence the
+ *   document is unreadable end-to-end — pdf-parse's getScreenshot() (page
+ *   rendering) and getInfo() (page count) are independent code paths that
+ *   can still succeed. Native extraction failure now falls back to
+ *   OCR-every-page, using getInfo() to learn the page count without
+ *   getText(). Only if getInfo() *also* throws is the document treated as
+ *   genuinely unrecoverable (EXTRACTION_FAILED).
  */
 
 function envInt(name: string, fallback: number): number {
@@ -172,8 +182,12 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
     const pdfParseModule = await import('pdf-parse');
     parser = new pdfParseModule.PDFParse({ data: buffer });
   } catch (initErr) {
+    // A parser-init exception is evidence the file is unreadable/corrupt —
+    // it says nothing about whether the document is scanned. Classifying
+    // this as IMAGE_BASED_PDF would tell the user to "convert to DOCX" for
+    // a problem that has nothing to do with scanned pages.
     logParseFailure(requestId, 'parser-init', initErr);
-    throw new Error(`IMAGE_BASED_PDF: PDF parser initialization failed (${initErr instanceof Error ? initErr.message : String(initErr)})`);
+    throw new Error(`EXTRACTION_FAILED: PDF parser initialization failed (${initErr instanceof Error ? initErr.message : String(initErr)})`);
   }
   console.error(`${tag} STEP parser-init:success`);
 
@@ -183,17 +197,48 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
   try {
     console.error(`${tag} STEP native-extraction:start`);
     const nativeStart = Date.now();
-    let textResult: { total: number; pages: Array<{ num: number; text: string }> };
+    let textResult: { total: number; pages: Array<{ num: number; text: string }> } | null = null;
+    let nativeExtractionError: unknown = null;
     try {
       textResult = await withTimeout(parser.getText(), PDF_EXTRACTION_TIMEOUT_MS, 'PDF text extraction');
+      console.error(`${tag} native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
+      console.error(`${tag} STEP native-extraction:success`);
     } catch (pdfErr) {
+      // getText() throwing means pdf-parse could not extract text via its
+      // normal path — it is NOT evidence the PDF is scanned/image-based,
+      // and it does NOT mean the document is unreadable altogether:
+      // getScreenshot() (page rendering) and getInfo() (page count) are
+      // independent code paths that can still work. Don't give up here —
+      // fall back to OCR-ing every page, same as a page that has no usable
+      // native text.
+      nativeExtractionError = pdfErr;
       logParseFailure(requestId, 'native-extraction', pdfErr);
-      throw new Error(`IMAGE_BASED_PDF: Native PDF text extraction failed (${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)})`);
+      console.error(`${tag} STEP native-extraction:failure — falling back to OCR`);
     }
-    console.error(`${tag} native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
-    console.error(`${tag} STEP native-extraction:success`);
 
-    const totalPages = textResult.total || textResult.pages.length || 0;
+    let totalPages: number;
+    if (textResult) {
+      totalPages = textResult.total || textResult.pages.length || 0;
+    } else {
+      // Native extraction failed entirely — getInfo() parses document
+      // structure independently of getText(), so it can still report a
+      // page count to OCR over. If getInfo() also throws, the file is
+      // genuinely unreadable (corrupt/malformed) and there is nothing left
+      // to fall back to.
+      try {
+        const info = await withTimeout(parser.getInfo(), PDF_EXTRACTION_TIMEOUT_MS, 'PDF info extraction');
+        totalPages = info.total || 0;
+      } catch (infoErr) {
+        logParseFailure(requestId, 'parser-info-fallback', infoErr);
+        throw new Error(
+          `EXTRACTION_FAILED: PDF could not be read (native extraction and page-count lookup both failed: ${nativeExtractionError instanceof Error ? nativeExtractionError.message : String(nativeExtractionError)})`,
+        );
+      }
+      if (totalPages === 0) {
+        throw new Error('EXTRACTION_FAILED: Native PDF text extraction failed and the document reports 0 pages.');
+      }
+    }
+
     if (totalPages > DOCUMENT_HARD_MAX_PAGES) {
       throw new Error(
         `DOCUMENT_TOO_LARGE: This document has ${totalPages} pages, which exceeds the ${DOCUMENT_HARD_MAX_PAGES}-page processing limit.`,
@@ -215,7 +260,7 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
 
     for (let i = 0; i < pagesToProcess; i++) {
       const pageNum = i + 1;
-      const nativeText = (textResult.pages[i]?.text || '').trim();
+      const nativeText = (textResult?.pages[i]?.text || '').trim();
 
       if (nativeText.length >= MIN_PAGE_TEXT_CHARS) {
         perPageText.push(nativeText);
@@ -309,6 +354,15 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
       if (ocrAttempted) {
         throw new Error(
           `OCR_FAILED: OCR was attempted on ${ocrPagesUsed} page(s) but did not produce usable text.`,
+        );
+      }
+      if (nativeExtractionError) {
+        // Native extraction threw AND OCR was never reached (e.g. the OCR
+        // page budget was exhausted before any page was attempted, or every
+        // page was skipped) — this is still "extraction failed", not
+        // evidence the document is scanned.
+        throw new Error(
+          `EXTRACTION_FAILED: Native PDF text extraction failed and no OCR fallback could be attempted (${nativeExtractionError instanceof Error ? nativeExtractionError.message : String(nativeExtractionError)}).`,
         );
       }
       throw new Error(

@@ -84,15 +84,14 @@ export default function Home() {
           throw new Error(`Direct upload to storage failed with status ${uploadRes.status}`);
         }
         
-        // 3. Construct public URL
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        if (!supabaseUrl) {
-          throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
-        }
-        const publicUrl = `${supabaseUrl}/storage/v1/object/public/pdfs/${path}`;
-        console.log("[CLIENT] Direct upload successful! Public URL:", publicUrl);
+        // 3. Send the storage bucket/path to parse-document — NOT a
+        // manually constructed public URL. The server downloads the object
+        // itself via its own authenticated Supabase client, which is more
+        // reliable (no public-bucket assumption, no propagation-timing
+        // race) and safer (the server never fetches a URL the browser
+        // handed it) than fetching a guessed public URL string.
+        console.log("[CLIENT] Direct upload successful! Storage path:", path);
 
-        // 4. Send public URL to parse-document route for extraction
         let parseRes: Response;
         try {
           parseRes = await fetch('/api/chat/parse-document', {
@@ -101,7 +100,8 @@ export default function Home() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              fileUrl: publicUrl,
+              bucket: 'pdfs',
+              path,
               fileName: file.name,
               fileType: file.type,
               fileSize: file.size,
@@ -231,7 +231,13 @@ export default function Home() {
       // for every case (large file, scanned PDF, timeout, unsupported type
       // are all different problems with different user-facing fixes).
       let displayMessage: string;
-      if (errorMessage.includes('OCR_FAILED')) {
+      if (errorMessage.includes('INVALID_FILE_CONTENT')) {
+        displayMessage = "❌ The uploaded file appears to be invalid or incomplete. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('DOCUMENT_NOT_FOUND')) {
+        displayMessage = "❌ We couldn't find the uploaded file. Please try uploading it again.";
+      } else if (errorMessage.includes('DOCUMENT_DOWNLOAD_FAILED')) {
+        displayMessage = "❌ Document storage is temporarily unavailable. Please try again in a moment.";
+      } else if (errorMessage.includes('OCR_FAILED')) {
         // Distinct from the image-based/IMAGE_BASED_PDF case below: OCR
         // support exists and was genuinely attempted here — it just didn't
         // produce usable text (garbled scan, a render/recognition failure).

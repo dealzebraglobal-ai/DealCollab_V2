@@ -4,8 +4,8 @@ import { extractTextFromFile, logParseFailure, type ExtractionResult } from '@/l
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { isAllowedFileUrl } from '@/lib/ssrfGuard';
 import { checkFileSignature } from '@/lib/fileSignature';
+import { downloadFromStorage } from '@/lib/storageDownload';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,84 +93,69 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const body = await req.json();
-      const { fileUrl, fileName, fileType, fileSize } = body;
+      const { bucket, path, fileName, fileType, fileSize } = body;
 
-      if (!fileUrl || !fileName) {
+      if (!bucket || !path || !fileName) {
         return NextResponse.json(
-          { success: false, error: 'Missing fileUrl or fileName in request body' },
+          { success: false, error: 'Missing bucket, path, or fileName in request body' },
           { status: 400 }
         );
       }
 
-      if (!isAllowedFileUrl(fileUrl, process.env.NEXT_PUBLIC_SUPABASE_URL)) {
-        console.error('[PARSE] Rejected fileUrl outside the allowed Supabase storage host:', fileUrl);
-        return NextResponse.json({ success: false, error: 'Invalid file URL' }, { status: 400 });
+      // SECURITY: this route only ever reads from the 'pdfs' bucket, and
+      // only an object path namespaced under the CALLING user's own upload
+      // folder — the same email-derived prefix /api/profile/upload/signed-url
+      // mints when it hands out an upload URL. Without this, an
+      // authenticated user could pass another user's bucket/path and have
+      // the server download and parse their document (IDOR). This replaces
+      // the previous "fetch whatever URL the browser sends" approach, which
+      // had no such check at all (any allowlisted-host URL was fetched).
+      if (bucket !== 'pdfs') {
+        return NextResponse.json({ success: false, error: 'Invalid storage bucket' }, { status: 400 });
+      }
+      const ownerPrefix = `${(session.user.email || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}/`;
+      if (!session.user.email || typeof path !== 'string' || !path.startsWith(ownerPrefix)) {
+        console.error(`${tag} FAILURE step=storage-download error_name=Forbidden error_message=path does not belong to the authenticated user`);
+        return NextResponse.json({ success: false, error: 'You do not have access to this file' }, { status: 403 });
       }
 
       // fileSize here is a client-supplied number, not yet verified against
       // the real download — file.size is overwritten below with the actual
       // buffer length before the MAX_FILE_SIZE check runs.
       file = { name: fileName, type: fileType || '', size: fileSize || 0 };
-      publicUrl = fileUrl;
       isDirectUpload = true;
 
-      console.log(`[PARSE] Processing pre-uploaded file from URL: ${fileUrl} | Name: ${fileName}`);
-
-      // SECURITY (SSRF): fetch() follows redirects by default — the
-      // allowlist check above only validates the URL we're ABOUT to
-      // request, not wherever a 3xx response might point next. A
-      // compromised/misconfigured intermediary could redirect an
-      // allowlisted Supabase URL to an internal address. redirect: 'error'
-      // makes fetch throw instead of silently following, since legitimate
-      // Supabase Storage public URLs never redirect cross-origin.
-      //
-      // Bounded with an explicit timeout — an unbounded download here would
-      // let a slow/stalled storage response hold the whole request open
-      // with no controlled failure (this was one of the four unbounded
-      // external calls behind the ~247s production hangs).
+      // Server-authenticated download via the Supabase Storage SDK —
+      // bounded with the same timeout previously applied to the fetch()
+      // call, so a stalled storage response still can't hold the request
+      // open indefinitely.
+      console.error(`${tag} STEP storage-download:start`);
       const downloadStart = Date.now();
-      const downloadController = new AbortController();
-      const downloadTimeout = setTimeout(() => downloadController.abort(), DOCUMENT_DOWNLOAD_TIMEOUT_MS);
-      let fileRes: Response;
-      try {
-        fileRes = await fetch(fileUrl, { redirect: 'error', signal: downloadController.signal });
-      } catch (downloadErr) {
-        if (downloadErr instanceof Error && downloadErr.name === 'AbortError') {
-          throw new Error(`DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`);
-        }
-        throw downloadErr;
-      } finally {
-        clearTimeout(downloadTimeout);
-      }
-      if (!fileRes.ok) {
-        throw new Error(`Failed to fetch pre-uploaded file from URL: ${fileRes.statusText}`);
-      }
-      console.error(`${tag} file acquisition: ${Date.now() - downloadStart}ms`);
-      // Diagnostic only — no parsing/validation logic changed. Content-Length
-      // is read here purely for logging; the size gate below and the actual
-      // buffer content both already derive from the real downloaded bytes,
-      // never from this header, so a missing/wrong header cannot corrupt or
-      // mis-validate the file — it can only make this log line say "0".
-      console.error(
-        `${tag} storage-response status=${fileRes.status} content_type=${fileRes.headers.get('content-type') ?? 'none'} content_length=${fileRes.headers.get('content-length') ?? 'none'}`,
-      );
+      const downloadResult = await Promise.race([
+        downloadFromStorage(supabase, bucket, path),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`DOWNLOAD_TIMEOUT: File download timed out after ${DOCUMENT_DOWNLOAD_TIMEOUT_MS}ms`)), DOCUMENT_DOWNLOAD_TIMEOUT_MS)),
+      ]);
 
-      // SECURITY: reject an oversized download before buffering it into
-      // memory, using the server-reported Content-Length — don't rely on
-      // the client-supplied fileSize field for this decision.
-      const contentLength = Number(fileRes.headers.get('content-length') || 0);
-      if (contentLength > MAX_FILE_SIZE) {
+      if (!downloadResult.success) {
+        logParseFailure(requestId, 'storage-download', new Error(downloadResult.message));
         return NextResponse.json(
-          { success: false, error: `File too large. Maximum size is 10MB. Your file is ${(contentLength / 1024 / 1024).toFixed(1)}MB.` },
-          { status: 413 }
+          { success: false, error: downloadResult.message, code: downloadResult.code, retryable: downloadResult.code === 'DOCUMENT_DOWNLOAD_FAILED' },
+          { status: downloadResult.status },
         );
       }
 
-      const arrayBuffer = await fileRes.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
+      buffer = downloadResult.buffer;
       // Re-derive size from the actual downloaded bytes — never trust the
       // client-supplied fileSize for the size-limit check below.
       file.size = buffer.length;
+      // For the DB record / client display only — never used to fetch the
+      // file for parsing (that's the whole point of this fix). Uses the
+      // SDK's own URL builder rather than string-concatenating one.
+      publicUrl = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+      console.error(
+        `${tag} STEP storage-download:success duration_ms=${Date.now() - downloadStart}`,
+      );
+      console.error(`${tag} storage-download size=${buffer.length} content_type=${downloadResult.contentType ?? 'unknown'}`);
       console.error(
         `${tag} file-buffer-ready size=${buffer.length} sha256=${createHash('sha256').update(buffer).digest('hex')} signature=${buffer.subarray(0, 5).toString('latin1') === '%PDF-' ? 'valid-pdf-header' : 'NOT-pdf-header'}`,
       );
@@ -232,11 +217,22 @@ export async function POST(req: NextRequest) {
     // both trivially spoofable — a renamed executable claiming to be a PDF
     // would previously sail through. Verify the actual file bytes match the
     // claimed type before it's uploaded to storage or handed to the parser.
+    //
+    // This is deliberately classified as INVALID_FILE_CONTENT (422), never
+    // IMAGE_BASED_PDF — a MIME/byte mismatch is not evidence the PDF is
+    // scanned, and telling the user to "convert this PDF to DOCX" would be
+    // actively wrong when the actual problem is that the bytes aren't a PDF
+    // at all.
+    console.error(`${tag} STEP byte-validation:start`);
     const sigCheck = checkFileSignature(buffer, mimeType);
     if (!sigCheck.valid) {
-      console.error(`[PARSE] Rejected file with mismatched signature: claimed=${mimeType} name=${file.name} reason=${sigCheck.reason}`);
-      return NextResponse.json({ success: false, error: 'File content does not match the declared file type.' }, { status: 400 });
+      logParseFailure(requestId, 'byte-validation', new Error(sigCheck.reason));
+      return NextResponse.json(
+        { success: false, error: 'The uploaded file content does not match its declared file type.', code: 'INVALID_FILE_CONTENT', retryable: false },
+        { status: 422 },
+      );
     }
+    console.error(`${tag} STEP byte-validation:success type=${mimeType}`);
 
     if (!isDirectUpload) {
       // 1. UPLOAD TO STORAGE (with retry logic for resilience against network timeouts)
@@ -303,6 +299,9 @@ export async function POST(req: NextRequest) {
       ]);
       console.error(
         `${tag} extraction_ms=${Date.now() - extractionStart} chars=${extraction.text.length} method=${extraction.extractionMethod} pages=${extraction.pagesProcessed}/${extraction.pageCount ?? 'n/a'} warnings=${extraction.warnings.length}`,
+      );
+      console.error(
+        `${tag} STEP parser:success method=${extraction.extractionMethod} pages=${extraction.pagesProcessed} textLength=${extraction.text.length}`,
       );
     } catch (parseErr) {
       const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
