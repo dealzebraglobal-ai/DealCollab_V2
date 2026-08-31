@@ -69,8 +69,17 @@ export default function Home() {
         }
         
         const { uploadUrl, path } = await signedUrlRes.json();
+        // Defensive: fail fast with an actionable message rather than
+        // sending a parse-document request we already know is malformed.
+        // A signed-url response with a missing/empty uploadUrl or path is
+        // never valid (the server always derives a non-empty path), so if
+        // this ever fires it's a real signal to the user, not a silent
+        // pass-through into a confusing downstream 400.
+        if (!uploadUrl || typeof path !== 'string' || !path) {
+          throw new Error('Upload authorization was incomplete. Please refresh the page and try again.');
+        }
         console.log("[CLIENT] Uploading directly to Supabase storage path:", path);
-        
+
         // 2. Upload file directly using PUT
         const uploadRes = await fetch(uploadUrl, {
           method: 'PUT',
