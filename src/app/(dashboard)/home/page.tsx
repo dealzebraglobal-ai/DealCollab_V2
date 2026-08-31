@@ -231,7 +231,15 @@ export default function Home() {
       // for every case (large file, scanned PDF, timeout, unsupported type
       // are all different problems with different user-facing fixes).
       let displayMessage: string;
-      if (errorMessage.includes('image-based') || errorMessage.includes('IMAGE_BASED_PDF') || errorMessage.includes('extract text')) {
+      if (errorMessage.includes('OCR_FAILED')) {
+        // Distinct from the image-based/IMAGE_BASED_PDF case below: OCR
+        // support exists and was genuinely attempted here — it just didn't
+        // produce usable text (garbled scan, a render/recognition failure).
+        // Telling the user "convert to DOCX" would be actively misleading.
+        displayMessage =
+          "❌ We couldn't extract text from this scanned PDF.\n\n" +
+          'Please try again, or upload a higher-quality scan. You can also paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('image-based') || errorMessage.includes('IMAGE_BASED_PDF') || errorMessage.includes('extract text')) {
         displayMessage =
           '❌ This PDF contains images rather than text, so I cannot read it directly.\n\n' +
           'To fix this:\n' +

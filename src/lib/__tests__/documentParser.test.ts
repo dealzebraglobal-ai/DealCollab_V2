@@ -143,13 +143,32 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
     expect(createWorkerMock).toHaveBeenCalledTimes(1); // one shared worker, created lazily
   });
 
-  it('5. OCR page rendering fails (e.g. canvas renderer unavailable): that page is skipped with a warning, not a hang', async () => {
+  it('5. OCR page rendering fails (e.g. canvas renderer unavailable): fails as OCR_FAILED (OCR was attempted), not IMAGE_BASED_PDF — this is the exact bug found via Project_Damodar.pdf, where OCR ran but the frontend still said "cannot read images"', async () => {
     pdfParseGetText.mockResolvedValue(textResult(['x']));
     pdfParseGetScreenshot.mockRejectedValue(new Error('native canvas binding not available'));
 
     const { extractTextFromFile } = await import('../documentParser');
-    await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/IMAGE_BASED_PDF/);
+    await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/OCR_FAILED/);
     expect(tesseractTerminate).toHaveBeenCalled();
+  });
+
+  it('5b. worker.recognize() itself throwing (distinct from a screenshot/render failure) is caught and reported as OCR_FAILED', async () => {
+    pdfParseGetText.mockResolvedValue(textResult(['x']));
+    pdfParseGetScreenshot.mockResolvedValue(screenshotFor(1));
+    tesseractRecognize.mockRejectedValue(new Error('tesseract worker crashed mid-recognition'));
+
+    const { extractTextFromFile } = await import('../documentParser');
+    await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/OCR_FAILED/);
+    expect(tesseractTerminate).toHaveBeenCalled();
+  });
+
+  it('5c. OCR that "succeeds" but returns only garbage/near-empty text is NOT counted as usable — a misread page must not silently pass', async () => {
+    pdfParseGetText.mockResolvedValue(textResult(['x']));
+    pdfParseGetScreenshot.mockResolvedValue(screenshotFor(1));
+    tesseractRecognize.mockResolvedValue({ data: { text: '. . ,' } }); // resolves without throwing, but no real content
+
+    const { extractTextFromFile } = await import('../documentParser');
+    await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/OCR_FAILED/);
   });
 
   it('6. document exceeding the hard page-count ceiling is rejected as DOCUMENT_TOO_LARGE, not processed', async () => {
@@ -192,14 +211,24 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
     await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/IMAGE_BASED_PDF/);
   });
 
-  it('11. OCR worker initialization that never resolves times out instead of hanging indefinitely', async () => {
+  // Note: an "OCR never attempted, but still IMAGE_BASED_PDF" test was
+  // deliberately NOT added here. Tracing the control flow: `ocrAttempted`
+  // only stays false if every page had enough native text (in which case
+  // the final text can't be empty) — and DOCUMENT_MAX_OCR_PAGES cannot be
+  // configured to 0 to force the branch (envInt() intentionally rejects
+  // n <= 0 as an invalid override and falls back to the default). The
+  // IMAGE_BASED_PDF-when-OCR-never-attempted branch is therefore
+  // unreachable via normal operation today — it's kept as a defensive
+  // fallback, not something a test can currently exercise honestly.
+
+  it('11. OCR worker initialization that never resolves times out instead of hanging indefinitely (reported as OCR_FAILED — OCR was attempted)', async () => {
     vi.useFakeTimers();
     pdfParseGetText.mockResolvedValue(textResult(['x']));
     createWorkerMock.mockReturnValue(new Promise(() => {})); // never resolves
 
     const { extractTextFromFile } = await import('../documentParser');
     const resultPromise = extractTextFromFile(Buffer.from('pdf'), 'application/pdf');
-    const assertion = expect(resultPromise).rejects.toThrow(/IMAGE_BASED_PDF/);
+    const assertion = expect(resultPromise).rejects.toThrow(/OCR_FAILED/);
 
     await vi.advanceTimersByTimeAsync(25_000); // past the 20s worker-init timeout
     await assertion;

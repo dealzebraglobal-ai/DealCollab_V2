@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { createHash } from 'node:crypto';
 import { extractTextFromFile, logParseFailure, type ExtractionResult } from '@/lib/documentParser';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
@@ -145,6 +146,14 @@ export async function POST(req: NextRequest) {
         throw new Error(`Failed to fetch pre-uploaded file from URL: ${fileRes.statusText}`);
       }
       console.error(`${tag} file acquisition: ${Date.now() - downloadStart}ms`);
+      // Diagnostic only — no parsing/validation logic changed. Content-Length
+      // is read here purely for logging; the size gate below and the actual
+      // buffer content both already derive from the real downloaded bytes,
+      // never from this header, so a missing/wrong header cannot corrupt or
+      // mis-validate the file — it can only make this log line say "0".
+      console.error(
+        `${tag} storage-response status=${fileRes.status} content_type=${fileRes.headers.get('content-type') ?? 'none'} content_length=${fileRes.headers.get('content-length') ?? 'none'}`,
+      );
 
       // SECURITY: reject an oversized download before buffering it into
       // memory, using the server-reported Content-Length — don't rely on
@@ -162,6 +171,9 @@ export async function POST(req: NextRequest) {
       // Re-derive size from the actual downloaded bytes — never trust the
       // client-supplied fileSize for the size-limit check below.
       file.size = buffer.length;
+      console.error(
+        `${tag} file-buffer-ready size=${buffer.length} sha256=${createHash('sha256').update(buffer).digest('hex')} signature=${buffer.subarray(0, 5).toString('latin1') === '%PDF-' ? 'valid-pdf-header' : 'NOT-pdf-header'}`,
+      );
     } else {
       // Parse multipart form data
       let formData: FormData;
@@ -190,6 +202,9 @@ export async function POST(req: NextRequest) {
       // Convert File to Buffer
       const arrayBuffer = await formFile.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
+      console.error(
+        `${tag} file-buffer-ready size=${buffer.length} sha256=${createHash('sha256').update(buffer).digest('hex')} signature=${buffer.subarray(0, 5).toString('latin1') === '%PDF-' ? 'valid-pdf-header' : 'NOT-pdf-header'}`,
+      );
     }
     console.error(`${tag} STEP file-acquisition:success`);
 
@@ -280,6 +295,7 @@ export async function POST(req: NextRequest) {
     // safety net in case a future extraction path doesn't self-bound.
     let extraction: ExtractionResult;
     const extractionStart = Date.now();
+    console.error(`${tag} STEP parser:start`);
     try {
       extraction = await Promise.race([
         extractTextFromFile(buffer, mimeType, requestId),
@@ -441,6 +457,13 @@ export async function POST(req: NextRequest) {
     if (msg.includes('DOCUMENT_TOO_LARGE')) {
       status = 413;
       code = 'DOCUMENT_TOO_LARGE';
+    } else if (msg.includes('OCR_FAILED')) {
+      // Distinct from IMAGE_BASED_PDF: OCR was genuinely attempted and
+      // exhausted, not skipped — the frontend must not tell the user "we
+      // cannot read images" for this case, since OCR support exists.
+      status = 422;
+      code = 'OCR_FAILED';
+      retryable = true;
     } else if (msg.includes('IMAGE_BASED_PDF') || msg.includes('EXTRACTION_FAILED') || msg.includes('UNSUPPORTED_FILE_TYPE')) {
       status = 422;
       code = msg.includes('IMAGE_BASED_PDF') ? 'IMAGE_BASED_PDF' : msg.includes('UNSUPPORTED_FILE_TYPE') ? 'UNSUPPORTED_FILE_TYPE' : 'EXTRACTION_FAILED';

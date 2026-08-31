@@ -29,6 +29,20 @@ import type { PDFParse } from 'pdf-parse';
  *   next.config.ts strips console.log/warn in production) so the exact
  *   failing operation in a real production 500 can finally be identified —
  *   this is diagnostic-only, no parsing behavior changed.
+ * - 2026-08-31: fixed a real user-facing bug found via production testing
+ *   with an actual scanned PDF (Project_Damodar.pdf): OCR was being
+ *   attempted correctly for every low-text page, but when it failed to
+ *   produce usable text on every page, the resulting error was still
+ *   labeled IMAGE_BASED_PDF — the same code used when OCR is never
+ *   attempted at all — so the frontend told the user "this app cannot read
+ *   images" even though OCR support exists and genuinely ran. Failures are
+ *   now split into OCR_FAILED (OCR was attempted and exhausted) vs
+ *   IMAGE_BASED_PDF (OCR was never reached), added granular
+ *   ocr-worker-init/screenshot/ocr-recognize STEP markers with safe
+ *   metadata (mime type, byte size, duration, character count — never the
+ *   image or the recognized text), and added a minimum-alphanumeric-content
+ *   gate so a page that OCRs to a few garbage characters isn't counted as
+ *   "usable text" just because Tesseract didn't throw.
  */
 
 function envInt(name: string, fallback: number): number {
@@ -56,6 +70,20 @@ const DOCUMENT_MAX_TEXT_LENGTH = envInt('DOCUMENT_MAX_TEXT_LENGTH', 200_000); //
 // routed to OCR instead. Evaluated per page (not per document), which is
 // what makes true page-level hybrid extraction possible.
 const MIN_PAGE_TEXT_CHARS = 40;
+
+// OCR "succeeded" must mean more than "Tesseract returned without
+// throwing" — a misread noisy page can resolve with a handful of garbage
+// characters. Require a small amount of actual alphanumeric content before
+// counting a page's OCR result as usable. Deliberately low (unlike
+// MIN_PAGE_TEXT_CHARS, which gates the native-vs-OCR decision) since OCR
+// output is normally noisier than native text even when it's genuinely
+// correct — this only needs to filter out empty/near-empty misreads.
+const OCR_MIN_ALNUM_CHARS = 3;
+
+function hasUsableOcrText(text: string): boolean {
+  const alnumCount = (text.match(/[a-zA-Z0-9]/g) || []).length;
+  return alnumCount >= OCR_MIN_ALNUM_CHARS;
+}
 
 export interface ExtractionResult {
   text: string;
@@ -182,6 +210,7 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
     let usedNative = false;
     let usedOcr = false;
     let ocrPagesUsed = 0;
+    let ocrAttempted = false;
     const ocrStart = Date.now();
 
     for (let i = 0; i < pagesToProcess; i++) {
@@ -199,15 +228,22 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
         continue;
       }
 
+      if (!ocrAttempted) {
+        ocrAttempted = true;
+        console.error(`${tag} STEP ocr:start`);
+      }
+
       try {
         if (!worker) {
-          console.error(`${tag} STEP ocr:start`);
+          console.error(`${tag} STEP ocr-worker-init:start`);
+          const workerInitStart = Date.now();
           const { createWorker } = await import('tesseract.js');
           worker = await withTimeout(createWorker('eng'), OCR_WORKER_INIT_TIMEOUT_MS, 'OCR worker initialization');
-          console.error(`${tag} STEP ocr:success`);
+          console.error(`${tag} STEP ocr-worker-init:success duration_ms=${Date.now() - workerInitStart}`);
         }
 
         console.error(`${tag} STEP screenshot:start page=${pageNum}`);
+        const screenshotStart = Date.now();
         const shot = await withTimeout(
           parser.getScreenshot({ partial: [pageNum], imageDataUrl: true, imageBuffer: false }),
           OCR_PAGE_TIMEOUT_MS,
@@ -215,20 +251,33 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
         );
         const dataUrl = shot.pages[0]?.dataUrl;
         if (!dataUrl) throw new Error('page render produced no image data');
-        console.error(`${tag} STEP screenshot:success page=${pageNum}`);
+        // Safe metadata only — never the image data itself. A data URL is
+        // `data:<mime>;base64,<payload>`; report the mime and payload byte
+        // length (not the payload) so a broken render (wrong mime, 0 bytes)
+        // is visible in logs without ever emitting the image.
+        const [dataUrlHeader, dataUrlPayload] = dataUrl.split(',', 2);
+        const renderedMimeType = dataUrlHeader?.match(/^data:([^;]+)/)?.[1] ?? 'unknown';
+        console.error(
+          `${tag} STEP screenshot:success page=${pageNum} duration_ms=${Date.now() - screenshotStart} type=${renderedMimeType} size=${dataUrlPayload?.length ?? 0}`,
+        );
 
+        console.error(`${tag} STEP ocr-recognize:start page=${pageNum}`);
+        const recognizeStart = Date.now();
         const { data: { text: ocrText } } = await withTimeout(
           worker.recognize(dataUrl),
           OCR_PAGE_TIMEOUT_MS,
           `OCR page ${pageNum} recognition`,
         );
+        console.error(
+          `${tag} STEP ocr-recognize:success page=${pageNum} duration_ms=${Date.now() - recognizeStart} chars=${ocrText.length}`,
+        );
 
         ocrPagesUsed++;
-        if (ocrText.trim()) {
+        if (hasUsableOcrText(ocrText)) {
           perPageText.push(ocrText.trim());
           usedOcr = true;
         } else {
-          warnings.push(`Page ${pageNum} produced no readable text (native extraction and OCR both came back empty).`);
+          warnings.push(`Page ${pageNum} produced no readable text (native extraction and OCR both came back empty or unusable).`);
         }
       } catch (pageErr) {
         ocrPagesUsed++;
@@ -238,6 +287,7 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
     }
 
     if (ocrPagesUsed > 0) {
+      console.error(`${tag} STEP ocr:complete pages=${ocrPagesUsed}`);
       console.error(`${tag} OCR: ${Date.now() - ocrStart}ms pages=${ocrPagesUsed}`);
     }
 
@@ -248,8 +298,21 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
     }
 
     if (!text.trim()) {
+      // IMAGE_BASED_PDF and OCR_FAILED are deliberately different codes —
+      // collapsing them previously made the frontend tell users "we cannot
+      // read images" even when OCR genuinely ran and simply couldn't
+      // produce usable text (garbled scan, unsupported script, a render/
+      // recognition failure on every page). OCR_FAILED means the OCR
+      // pipeline was reached and exhausted; IMAGE_BASED_PDF is reserved for
+      // when OCR was never attempted at all (e.g. DOCUMENT_MAX_OCR_PAGES
+      // configured to 0) — a genuinely different, much rarer situation.
+      if (ocrAttempted) {
+        throw new Error(
+          `OCR_FAILED: OCR was attempted on ${ocrPagesUsed} page(s) but did not produce usable text.`,
+        );
+      }
       throw new Error(
-        'IMAGE_BASED_PDF: No readable text could be extracted from any page (native extraction and OCR both produced nothing usable).',
+        'IMAGE_BASED_PDF: No readable text could be extracted from any page and OCR was not attempted.',
       );
     }
 
