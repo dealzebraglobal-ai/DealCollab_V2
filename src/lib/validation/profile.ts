@@ -422,57 +422,12 @@ export function isStepValid(step: number, data: ProfileFormData): boolean {
   return validateStep(step, data).length === 0;
 }
 
+import { getProfileCompletion } from '../profileCompletion';
+
 /**
- * Calculate profile completion percentage
- * Tracks all required + important fields
+ * Calculate profile completion percentage using canonical definition
  */
 export function calculateProgress(data: ProfileFormData): number {
-  const isBusinessPromoter = data.professionalCategory.includes('Business Owner / Promoter');
-
-  if (isBusinessPromoter) {
-    const mandatoryChecks = [
-      !!data.fullName.trim(),
-      !!data.workEmail.trim() && isValidEmail(data.workEmail),
-      !!data.companyName.trim(),
-      !!data.website.trim() && isValidWebsite(data.website),
-      data.currentFocus.length > 0,
-      !!data.termsAccepted,
-    ];
-
-    if (mandatoryChecks.every(Boolean)) {
-      return 100;
-    }
-
-    const filled = mandatoryChecks.filter(Boolean).length;
-    return Math.round((filled / mandatoryChecks.length) * 100);
-  }
-
-
-  const checks = [
-    // Section 1: Basic Identity (weight: high)
-    !!data.fullName.trim(),
-    !!data.workEmail.trim() && isValidEmail(data.workEmail),
-    !!data.phone.trim(),
-    !!data.role,
-    data.professionalCategory.length > 0,
-    // Section 2: Geography
-    !!data.baseCity.trim(),
-    !!data.baseCountry.trim(),
-    data.activeGeographies.length > 0,
-    // Section 3: Expertise
-    data.primarySectors.length > 0,
-    // Section 4: Current Intent
-    data.currentFocus.length > 0,
-    data.expertiseDescription.trim().length >= 60,
-    // Section 5: Active Mandates
-    data.activeMandates.length > 0,
-    // Section 6: Collaboration
-    true, // coAdvisory always has a value
-    // Section 9: Terms and Conditions
-    !!data.termsAccepted,
-  ];
-
-  const filled = checks.filter(Boolean).length;
-  return Math.round((filled / checks.length) * 100);
+  return getProfileCompletion(data).percentage;
 }
 

@@ -69,6 +69,8 @@ interface UserContextType {
   approveEOI: (dealId: number) => void;
   canSendEOI: boolean;
   isAuthenticated: boolean;
+  isProfileLoading: boolean;
+  isProfileComplete: boolean;
   login: () => void;
   logout: (reason?: 'session_expired' | 'link_expired') => void;
   refreshProfile: () => Promise<void>;
@@ -112,6 +114,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   
   const [tokens, setTokens] = useState<number | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(true);
   const [approvedDeals, setApprovedDeals] = useState<number[]>([]);
   const isAuthenticated = status === 'authenticated';
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -136,75 +139,93 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const fetchSupabaseData = useCallback(async () => {
     if (!supabase) {
       setGlobalError("Supabase configuration is missing. Please check your .env file.");
+      setIsProfileLoading(false);
       return;
     }
     const userEmail = session?.user?.email?.trim().toLowerCase();
-    if (!userEmail) return;
+    if (!userEmail) {
+      setIsProfileLoading(false);
+      return;
+    }
 
     console.log("FETCHING PROFILE DATA FROM API FOR:", userEmail);
 
-    const response = await fetch('/api/profile');
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("FAILED TO FETCH PROFILE FROM API", {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-      return;
-    }
-    
-    const data = await response.json();
-    
-    if (data) {
-      const dbTokens = data.tokens ?? data.profile?.tokens ?? 0;
-      console.log("SYNCING TOKENS TO UI:", dbTokens);
+    try {
+      const response = await fetch('/api/profile');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("FAILED TO FETCH PROFILE FROM API", {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        setIsProfileLoading(false);
+        return;
+      }
       
-      setTokens(dbTokens); 
+      const data = await response.json();
       
-      const rawDbImage = data.profile_image || data.profileImage;
-      const dbProfileImage = (rawDbImage && rawDbImage.includes('googleusercontent.com')) ? null : rawDbImage;
-      const authImage = session?.user?.image;
-      const userAvatar = dbProfileImage || authImage || null;
+      if (data) {
+        const dbTokens = data.tokens ?? data.profile?.tokens ?? 0;
+        console.log("SYNCING TOKENS TO UI:", dbTokens);
+        
+        setTokens(dbTokens); 
+        
+        const rawDbImage = data.profile_image || data.profileImage;
+        const dbProfileImage = (rawDbImage && rawDbImage.includes('googleusercontent.com')) ? null : rawDbImage;
+        const authImage = session?.user?.image;
+        const userAvatar = dbProfileImage || authImage || null;
 
-      const profileCompleted = !!(data.profileCompleted || data.profile_completed || data.profileCompletedOnce || data.profile_completed_once || (data.profileCompletion || data.profile_completion || 0) >= 100);
-      const tutorialCompleted = !!(data.onboardingTutorialCompleted || data.onboarding_tutorial_completed);
+        const profileCompleted = !!(
+          data.profileCompleted ||
+          data.profile_completed ||
+          data.profileCompletedOnce ||
+          data.profile_completed_once ||
+          data.isComplete ||
+          (data.profileCompletion || data.profile_completion || 0) >= 100
+        );
+        const tutorialCompleted = !!(data.onboardingTutorialCompleted || data.onboarding_tutorial_completed);
 
-      setProfile({
-        ...data,
-        fullName: data.name || data.fullName,
-        firmName: data.firmName || data.firm_name,
-        companyName: data.companyName || data.company_name,
-        website: data.website,
-        customRole: data.customRole || data.custom_role,
-        customCategory: data.customCategory || data.custom_category,
-        baseLocation: data.baseLocation || data.base_location,
-        baseCity: data.baseCity || data.base_city,
-        baseCountry: data.baseCountry || data.base_country,
-        crossBorder: data.crossBorder ?? data.cross_border,
-        expertiseDescription: data.expertiseDescription || data.expertise_description,
-        activeMandates: data.activeMandates || data.active_mandates,
-        profileAttachmentUrl: data.profileAttachmentUrl || data.profile_attachment_url,
-        profileImage: dbProfileImage || null,
-        userAvatar: userAvatar,
-        additionalInfo: data.additionalInfo || data.additional_info,
-        profileCompletion: data.profileCompletion || data.profile_completion,
-        profileCompleted,
-        profileCompletedOnce: data.profileCompletedOnce ?? data.profile_completed_once,
-        onboardingTutorialCompleted: tutorialCompleted,
-        intent: data.intent || data.currentFocus || [],
-        currentFocus: data.currentFocus || data.intent || [],
-        tokens: dbTokens,
-      });
-      
-      setOnboardingState(prev => ({
-        phoneVerified: !!(data.is_phone_verified || data.phone),
-        profileCompleted,
-        dealSubmitted: prev.dealSubmitted,
-        tutorialCompleted,
-      }));
+        setProfile({
+          ...data,
+          fullName: data.name || data.fullName,
+          firmName: data.firmName || data.firm_name,
+          companyName: data.companyName || data.company_name,
+          website: data.website,
+          customRole: data.customRole || data.custom_role,
+          customCategory: data.customCategory || data.custom_category,
+          baseLocation: data.baseLocation || data.base_location,
+          baseCity: data.baseCity || data.base_city,
+          baseCountry: data.baseCountry || data.base_country,
+          crossBorder: data.crossBorder ?? data.cross_border,
+          expertiseDescription: data.expertiseDescription || data.expertise_description,
+          activeMandates: data.activeMandates || data.active_mandates,
+          profileAttachmentUrl: data.profileAttachmentUrl || data.profile_attachment_url,
+          profileImage: dbProfileImage || null,
+          userAvatar: userAvatar,
+          additionalInfo: data.additionalInfo || data.additional_info,
+          profileCompletion: profileCompleted ? 100 : (data.profileCompletion || data.profile_completion || 0),
+          profileCompleted,
+          profileCompletedOnce: data.profileCompletedOnce ?? data.profile_completed_once ?? profileCompleted,
+          onboardingTutorialCompleted: tutorialCompleted,
+          intent: data.intent || data.currentFocus || [],
+          currentFocus: data.currentFocus || data.intent || [],
+          tokens: dbTokens,
+        });
+        
+        setOnboardingState(prev => ({
+          phoneVerified: !!(data.is_phone_verified || data.phone),
+          profileCompleted,
+          dealSubmitted: prev.dealSubmitted,
+          tutorialCompleted,
+        }));
+      }
+    } catch (err) {
+      console.error('Error in fetchSupabaseData:', err);
+    } finally {
+      setIsProfileLoading(false);
     }
-  }, [session, status, supabase]);
+  }, [session, supabase]);
 
   const completeOnboardingTutorial = useCallback(async () => {
     if (typeof window !== 'undefined') {
@@ -223,9 +244,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Sync with Supabase (REAL DATA)
   useEffect(() => {
     if (status === 'authenticated') {
+      setIsProfileLoading(true);
       (async () => {
         await fetchSupabaseData();
       })();
+    } else if (status === 'unauthenticated') {
+      setIsProfileLoading(false);
     }
   }, [status, fetchSupabaseData]);
 
@@ -237,6 +261,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setTokens(0);
     setApprovedDeals([]);
+    setIsProfileLoading(false);
     setOnboardingState({
       phoneVerified: false,
       profileCompleted: false,
@@ -330,10 +355,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const canSendEOI = (status === 'authenticated' ? (tokens ?? 0) : 0) > 0;
 
+  const isProfileComplete = useMemo(() => {
+    if (status !== 'authenticated' || !profile) return false;
+    return !!(
+      profile.profileCompleted ||
+      profile.profileCompletedOnce ||
+      (profile.profileCompletion ?? 0) >= 100 ||
+      onboarding.profileCompleted
+    );
+  }, [status, profile, onboarding.profileCompleted]);
+
   return (
     <UserContext.Provider value={{ 
       tokens: status === 'authenticated' ? tokens : 0, 
       profile: status === 'authenticated' ? profile : null,
+      isProfileLoading,
+      isProfileComplete,
       approvedDeals, 
       isEOIApproved, 
       approveEOI, 
@@ -343,7 +380,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       logout,
       refreshProfile: fetchSupabaseData,
       completeOnboardingTutorial,
-      onboarding: status === 'authenticated' ? onboarding : {
+      onboarding: status === 'authenticated' ? {
+        ...onboarding,
+        profileCompleted: isProfileComplete,
+      } : {
         phoneVerified: false,
         profileCompleted: false,
         dealSubmitted: false,

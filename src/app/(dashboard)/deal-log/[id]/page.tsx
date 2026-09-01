@@ -41,7 +41,7 @@ const PREVIEW_TRUNCATE = 400;
 export default function MatchDetailPage() {
    const params = useParams();
    const router = useRouter();
-   const { tokens, onboarding, refreshProfile } = useUser();
+   const { tokens, onboarding, profile, isProfileLoading, isProfileComplete, refreshProfile } = useUser();
    const { addNotification } = useNotifications();
    const id = params.id as string;
 
@@ -76,8 +76,19 @@ export default function MatchDetailPage() {
    const dealSummary = counterparty?.anonymizedPreview || counterparty?.teaser || '';
 
    const handleSendEOI = async () => {
+      if (isProfileLoading) {
+         return;
+      }
+
       // 1. Pre-check: Must have completed profile
-      if (!onboarding?.profileCompleted) {
+      const userProfileComplete = isProfileComplete || !!(
+         onboarding?.profileCompleted ||
+         profile?.profileCompleted ||
+         profile?.profileCompletedOnce ||
+         (profile?.profileCompletion ?? 0) >= 100
+      );
+
+      if (!userProfileComplete) {
          setSendError('Please complete your profile to unlock and send Expressions of Interest.');
          return;
       }
@@ -103,7 +114,7 @@ export default function MatchDetailPage() {
 
          const json = await resEoi.json().catch(() => ({}));
          if (!resEoi.ok) {
-            setSendError(json.message || json.error || 'Please complete your profile');
+            setSendError(json.message || json.error || 'Failed to send Expression of Interest');
             return;
          }
 

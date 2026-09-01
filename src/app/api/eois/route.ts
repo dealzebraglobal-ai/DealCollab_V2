@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { buildBlindCounterparty, type CounterpartyProposalRow } from '@/lib/M5_blindCard';
 import { buildSynergyReview, type SynergySide } from '@/lib/M5_synergy';
-import { hasAcceptedTerms } from '@/lib/consent';
+import { hasAcceptedTerms, recordAcceptance } from '@/lib/consent';
 import { deliverNotificationEmail, type NotificationRow } from '@/lib/email/notifications/delivery';
 
 export const runtime = "nodejs";
@@ -214,17 +214,29 @@ export async function POST(req: NextRequest) {
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    const { data: dbUser } = await supabase.from('users').select('id').eq('email', session.user.email).single();
+    const { data: dbUser } = await supabase
+      .from('users')
+      .select('id, profile_completion, profile_completed_once')
+      .ilike('email', session.user.email.trim().toLowerCase())
+      .single();
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    if (!(await hasAcceptedTerms(dbUser.id))) {
-      return NextResponse.json(
-        {
-          error: 'consent_required',
-          message: 'Please complete your profile'
-        },
-        { status: 403 },
-      );
+    const termsAccepted = await hasAcceptedTerms(dbUser.id, session.user?.id);
+    const isProfileComplete = !!(dbUser.profile_completed_once || (dbUser.profile_completion ?? 0) >= 100);
+
+    if (!termsAccepted) {
+      if (isProfileComplete) {
+        // Auto-heal terms acceptance for already-completed profile
+        await recordAcceptance(dbUser.id, undefined, session.user?.id).catch(() => {});
+      } else {
+        return NextResponse.json(
+          {
+            error: 'consent_required',
+            message: 'Please complete your profile to unlock and send Expressions of Interest.'
+          },
+          { status: 403 },
+        );
+      }
     }
 
     // SECURITY (IDOR): previously dealId, matchId, AND receiverId were all

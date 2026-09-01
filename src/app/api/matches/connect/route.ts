@@ -2,7 +2,7 @@
 import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { hasAcceptedTerms } from '@/lib/consent';
+import { hasAcceptedTerms, recordAcceptance } from '@/lib/consent';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,20 +42,29 @@ export async function POST(req: NextRequest) {
         // Resolve user
         const { data: user } = await supabase
             .from('users')
-            .select('id')
-            .eq('email', session.user.email)
+            .select('id, profile_completion, profile_completed_once')
+            .ilike('email', session.user.email.trim().toLowerCase())
             .single();
 
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        if (!(await hasAcceptedTerms(user.id))) {
-            return NextResponse.json(
-                { error: 'consent_required',
-                  message: 'Please complete your profile' },
-                { status: 403 },
-            );
+        const termsAccepted = await hasAcceptedTerms(user.id, session.user?.id);
+        const isProfileComplete = !!(user.profile_completed_once || (user.profile_completion ?? 0) >= 100);
+
+        if (!termsAccepted) {
+            if (isProfileComplete) {
+                await recordAcceptance(user.id, undefined, session.user?.id).catch(() => {});
+            } else {
+                return NextResponse.json(
+                    {
+                        error: 'consent_required',
+                        message: 'Please complete your profile to unlock and send Expressions of Interest.'
+                    },
+                    { status: 403 },
+                );
+            }
         }
 
         // Atomic RPC: token check + deduct + ledger + connection record

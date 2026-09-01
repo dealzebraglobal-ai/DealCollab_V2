@@ -1,9 +1,9 @@
 import { auth } from '@/auth';
-import { calculateProfileCompletion } from '@/lib/profileCompletion';
+import { calculateProfileCompletion, getProfileCompletion } from '@/lib/profileCompletion';
 import { ProfileFormData, validateFullProfile } from '@/lib/validation/profile';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { hasAcceptedTerms } from '@/lib/consent';
+import { hasAcceptedTerms, recordAcceptance } from '@/lib/consent';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +83,15 @@ export async function GET(_req: NextRequest) {
     }
  
     const isBusinessPromoter = profile.category?.includes('Business Owner / Promoter') || false;
+    const accepted = await hasAcceptedTerms(profile.id, session.user?.id);
+    const mergedUser = {
+      ...profile,
+      ...(endUserProfile || {}),
+      terms_accepted: accepted,
+    };
+    const canonical = getProfileCompletion(mergedUser);
+    const isComplete = canonical.isComplete || !!profile.profile_completed_once || (profile.profile_completion ?? 0) >= 100;
+    const finalPercentage = isComplete ? 100 : canonical.percentage;
 
     // Map DB (snake_case) to Frontend (camelCase)
     const profileData = {
@@ -113,9 +122,11 @@ export async function GET(_req: NextRequest) {
       profileAttachmentUrl: isBusinessPromoter ? null : profile.profile_attachment_url,
       profileImage: profile.profile_image,
       additionalInfo: isBusinessPromoter ? null : profile.additional_info,
-      profileCompletion: profile.profile_completion || 0,
-      profileCompletedOnce: !!profile.profile_completed_once,
-      profileCompleted: (profile.profile_completion || 0) >= 100 || !!profile.profile_completed_once,
+      profileCompletion: finalPercentage,
+      profileCompletedOnce: !!profile.profile_completed_once || isComplete,
+      profileCompleted: isComplete,
+      isComplete: isComplete,
+      missingFields: isComplete ? [] : canonical.missingFields,
       onboardingTutorialCompleted: !!profile.onboarding_tutorial_completed,
       tokens: profile.tokens,
     };
@@ -260,15 +271,31 @@ export async function POST(req: NextRequest) {
         .eq('user_id', currentUser.id);
     }
 
-    // 5. Recalculate completion using the NEW logic based on DB state
+    // Record terms acceptance if accepted in body
+    if (body.termsAccepted || (body as { terms_accepted?: boolean }).terms_accepted) {
+      try {
+        await recordAcceptance(
+          currentUser.id,
+          {
+            ip: req.headers.get('x-forwarded-for') ?? undefined,
+            userAgent: req.headers.get('user-agent') ?? undefined,
+          },
+          session.user?.id,
+        );
+      } catch (consentErr) {
+        console.error('[PROFILE POST] recordAcceptance error:', consentErr);
+      }
+    }
+
+    // 5. Recalculate completion using canonical logic based on DB state
     const { data: updatedUser } = await supabase
       .from("users")
       .select("*")
       .ilike("email", email)
       .single();
 
-    const accepted = await hasAcceptedTerms(updatedUser.id);
-    let mergedUser = { ...updatedUser, terms_accepted: accepted };
+    const accepted = await hasAcceptedTerms(updatedUser.id, session.user?.id);
+    let mergedUser = { ...updatedUser, terms_accepted: accepted || !!body.termsAccepted };
     
     if (isBusinessPromoter) {
       const { data: eup } = await supabase
@@ -285,23 +312,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const score = calculateProfileCompletion(mergedUser);
+    const canonical = getProfileCompletion(mergedUser);
+    const score = canonical.percentage;
+    const isComplete = canonical.isComplete || score === 100;
     let tokenIncrement = 0;
 
     // Reward logic: +100 tokens if reaching 100% for the first time
-    if (score === 100 && !currentUser.profile_completed_once) {
+    if (isComplete && !currentUser.profile_completed_once) {
       tokenIncrement = 100;
       const finalTokensWithReward = (updatedUser.tokens ?? 0) + tokenIncrement;
 
       await supabase
         .from("users")
         .update({
-          profile_completion: score,
+          profile_completion: 100,
           profile_completed_once: true,
           tokens: finalTokensWithReward
         })
         .ilike("email", email);
-
 
       shouldShowSuccess = true;
 
@@ -318,7 +346,10 @@ export async function POST(req: NextRequest) {
     } else {
       await supabase
         .from("users")
-        .update({ profile_completion: score })
+        .update({ 
+          profile_completion: score,
+          profile_completed_once: currentUser.profile_completed_once || isComplete
+        })
         .ilike("email", email);
     }
 
@@ -326,7 +357,9 @@ export async function POST(req: NextRequest) {
       success: true,
       rewarded: tokenIncrement > 0,
       shouldShowSuccess,
-      progress: score
+      progress: isComplete ? 100 : score,
+      isComplete,
+      missingFields: isComplete ? [] : canonical.missingFields
     });
   } catch (error: unknown) {
     console.error("FULL ERROR:", error);

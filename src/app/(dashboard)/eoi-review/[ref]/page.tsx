@@ -12,10 +12,17 @@ import {
 export default function EOIReviewPage() {
   const params = useParams();
   const router = useRouter();
-  const { tokens, approveEOI, onboarding } = useUser();
+  const { tokens, approveEOI, onboarding, profile, isProfileLoading, isProfileComplete } = useUser();
   const { addNotification } = useNotifications();
   const [isProcessing, setIsProcessing] = useState(false);
   const [decision, setDecision] = useState<'pending' | 'approved' | 'declined'>('pending');
+
+  const userProfileComplete = isProfileComplete || !!(
+    onboarding?.profileCompleted ||
+    profile?.profileCompleted ||
+    profile?.profileCompletedOnce ||
+    (profile?.profileCompletion ?? 0) >= 100
+  );
 
   // Mock Match Data
   const matchData = {
@@ -45,7 +52,9 @@ export default function EOIReviewPage() {
   };
 
   const handleApprove = () => {
-    if (!onboarding.profileCompleted) {
+    if (isProfileLoading) return;
+
+    if (!userProfileComplete) {
       addNotification({
         type: 'error',
         message: 'Profile completion required for approval.',
@@ -252,7 +261,7 @@ export default function EOIReviewPage() {
       <div className="bg-white border-t border-gray-100 px-8 py-6 absolute bottom-0 left-0 right-0 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-30">
          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-               {!onboarding.profileCompleted ? (
+               {!isProfileLoading && !userProfileComplete ? (
                  <div className="flex items-center gap-3 p-3 bg-red-50 rounded-2xl border border-red-100">
                     <AlertCircle size={20} className="text-red-500" />
                     <div>

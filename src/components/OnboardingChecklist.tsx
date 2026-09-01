@@ -4,10 +4,10 @@ import { useUser } from './UserProvider';
 import Link from 'next/link';
 
 export default function OnboardingChecklist() {
-  const { onboarding, totalScore } = useUser();
+  const { onboarding, isProfileComplete, profile } = useUser();
 
   const { phoneVerified } = onboarding;
-  const profileCompleted = totalScore === 100;
+  const profileCompleted = isProfileComplete || !!(onboarding.profileCompleted || profile?.profileCompleted || (profile?.profileCompletion ?? 0) >= 100);
 
   // Don't show if both steps are complete
   if (phoneVerified && profileCompleted) return null;
