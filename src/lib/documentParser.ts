@@ -179,9 +179,20 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
   console.error(`${tag} STEP parser-init:start`);
   let parser: PDFParse;
   try {
-    // In Node.js / Next.js server runtime, pdf-parse v2 requires pdf-parse/worker
-    // to be imported first so that @napi-rs/canvas registers DOMMatrix globally
-    // and provides CanvasFactory for page rendering and text processing.
+    // 1. Ensure DOMMatrix exists globally even before @napi-rs/canvas loads
+    if (typeof globalThis !== 'undefined' && typeof (globalThis as any).DOMMatrix === 'undefined') {
+      (globalThis as any).DOMMatrix = class DOMMatrix {
+        a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+        constructor(init?: number[]) {
+          if (Array.isArray(init) && init.length >= 6) {
+            this.a = init[0]; this.b = init[1]; this.c = init[2];
+            this.d = init[3]; this.e = init[4]; this.f = init[5];
+          }
+        }
+      };
+    }
+
+    // 2. In Node.js / Next.js server runtime, import pdf-parse/worker for @napi-rs/canvas
     let CanvasFactory: any = undefined;
     try {
       const workerModule = await import('pdf-parse/worker');
@@ -216,16 +227,22 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
       console.error(`${tag} native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
       console.error(`${tag} STEP native-extraction:success`);
     } catch (pdfErr) {
-      // getText() throwing means pdf-parse could not extract text via its
-      // normal path — it is NOT evidence the PDF is scanned/image-based,
-      // and it does NOT mean the document is unreadable altogether:
-      // getScreenshot() (page rendering) and getInfo() (page count) are
-      // independent code paths that can still work. Don't give up here —
-      // fall back to OCR-ing every page, same as a page that has no usable
-      // native text.
-      nativeExtractionError = pdfErr;
-      logParseFailure(requestId, 'native-extraction', pdfErr);
-      console.error(`${tag} STEP native-extraction:failure — falling back to OCR`);
+      // Fallback attempt: try officeparser before giving up to OCR
+      try {
+        const { OfficeParser } = await import('officeparser');
+        const ast = await OfficeParser.parseOffice(buffer, { outputErrorToConsole: false });
+        const fallbackText = cleanText(ast.toText());
+        if (fallbackText.length > 50) {
+          textResult = { total: 1, pages: [{ num: 1, text: fallbackText }] };
+          console.error(`${tag} STEP native-extraction:officeparser-fallback-success chars=${fallbackText.length}`);
+        }
+      } catch { /* proceed to OCR fallback */ }
+
+      if (!textResult) {
+        nativeExtractionError = pdfErr;
+        logParseFailure(requestId, 'native-extraction', pdfErr);
+        console.error(`${tag} STEP native-extraction:failure — falling back to OCR`);
+      }
     }
 
     let totalPages: number;
