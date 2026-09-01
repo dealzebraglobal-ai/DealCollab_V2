@@ -118,6 +118,17 @@ export default function MatchDetailPage() {
             return;
          }
 
+         if (json.errorCode === 'EOI_ALREADY_EXISTS') {
+            addNotification({
+               type: 'status',
+               message: 'An Expression of Interest has already been sent for this match.',
+               time: 'Just now'
+            });
+            mutate();
+            router.push('/deal-dashboard');
+            return;
+         }
+
          await refreshProfile();
 
          addNotification({
