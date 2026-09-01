@@ -24,7 +24,6 @@ function bytesStartWith(buffer: Buffer, offset: number, signature: number[]): bo
   return true;
 }
 
-const PDF_SIG = [0x25, 0x50, 0x44, 0x46, 0x2d]; // "%PDF-"
 const OLE_SIG = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]; // legacy .doc/.ppt (Compound File)
 const ZIP_SIGS = [
   [0x50, 0x4b, 0x03, 0x04],
@@ -56,9 +55,10 @@ function looksLikeText(buffer: Buffer): boolean {
 export function checkFileSignature(buffer: Buffer, mimeType: string): SignatureCheckResult {
   switch (mimeType) {
     case 'application/pdf':
-      return bytesStartWith(buffer, 0, PDF_SIG)
+      // ISO 32000-1 (PDF spec): %PDF- must appear in the first 1024 bytes (allows BOM or leading whitespace)
+      return buffer.subarray(0, 1024).includes(Buffer.from('%PDF-'))
         ? { valid: true }
-        : { valid: false, reason: 'File does not have a valid PDF signature' };
+        : { valid: false, reason: 'File does not have a valid PDF signature (%PDF-)' };
 
     case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
     case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':

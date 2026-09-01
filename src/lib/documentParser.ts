@@ -1,4 +1,5 @@
 import mammoth from 'mammoth';
+import zlib from 'node:zlib';
 
 interface PDFParseInstance {
   getText(params?: Record<string, unknown>): Promise<{ total: number; text?: string; pages: Array<{ num: number; text: string }> }>;
@@ -105,6 +106,61 @@ function cleanText(text: string): string {
     .trim();
 }
 
+function extractPdfStreamFallback(buffer: Buffer): { total: number; pages: Array<{ num: number; text: string }> } | null {
+  try {
+    const textChunks: string[] = [];
+    let idx = 0;
+    while ((idx = buffer.indexOf(Buffer.from('stream'), idx)) !== -1) {
+      let startOfStream = idx + 6;
+      if (buffer[startOfStream] === 0x0d && buffer[startOfStream + 1] === 0x0a) {
+        startOfStream += 2;
+      } else if (buffer[startOfStream] === 0x0a || buffer[startOfStream] === 0x0d) {
+        startOfStream += 1;
+      }
+      const endStreamIdx = buffer.indexOf(Buffer.from('endstream'), startOfStream);
+      if (endStreamIdx === -1) break;
+
+      const streamData = buffer.subarray(startOfStream, endStreamIdx);
+      let decompressed: Buffer;
+      try {
+        decompressed = zlib.inflateSync(streamData);
+      } catch {
+        try {
+          decompressed = zlib.inflateRawSync(streamData);
+        } catch {
+          decompressed = streamData;
+        }
+      }
+
+      const content = decompressed.toString('latin1');
+      if (content.includes('BT') && content.includes('ET')) {
+        const tjRegex = /\(([\s\S]*?)\)\s*Tj/g;
+        let m: RegExpExecArray | null;
+        while ((m = tjRegex.exec(content)) !== null) {
+          textChunks.push(m[1]);
+        }
+        const tjArrayRegex = /\[([\s\S]*?)\]\s*TJ/g;
+        while ((m = tjArrayRegex.exec(content)) !== null) {
+          const inner = m[1];
+          const innerStrRegex = /\(([\s\S]*?)\)/g;
+          let im: RegExpExecArray | null;
+          while ((im = innerStrRegex.exec(inner)) !== null) {
+            textChunks.push(im[1]);
+          }
+        }
+      }
+      idx = endStreamIdx + 9;
+    }
+    const combined = cleanText(textChunks.join(' '));
+    if (combined.length >= MIN_PAGE_TEXT_CHARS) {
+      return { total: 1, pages: [{ num: 1, text: combined }] };
+    }
+  } catch {
+    // Stream fallback is best-effort
+  }
+  return null;
+}
+
 export async function extractDocxText(fileBuffer: Buffer): Promise<string> {
   try {
     const result = await mammoth.extractRawText({ buffer: fileBuffer });
@@ -139,9 +195,21 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
       };
     }
 
+    let CanvasFactory: unknown = undefined;
+    try {
+      const workerModule = await import('pdf-parse/worker');
+      CanvasFactory = workerModule.CanvasFactory;
+      const { PDFParse } = await import('pdf-parse');
+      if (typeof PDFParse?.setWorker === 'function' && typeof workerModule.getData === 'function') {
+        PDFParse.setWorker(workerModule.getData());
+      }
+    } catch {
+      // In-memory worker setup is progressive enhancement
+    }
+
     const pdfParseModule = await import('pdf-parse');
-    const PDFParseConstructor = (pdfParseModule.PDFParse || (pdfParseModule as unknown as { default: new (opts: { data: Buffer }) => PDFParseInstance }).default) as new (opts: { data: Buffer }) => PDFParseInstance;
-    parser = new PDFParseConstructor({ data: buffer });
+    const PDFParseConstructor = (pdfParseModule.PDFParse || (pdfParseModule as unknown as { default: new (opts: { data: Buffer; CanvasFactory?: unknown }) => PDFParseInstance }).default) as new (opts: { data: Buffer; CanvasFactory?: unknown }) => PDFParseInstance;
+    parser = new PDFParseConstructor({ data: buffer, CanvasFactory });
   } catch (initErr) {
     logParseFailure(requestId, 'PDF_PARSER_INIT_FAILED', initErr);
     throw new Error(`EXTRACTION_FAILED: PDF parser initialization failed (${initErr instanceof Error ? initErr.message : String(initErr)})`);
@@ -163,7 +231,13 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
     } catch (pdfErr) {
       nativeExtractionError = pdfErr;
       logParseFailure(requestId, 'PDF_NATIVE_EXTRACTION_FAILED', pdfErr);
-      console.error(`${tag} STEP native-extraction:failure — falling back to OCR`);
+      const streamFallback = extractPdfStreamFallback(buffer);
+      if (streamFallback) {
+        textResult = streamFallback;
+        console.error(`${tag} STEP native-extraction:stream-fallback-success chars=${streamFallback.pages[0]?.text.length}`);
+      } else {
+        console.error(`${tag} STEP native-extraction:failure — falling back to OCR`);
+      }
     }
 
     let totalPages: number;
