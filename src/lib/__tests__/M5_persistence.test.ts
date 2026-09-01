@@ -54,9 +54,9 @@ describe('M5_persistence pure builders', () => {
     const ss = buildSavedSearchRecord(ssIn, 'P1', [0.1, 0.2, 0.3], 3, true);
     expect(typeof ss.query_object).toBe('object');
     expect(ss.query_object).not.toBeNull();
-    expect((ss.query_object as any).intent).toBe('BUY_SIDE');
-    expect((ss.query_object as any).industry).toBe('vertical SaaS for clinics');
-    expect((ss.query_object as any).deal_size_max_cr).toBe(100);
+    expect((ss.query_object as Record<string, unknown>).intent).toBe('BUY_SIDE');
+    expect((ss.query_object as Record<string, unknown>).industry).toBe('vertical SaaS for clinics');
+    expect((ss.query_object as Record<string, unknown>).deal_size_max_cr).toBe(100);
     expect(Array.isArray(ss.query_embedding) && ss.query_embedding.length === 3).toBe(true);
     expect(ss.min_score).toBe(60);
     expect(MIN_MATCH_SCORE).toBe(60);
@@ -93,8 +93,8 @@ describe('M5_persistence pure builders', () => {
     expect(n.match_id).toBe('M1');
     expect(n.proposal_id).toBe('OLDPROP');
     expect(Array.isArray(n.delivery_channels) && n.delivery_channels.includes('in_app')).toBe(true);
-    expect((n.metadata as any).blind).toBe(true);
-    expect((n.metadata as any).subject_ref).toBe('#A1B2C3');
+    expect((n.metadata as Record<string, unknown>).blind).toBe(true);
+    expect((n.metadata as Record<string, unknown>).subject_ref).toBe('#A1B2C3');
     expect(/\d{10}/.test(n.message)).toBe(false);
     expect(/ltd|pvt|advisor|@/i.test(n.message)).toBe(false);
     expect(/strong/.test(n.message)).toBe(true);
