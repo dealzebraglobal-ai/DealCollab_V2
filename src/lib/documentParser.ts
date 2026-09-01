@@ -1,5 +1,11 @@
 import mammoth from 'mammoth';
-import type { PDFParse } from 'pdf-parse';
+
+interface PDFParseInstance {
+  getText(params?: any): Promise<{ total: number; text?: string; pages: Array<{ num: number; text: string }> }>;
+  getInfo(params?: any): Promise<{ total?: number }>;
+  getScreenshot(options: { partial?: number[]; imageDataUrl?: boolean; imageBuffer?: boolean }): Promise<{ pages: Array<{ dataUrl?: string }> }>;
+  destroy?: () => Promise<void>;
+}
 
 /**
  * 🛠️ ROBUST DOCUMENT PARSING SYSTEM (v3.0)
@@ -177,7 +183,7 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
   const tag = `[parse-document][request=${requestId}]`;
 
   console.error(`${tag} STEP parser-init:start`);
-  let parser: PDFParse;
+  let parser: PDFParseInstance;
   try {
     // 1. Ensure DOMMatrix exists globally even before @napi-rs/canvas loads
     if (typeof globalThis !== 'undefined' && typeof (globalThis as any).DOMMatrix === 'undefined') {
