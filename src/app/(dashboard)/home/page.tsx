@@ -273,8 +273,10 @@ export default function Home() {
         displayMessage = '❌ Too many uploads in a short time. Please wait a few minutes and try again.';
       } else if (errorMessage.includes('FILE_TOO_LARGE')) {
         displayMessage = "❌ This file is too large to upload (max 10MB). Please upload a smaller file, or paste the key deal details directly in the chat.";
-      } else if (errorMessage.includes('FILE_CONTENT_TYPE_MISMATCH')) {
-        displayMessage = "❌ The uploaded file's content doesn't match its file type. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('FILE_CONTENT_TYPE_MISMATCH') || errorMessage.includes('INVALID_FILE_SIGNATURE')) {
+        displayMessage = "❌ The uploaded file doesn't appear to be a valid PDF or match its declared type. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('PDF_PARSER_INIT_FAILED')) {
+        displayMessage = "❌ We couldn't open this PDF document. The file might be corrupted or format-incompatible. Please try uploading the original file again.";
       } else if (errorMessage.includes('CORRUPTED_FILE')) {
         displayMessage = "❌ The uploaded file appears to be empty or corrupted. Please upload the original file again, or paste the key deal details directly in the chat.";
       } else if (errorMessage.includes('STORAGE_OBJECT_NOT_FOUND')) {

@@ -1,64 +1,16 @@
 import mammoth from 'mammoth';
 
 interface PDFParseInstance {
-  getText(params?: any): Promise<{ total: number; text?: string; pages: Array<{ num: number; text: string }> }>;
-  getInfo(params?: any): Promise<{ total?: number }>;
+  getText(params?: Record<string, unknown>): Promise<{ total: number; text?: string; pages: Array<{ num: number; text: string }> }>;
+  getInfo(params?: Record<string, unknown>): Promise<{ total?: number }>;
   getScreenshot(options: { partial?: number[]; imageDataUrl?: boolean; imageBuffer?: boolean }): Promise<{ pages: Array<{ dataUrl?: string }> }>;
   destroy?: () => Promise<void>;
 }
 
 /**
- * 🛠️ ROBUST DOCUMENT PARSING SYSTEM (v3.0)
- * Per-page hybrid pipeline: native text extraction first, OCR only for the
- * specific pages that need it.
- *
- * History:
- * - v2.0 used pdf-parse for whole-document text, then pdf2pic (which shells
- *   out to system GraphicsMagick/Ghostscript binaries) + tesseract.js as an
- *   all-or-nothing OCR fallback, racing the whole attempt against one 240s
- *   timeout and returning placeholder text on failure. GraphicsMagick/
- *   Ghostscript are not installed in Vercel's Node runtime, so OCR always
- *   stalled to that timeout in production (~247s observed) and the
- *   placeholder text was mistaken for a successful extraction downstream.
- * - v2.1 (2026-08-28) bounded every step and made failures throw instead of
- *   returning placeholder text, but OCR itself remained non-functional on
- *   Vercel (still depended on pdf2pic/GraphicsMagick).
- * - v3.0 (2026-08-28) replaces pdf2pic entirely with pdf-parse's own
- *   getScreenshot() — it renders pages via @napi-rs/canvas, a prebuilt
- *   N-API binary (already a transitive dependency of pdf-parse, resolved
- *   per-platform by npm), not a system binary Vercel would need to install
- *   separately. This also enables genuine PAGE-LEVEL hybrid extraction:
- *   each page is independently classified as native-text-sufficient or
- *   OCR-needed (e.g. page 1 native, page 2 OCR, page 3 native, page 4 OCR),
- *   instead of OCR-ing the whole document as a unit.
- * - 2026-08-29: added STEP/FAILURE diagnostic markers (console.error, since
- *   next.config.ts strips console.log/warn in production) so the exact
- *   failing operation in a real production 500 can finally be identified —
- *   this is diagnostic-only, no parsing behavior changed.
- * - 2026-08-31: fixed a real user-facing bug found via production testing
- *   with an actual scanned PDF (Project_Damodar.pdf): OCR was being
- *   attempted correctly for every low-text page, but when it failed to
- *   produce usable text on every page, the resulting error was still
- *   labeled IMAGE_BASED_PDF — the same code used when OCR is never
- *   attempted at all — so the frontend told the user "this app cannot read
- *   images" even though OCR support exists and genuinely ran. Failures are
- *   now split into OCR_FAILED (OCR was attempted and exhausted) vs
- *   IMAGE_BASED_PDF (OCR was never reached), added granular
- *   ocr-worker-init/screenshot/ocr-recognize STEP markers with safe
- *   metadata (mime type, byte size, duration, character count — never the
- *   image or the recognized text), and added a minimum-alphanumeric-content
- *   gate so a page that OCRs to a few garbage characters isn't counted as
- *   "usable text" just because Tesseract didn't throw.
- * - 2026-08-31 (later same day): closed a remaining gap in the above fix —
- *   when parser.getText() threw for the WHOLE document (not just returning
- *   low-text pages), the code gave up immediately with EXTRACTION_FAILED
- *   and never attempted OCR at all. getText() throwing is not evidence the
- *   document is unreadable end-to-end — pdf-parse's getScreenshot() (page
- *   rendering) and getInfo() (page count) are independent code paths that
- *   can still succeed. Native extraction failure now falls back to
- *   OCR-every-page, using getInfo() to learn the page count without
- *   getText(). Only if getInfo() *also* throws is the document treated as
- *   genuinely unrecoverable (EXTRACTION_FAILED).
+ * 🛠️ ROBUST DOCUMENT PARSING SYSTEM (v4.0)
+ * Per-page hybrid pipeline: native text extraction first, OCR fallback for
+ * low-text/scanned pages or when native extraction is unavailable.
  */
 
 function envInt(name: string, fallback: number): number {
@@ -90,10 +42,7 @@ const MIN_PAGE_TEXT_CHARS = 40;
 // OCR "succeeded" must mean more than "Tesseract returned without
 // throwing" — a misread noisy page can resolve with a handful of garbage
 // characters. Require a small amount of actual alphanumeric content before
-// counting a page's OCR result as usable. Deliberately low (unlike
-// MIN_PAGE_TEXT_CHARS, which gates the native-vs-OCR decision) since OCR
-// output is normally noisier than native text even when it's genuinely
-// correct — this only needs to filter out empty/near-empty misreads.
+// counting a page's OCR result as usable.
 const OCR_MIN_ALNUM_CHARS = 3;
 
 function hasUsableOcrText(text: string): boolean {
@@ -118,9 +67,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
 /**
  * Strips anything that could be a credential/signed-URL token before an
- * error message ever reaches the logs — some thrown errors interpolate the
- * failing URL or raw provider response verbatim (e.g. a fetch() failure
- * message can include the request URL).
+ * error message ever reaches the logs.
  */
 function sanitizeErrorMessage(message: string): string {
   return message
@@ -130,11 +77,7 @@ function sanitizeErrorMessage(message: string): string {
 
 /**
  * Single place every "this step failed" log goes through, so every failure
- * is reported in the same safe, greppable shape and never leaks a raw
- * error/stack that might contain a signed URL or credential fragment.
- * Deliberately logs name+message only — never `error.stack` (stack frames
- * can echo argument values, including buffers/URLs, depending on the
- * throwing library) and never document content.
+ * is reported in the same safe, greppable shape.
  */
 export function logParseFailure(
   requestId: string,
@@ -175,19 +118,17 @@ export async function extractDocxText(fileBuffer: Buffer): Promise<string> {
 /**
  * Per-page hybrid PDF extraction: native text extraction for every page,
  * OCR only for pages whose native text is insufficient (scanned/image
- * pages), up to DOCUMENT_MAX_OCR_PAGES. A single tesseract worker is
- * created lazily — only if at least one page actually needs OCR — and is
- * always terminated, even on failure.
+ * pages), up to DOCUMENT_MAX_OCR_PAGES.
  */
 async function extractPdf(buffer: Buffer, requestId: string): Promise<ExtractionResult> {
   const tag = `[parse-document][request=${requestId}]`;
 
   console.error(`${tag} STEP parser-init:start`);
-  let parser: PDFParseInstance;
+  let parser: PDFParseInstance | null = null;
   try {
-    // 1. Ensure DOMMatrix exists globally even before @napi-rs/canvas loads
-    if (typeof globalThis !== 'undefined' && typeof (globalThis as any).DOMMatrix === 'undefined') {
-      (globalThis as any).DOMMatrix = class DOMMatrix {
+    const g = globalThis as unknown as Record<string, unknown>;
+    if (typeof g.DOMMatrix === 'undefined') {
+      g.DOMMatrix = class DOMMatrix {
         a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
         constructor(init?: number[]) {
           if (Array.isArray(init) && init.length >= 6) {
@@ -198,24 +139,11 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
       };
     }
 
-    // 2. In Node.js / Next.js server runtime, import pdf-parse/worker for @napi-rs/canvas
-    let CanvasFactory: any = undefined;
-    try {
-      const workerModule = await import('pdf-parse/worker');
-      CanvasFactory = workerModule.CanvasFactory;
-    } catch (workerErr) {
-      console.warn('[PDF] Note: pdf-parse/worker load warning:', workerErr);
-    }
-
     const pdfParseModule = await import('pdf-parse');
-    const PDFParseConstructor = pdfParseModule.PDFParse || (pdfParseModule as any).default;
-    parser = new PDFParseConstructor({ data: buffer, CanvasFactory });
+    const PDFParseConstructor = (pdfParseModule.PDFParse || (pdfParseModule as unknown as { default: new (opts: { data: Buffer }) => PDFParseInstance }).default) as new (opts: { data: Buffer }) => PDFParseInstance;
+    parser = new PDFParseConstructor({ data: buffer });
   } catch (initErr) {
-    // A parser-init exception is evidence the file is unreadable/corrupt —
-    // it says nothing about whether the document is scanned. Classifying
-    // this as IMAGE_BASED_PDF would tell the user to "convert to DOCX" for
-    // a problem that has nothing to do with scanned pages.
-    logParseFailure(requestId, 'parser-init', initErr);
+    logParseFailure(requestId, 'PDF_PARSER_INIT_FAILED', initErr);
     throw new Error(`EXTRACTION_FAILED: PDF parser initialization failed (${initErr instanceof Error ? initErr.message : String(initErr)})`);
   }
   console.error(`${tag} STEP parser-init:success`);
@@ -233,33 +161,16 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
       console.error(`${tag} native-text extraction: ${Date.now() - nativeStart}ms pages=${textResult.total}`);
       console.error(`${tag} STEP native-extraction:success`);
     } catch (pdfErr) {
-      // Fallback attempt: try officeparser before giving up to OCR
-      try {
-        const { OfficeParser } = await import('officeparser');
-        const ast = await OfficeParser.parseOffice(buffer, { outputErrorToConsole: false });
-        const fallbackText = cleanText(ast.toText());
-        if (fallbackText.length > 50) {
-          textResult = { total: 1, pages: [{ num: 1, text: fallbackText }] };
-          console.error(`${tag} STEP native-extraction:officeparser-fallback-success chars=${fallbackText.length}`);
-        }
-      } catch { /* proceed to OCR fallback */ }
-
-      if (!textResult) {
-        nativeExtractionError = pdfErr;
-        logParseFailure(requestId, 'native-extraction', pdfErr);
-        console.error(`${tag} STEP native-extraction:failure — falling back to OCR`);
-      }
+      nativeExtractionError = pdfErr;
+      logParseFailure(requestId, 'PDF_NATIVE_EXTRACTION_FAILED', pdfErr);
+      console.error(`${tag} STEP native-extraction:failure — falling back to OCR`);
     }
 
     let totalPages: number;
     if (textResult) {
       totalPages = textResult.total || textResult.pages.length || 0;
     } else {
-      // Native extraction failed entirely — getInfo() parses document
-      // structure independently of getText(), so it can still report a
-      // page count to OCR over. If getInfo() also throws, the file is
-      // genuinely unreadable (corrupt/malformed) and there is nothing left
-      // to fall back to.
+      // Native extraction threw: try getInfo() to determine page count for OCR fallback
       try {
         const info = await withTimeout(parser.getInfo(), PDF_EXTRACTION_TIMEOUT_MS, 'PDF info extraction');
         totalPages = info.total || 0;
@@ -331,10 +242,7 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
         );
         const dataUrl = shot.pages[0]?.dataUrl;
         if (!dataUrl) throw new Error('page render produced no image data');
-        // Safe metadata only — never the image data itself. A data URL is
-        // `data:<mime>;base64,<payload>`; report the mime and payload byte
-        // length (not the payload) so a broken render (wrong mime, 0 bytes)
-        // is visible in logs without ever emitting the image.
+
         const [dataUrlHeader, dataUrlPayload] = dataUrl.split(',', 2);
         const renderedMimeType = dataUrlHeader?.match(/^data:([^;]+)/)?.[1] ?? 'unknown';
         console.error(
@@ -378,26 +286,14 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
     }
 
     if (!text.trim()) {
-      // IMAGE_BASED_PDF and OCR_FAILED are deliberately different codes —
-      // collapsing them previously made the frontend tell users "we cannot
-      // read images" even when OCR genuinely ran and simply couldn't
-      // produce usable text (garbled scan, unsupported script, a render/
-      // recognition failure on every page). OCR_FAILED means the OCR
-      // pipeline was reached and exhausted; IMAGE_BASED_PDF is reserved for
-      // when OCR was never attempted at all (e.g. DOCUMENT_MAX_OCR_PAGES
-      // configured to 0) — a genuinely different, much rarer situation.
       if (ocrAttempted) {
         throw new Error(
           `OCR_FAILED: OCR was attempted on ${ocrPagesUsed} page(s) but did not produce usable text.`,
         );
       }
       if (nativeExtractionError) {
-        // Native extraction threw AND OCR was never reached (e.g. the OCR
-        // page budget was exhausted before any page was attempted, or every
-        // page was skipped) — this is still "extraction failed", not
-        // evidence the document is scanned.
         throw new Error(
-          `EXTRACTION_FAILED: Native PDF text extraction failed and no OCR fallback could be attempted (${nativeExtractionError instanceof Error ? nativeExtractionError.message : String(nativeExtractionError)}).`,
+          `EXTRACTION_FAILED: Native PDF text extraction failed and no OCR fallback could be completed (${nativeExtractionError instanceof Error ? nativeExtractionError.message : String(nativeExtractionError)}).`,
         );
       }
       throw new Error(
@@ -413,8 +309,12 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
       warnings,
     };
   } finally {
-    if (worker) await worker.terminate().catch(() => {});
-    await parser.destroy().catch(() => {});
+    if (worker) {
+      await worker.terminate().catch(() => {});
+    }
+    if (parser && typeof parser.destroy === 'function') {
+      await parser.destroy().catch(() => {});
+    }
   }
 }
 
@@ -448,10 +348,7 @@ export async function extractTextFromFile(
       result = await extractPdf(buffer, requestId);
     }
 
-    // 4. Unsupported Handling — the route layer's SUPPORTED_TYPES list
-    // includes image MIME types that have no extraction path here; treat
-    // that as a genuine failure rather than a placeholder string that
-    // would otherwise sail through as "successfully extracted" text.
+    // 4. Unsupported Handling
     else {
       console.warn(`[PARSER] Unsupported MIME type: ${mimeType}`);
       throw new Error(`UNSUPPORTED_FILE_TYPE: No text-extraction path is implemented for ${mimeType}.`);
@@ -473,12 +370,7 @@ export async function extractTextFromFile(
 
   } catch (globalErr) {
     logParseFailure(requestId, 'extract-text-from-file', globalErr);
-    // Preserve specific, classifiable error messages (IMAGE_BASED_PDF: /
-    // EXTRACTION_FAILED: / UNSUPPORTED_FILE_TYPE: / DOCUMENT_TOO_LARGE: /
-    // timed out) for the caller to map to the right HTTP status — never
-    // swallow into a placeholder string that would be mistaken for real
-    // document text.
     if (globalErr instanceof Error) throw globalErr;
-    throw new Error("An error occurred while parsing the document. Please ensure the file is not password-protected.");
+    throw new Error("EXTRACTION_FAILED: An error occurred while parsing the document. Please ensure the file is not password-protected.");
   }
 }

@@ -1,79 +1,106 @@
-/**
- * Harness for M5_persistence pure builders.
- * Run: npx tsx M5_persistence.test.ts
- * Covers payload SHAPE + identity-safety. DB writes are NOT covered here (live-only).
- */
+import { describe, it, expect } from 'vitest';
 import {
-    MIN_MATCH_SCORE, buildReciprocalRow, buildSavedSearchRecord, buildBlindNotification,
-    type MatchRow, type SavedSearchInput, type BlindNotificationInput,
+  MIN_MATCH_SCORE,
+  buildReciprocalRow,
+  buildSavedSearchRecord,
+  buildBlindNotification,
+  type MatchRow,
+  type SavedSearchInput,
+  type BlindNotificationInput,
 } from '../M5_persistence';
 
-let pass = 0, fail = 0;
-const ok = (cond: boolean, msg: string) => { cond ? pass++ : (fail++, console.error('  FAIL:', msg)); };
+describe('M5_persistence pure builders', () => {
+  it('builds reciprocal row correctly', () => {
+    const fwd: MatchRow = {
+      proposal_id: 'NEW',
+      matched_proposal_id: 'OLD',
+      similarity_score: 0.7,
+      industry_score: 1,
+      financial_score: 0.5,
+      geography_boost: 1,
+      confidence_score: 0.5,
+      final_score: 82,
+      match_reason: 'describes OLD',
+      match_archetype: 'Same-sector bolt-on',
+      status: 'ACTIVE',
+    };
+    const rec = buildReciprocalRow(fwd, 'describes NEW');
+    expect(rec.proposal_id).toBe('OLD');
+    expect(rec.matched_proposal_id).toBe('NEW');
+    expect(rec.final_score).toBe(82);
+    expect(rec.similarity_score).toBe(0.7);
+    expect(rec.industry_score).toBe(1);
+    expect(rec.geography_boost).toBe(1);
+    expect(rec.match_reason).toBe('describes NEW');
+    expect(rec.status).toBe('ACTIVE');
+    expect(buildReciprocalRow(fwd).match_reason).toBe('describes OLD');
+  });
 
-// ── 1. reciprocal ──
-const fwd: MatchRow = {
-    proposal_id: 'NEW', matched_proposal_id: 'OLD',
-    similarity_score: 0.7, industry_score: 1, financial_score: 0.5,
-    geography_boost: 1, confidence_score: 0.5, final_score: 82,
-    match_reason: 'describes OLD', match_archetype: 'Same-sector bolt-on', status: 'ACTIVE',
-};
-const rec = buildReciprocalRow(fwd, 'describes NEW');
-ok(rec.proposal_id === 'OLD' && rec.matched_proposal_id === 'NEW', 'reciprocal swaps direction');
-ok(rec.final_score === 82, 'reciprocal preserves final_score');
-ok(rec.similarity_score === 0.7 && rec.industry_score === 1 && rec.geography_boost === 1, 'reciprocal preserves breakdown');
-ok(rec.match_reason === 'describes NEW', 'reciprocal uses reverseReason override');
-ok(rec.status === 'ACTIVE', 'reciprocal status ACTIVE');
-ok(buildReciprocalRow(fwd).match_reason === 'describes OLD', 'reciprocal falls back to forward reason');
+  it('builds saved search record correctly', () => {
+    const ssIn: SavedSearchInput = {
+      userId: 'u1',
+      intent: 'BUY_SIDE',
+      sector: 'saas',
+      industry: 'vertical SaaS for clinics',
+      geography: 'Mumbai',
+      structure: 'Majority',
+      sub_sector: 'digital health',
+      deal_size_min: '20',
+      deal_size_max: '100',
+      revenue_min: '10',
+      revenue_max: '50',
+      special_conditions: ['x'],
+    };
+    const ss = buildSavedSearchRecord(ssIn, 'P1', [0.1, 0.2, 0.3], 3, true);
+    expect(typeof ss.query_object).toBe('object');
+    expect(ss.query_object).not.toBeNull();
+    expect((ss.query_object as any).intent).toBe('BUY_SIDE');
+    expect((ss.query_object as any).industry).toBe('vertical SaaS for clinics');
+    expect((ss.query_object as any).deal_size_max_cr).toBe(100);
+    expect(Array.isArray(ss.query_embedding) && ss.query_embedding.length === 3).toBe(true);
+    expect(ss.min_score).toBe(60);
+    expect(MIN_MATCH_SCORE).toBe(60);
+    expect(ss.status).toBe('PENDING');
+    expect(ss.sectors[0]).toBe('TECHNOLOGY');
+    expect(ss.geographies[0]).toBe('Mumbai');
+    expect(ss.match_count).toBe(3);
+    expect(ss.match_attempt_count).toBe(1);
+    expect(ss.no_match_reason).toBeNull();
+    expect(ss.notification_status).toBe('SENT');
 
-// ── 2. saved_search watch ──
-const ssIn: SavedSearchInput = {
-    userId: 'u1', intent: 'BUY_SIDE', sector: 'saas', industry: 'vertical SaaS for clinics',
-    geography: 'Mumbai', structure: 'Majority', sub_sector: 'digital health',
-    deal_size_min: '20', deal_size_max: '100', revenue_min: '10', revenue_max: '50',
-    special_conditions: ['x'],
-};
-const ss = buildSavedSearchRecord(ssIn, 'P1', [0.1, 0.2, 0.3], 3, true);
-ok(typeof ss.query_object === 'object' && ss.query_object !== null, 'query_object is object (NOT NULL fix)');
-ok((ss.query_object as any).intent === 'BUY_SIDE', 'query_object carries intent');
-ok((ss.query_object as any).industry === 'vertical SaaS for clinics', 'query_object carries free-text industry');
-ok((ss.query_object as any).deal_size_max_cr === 100, 'query_object numeric coercion');
-ok(Array.isArray(ss.query_embedding) && ss.query_embedding.length === 3, 'query_embedding present');
-ok(ss.min_score === 60 && MIN_MATCH_SCORE === 60, 'min_score = 60 floor');
-ok(ss.status === 'ACTIVE', 'watch status ACTIVE');
-ok(ss.sectors[0] === 'TECHNOLOGY', 'sector normalized saas->TECHNOLOGY');
-ok(ss.geographies[0] === 'Mumbai', 'geography carried');
-ok(ss.match_count === 3 && ss.match_attempt_count === 1, 'match counts');
-ok(ss.no_match_reason === null, 'no_match_reason null when matches found');
-ok(ss.notification_status === 'SENT', 'notification_status SENT when notified');
-const ss0 = buildSavedSearchRecord(ssIn, 'P1', [0.1], 0, false);
-ok(ss0.no_match_reason === 'NO_CANDIDATE_ABOVE_MIN_SCORE' && ss0.notification_status === 'NOT_SENT', 'no-match watch fields');
+    const ss0 = buildSavedSearchRecord(ssIn, 'P1', [0.1], 0, false);
+    expect(ss0.no_match_reason).toBe('NO_CANDIDATE_ABOVE_MIN_SCORE');
+    expect(ss0.notification_status).toBe('NOT_SENT');
+  });
 
-// ── 3. blind notification ──
-const nIn: BlindNotificationInput = {
-    oldUserId: 'old-user', subjectProposalId: 'OLDPROP', subjectRef: '#A1B2C3',
-    subjectIntent: 'SELL_SIDE', subjectSector: 'MANUFACTURING', subjectGeography: 'Pune',
-    matchId: 'M1', cpSectorLabel: 'TECHNOLOGY', cpGeographyLabel: 'Mumbai', finalScore: 82,
-};
-const n = buildBlindNotification(nIn);
-ok(n.user_id === 'old-user', 'notification targets OLD user');
-ok(n.type === 'NEW_COUNTERPARTY', 'distinct type, no MATCH collision');
-ok(n.is_read === false, 'is_read boolean false');
-ok(n.match_id === 'M1', 'match_id passthrough (dedup key)');
-ok(n.proposal_id === 'OLDPROP', 'proposal_id = recipient own proposal');
-ok(Array.isArray(n.delivery_channels) && n.delivery_channels.includes('in_app'), 'delivery_channels in_app');
-ok((n.metadata as any).blind === true, 'metadata flagged blind');
-ok((n.metadata as any).subject_ref === '#A1B2C3', 'metadata carries subject_ref');
-ok(!/\d{10}/.test(n.message), 'no phone-like sequence in message');
-ok(!/ltd|pvt|advisor|@/i.test(n.message), 'no identity tokens in message');
-ok(/strong/.test(n.message), 'band word present for score 82');
-// counterparty side = TECHNOLOGY/Mumbai (the NEW proposal), NOT the recipient's own sector
-ok(n.message.includes('TECHNOLOGY') && n.message.includes('Mumbai'), 'counterparty coarse sector+geo present');
-// recipient side names WHICH mandate: ref + own descriptor
-ok(n.message.includes('#A1B2C3'), 'message names the recipient proposal ref');
-ok(n.message.includes('Sell-side') && n.message.includes('MANUFACTURING') && n.message.includes('Pune'),
-    'message names the recipient own mandate descriptor');
-ok(/potential/.test(buildBlindNotification({ ...nIn, finalScore: 61 }).message) === false, 'score 61 is not "potential"');
-
-console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail > 0 ? 1 : 0);
+  it('builds blind notification correctly', () => {
+    const nIn: BlindNotificationInput = {
+      oldUserId: 'old-user',
+      subjectProposalId: 'OLDPROP',
+      subjectRef: '#A1B2C3',
+      subjectIntent: 'SELL_SIDE',
+      subjectSector: 'MANUFACTURING',
+      subjectGeography: 'Pune',
+      matchId: 'M1',
+      cpSectorLabel: 'TECHNOLOGY',
+      cpGeographyLabel: 'Mumbai',
+      finalScore: 82,
+    };
+    const n = buildBlindNotification(nIn);
+    expect(n.user_id).toBe('old-user');
+    expect(n.type).toBe('NEW_COUNTERPARTY');
+    expect(n.is_read).toBe(false);
+    expect(n.match_id).toBe('M1');
+    expect(n.proposal_id).toBe('OLDPROP');
+    expect(Array.isArray(n.delivery_channels) && n.delivery_channels.includes('in_app')).toBe(true);
+    expect((n.metadata as any).blind).toBe(true);
+    expect((n.metadata as any).subject_ref).toBe('#A1B2C3');
+    expect(/\d{10}/.test(n.message)).toBe(false);
+    expect(/ltd|pvt|advisor|@/i.test(n.message)).toBe(false);
+    expect(/strong/.test(n.message)).toBe(true);
+    expect(n.message.includes('TECHNOLOGY') && n.message.includes('Mumbai')).toBe(true);
+    expect(n.message.includes('#A1B2C3')).toBe(true);
+    expect(n.message.includes('Sell-side') && n.message.includes('MANUFACTURING') && n.message.includes('Pune')).toBe(true);
+    expect(/potential/.test(buildBlindNotification({ ...nIn, finalScore: 61 }).message)).toBe(false);
+  });
+});

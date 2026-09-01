@@ -527,27 +527,45 @@ export async function POST(req: NextRequest) {
     const msg = err.message;
     let status = 500;
     let code = 'INTERNAL_PARSING_ERROR';
+    let step = 'unclassified';
     let retryable = false;
     if (msg.includes('DOCUMENT_TOO_LARGE')) {
       status = 413;
       code = 'DOCUMENT_TOO_LARGE';
+      step = 'limits';
+    } else if (msg.includes('PDF_PARSER_INIT_FAILED')) {
+      status = 422;
+      code = 'PDF_PARSER_INIT_FAILED';
+      step = 'parser-init';
     } else if (msg.includes('OCR_FAILED')) {
       // Distinct from IMAGE_BASED_PDF: OCR was genuinely attempted and
       // exhausted, not skipped — the frontend must not tell the user "we
       // cannot read images" for this case, since OCR support exists.
       status = 422;
       code = 'OCR_FAILED';
+      step = 'ocr';
       retryable = true;
-    } else if (msg.includes('IMAGE_BASED_PDF') || msg.includes('EXTRACTION_FAILED') || msg.includes('UNSUPPORTED_FILE_TYPE')) {
+    } else if (msg.includes('IMAGE_BASED_PDF')) {
       status = 422;
-      code = msg.includes('IMAGE_BASED_PDF') ? 'IMAGE_BASED_PDF' : msg.includes('UNSUPPORTED_FILE_TYPE') ? 'UNSUPPORTED_FILE_TYPE' : 'EXTRACTION_FAILED';
+      code = 'IMAGE_BASED_PDF';
+      step = 'quality-gate';
+    } else if (msg.includes('UNSUPPORTED_FILE_TYPE')) {
+      status = 415;
+      code = 'UNSUPPORTED_FILE_TYPE';
+      step = 'mime-validation';
+    } else if (msg.includes('EXTRACTION_FAILED')) {
+      status = 422;
+      code = 'EXTRACTION_FAILED';
+      step = 'extraction';
     } else if (msg.includes('STORAGE_DOWNLOAD_TIMEOUT')) {
       status = 504;
       code = 'STORAGE_DOWNLOAD_TIMEOUT';
+      step = 'storage-download';
       retryable = true;
     } else if (msg.includes('TIMEOUT') || msg.toLowerCase().includes('timed out')) {
       status = 504;
       code = 'DOCUMENT_PARSE_TIMEOUT';
+      step = 'parser-timeout';
       retryable = true;
     } else {
       // Genuinely unexpected (DB, storage, provider) failures — worth a retry.
@@ -555,7 +573,15 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: `Document processing failed: ${err.message}`, code, retryable },
+      {
+        success: false,
+        error: `Document processing failed: ${err.message}`,
+        message: err.message,
+        code,
+        step,
+        requestId,
+        retryable,
+      },
       { status }
     );
   }

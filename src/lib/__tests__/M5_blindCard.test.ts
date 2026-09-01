@@ -1,21 +1,17 @@
-/**
- * Harness for M5_blindCard. Run: npx tsx M5_blindCard.test.ts
- * The decisive test: serialize the pre-EOI view and assert NO identity token appears.
- */
+import { describe, it, expect } from 'vitest';
 import { buildBlindCounterparty, buildSafeTeaser, type CounterpartyProposalRow } from '../M5_blindCard';
 
-let pass = 0, fail = 0;
-const ok = (c: boolean, m: string) => { c ? pass++ : (fail++, console.error('  FAIL:', m)); };
-
-// A counterparty whose identity-bearing fields are deliberately loaded with detectable tokens.
-const cp: CounterpartyProposalRow = {
+describe('M5_blindCard', () => {
+  const cp: CounterpartyProposalRow = {
     id: 'cp-1',
     user_id: 'user-uuid-xyz',
     intent: 'BUY_SIDE',
     sectors: ['FMCG'],
     geographies: ['Mumbai'],
-    deal_size_min_cr: 50, deal_size_max_cr: 200,
-    revenue_min_cr: 30, revenue_max_cr: 100,
+    deal_size_min_cr: 50,
+    deal_size_max_cr: 200,
+    revenue_min_cr: 30,
+    revenue_max_cr: 100,
     deal_structure: 'majority stake (60–100%)',
     quality_tier: '1.0',
     raw_text: 'Second-generation promoters of SnackBrandPvtLtd based in Mumbai exploring sale. Call Ramesh 9876543210.',
@@ -25,41 +21,43 @@ const cp: CounterpartyProposalRow = {
     contact_phone: '9876543210',
     advisor_name: 'Ramesh Advisor',
     metadata: { contact_email: 'ceo@snackbrand.com', URL: 'http://snackbrand.com', industry: 'packaged healthy snacks and wellness food' },
-};
+  };
 
-const IDENTITY_TOKENS = ['SnackBrandPvtLtd', '9876543210', 'Ramesh', 'ceo@snackbrand.com', 'snackbrand.com'];
+  const IDENTITY_TOKENS = ['SnackBrandPvtLtd', '9876543210', 'Ramesh', 'ceo@snackbrand.com', 'snackbrand.com'];
 
-// ── PRE-EOI: nothing identifying may cross the wire ──
-const pre = buildBlindCounterparty(cp, false);
-const preJson = JSON.stringify(pre);
-for (const tok of IDENTITY_TOKENS) {
-    ok(!preJson.includes(tok), `pre-EOI payload must NOT contain identity token "${tok}"`);
-}
-ok(pre.revealedContact === null, 'pre-EOI: revealedContact is null');
-ok(pre.specialConditions.length === 0, 'pre-EOI: specialConditions withheld');
-ok(pre.anonymizedPreview === pre.teaser, 'pre-EOI: preview is the safe teaser');
-ok(pre.anonymizedPreview.includes('FMCG') && pre.anonymizedPreview.includes('Mumbai'), 'pre-EOI: teaser still carries sector + geo');
-ok(pre.anonymizedPreview.includes('₹50–200 Cr'), 'pre-EOI: teaser carries deal-size band');
-ok(pre.userId === 'user-uuid-xyz', 'pre-EOI: bare user uuid present (needed for EOI send, not PII)');
-// free-text industry IS shown pre-EOI (owner-ruled safe), but NOTHING else from metadata is
-ok(pre.industry === 'packaged healthy snacks and wellness food', 'pre-EOI: free-text industry surfaced');
-ok(!JSON.stringify(pre).includes('contact_email') && !JSON.stringify(pre).includes('snackbrand.com'),
-    'pre-EOI: metadata.contact_email / URL still withheld (only industry extracted)');
-// the keys themselves must not exist on the pre-EOI object
-for (const k of ['raw_text', 'normalised_text', 'summary_text', 'metadata', 'contact_phone', 'advisor_name']) {
-    ok(!(k in (pre as unknown as Record<string, unknown>)), `pre-EOI: key "${k}" absent from payload`);
-}
+  it('pre-EOI view contains no identity tokens and safe teaser', () => {
+    const pre = buildBlindCounterparty(cp, false);
+    const preJson = JSON.stringify(pre);
+    for (const tok of IDENTITY_TOKENS) {
+      expect(preJson.includes(tok)).toBe(false);
+    }
+    expect(pre.revealedContact).toBeNull();
+    expect(pre.specialConditions.length).toBe(0);
+    expect(pre.anonymizedPreview).toBe(pre.teaser);
+    expect(pre.anonymizedPreview.includes('FMCG') && pre.anonymizedPreview.includes('Mumbai')).toBe(true);
+    expect(pre.anonymizedPreview.includes('₹50–200 Cr')).toBe(true);
+    expect(pre.userId).toBe('user-uuid-xyz');
+    expect(pre.industry).toBe('packaged healthy snacks and wellness food');
+    expect(JSON.stringify(pre).includes('contact_email')).toBe(false);
+    expect(JSON.stringify(pre).includes('snackbrand.com')).toBe(false);
 
-// ── teaser purity: even sparse data never leaks free text ──
-const sparse = buildSafeTeaser({ ...cp, deal_structure: null, deal_size_min_cr: null, deal_size_max_cr: null, revenue_min_cr: null, revenue_max_cr: null });
-for (const tok of IDENTITY_TOKENS) ok(!sparse.includes(tok), `sparse teaser must not fall back to free text ("${tok}")`);
+    for (const k of ['raw_text', 'normalised_text', 'summary_text', 'metadata', 'contact_phone', 'advisor_name']) {
+      expect(k in (pre as unknown as Record<string, unknown>)).toBe(false);
+    }
+  });
 
-// ── POST-EOI (connected): contact + full summary now allowed ──
-const post = buildBlindCounterparty(cp, true);
-ok(post.revealedContact?.phone === '9876543210', 'post-EOI: phone revealed');
-ok(post.revealedContact?.advisor === 'Ramesh Advisor', 'post-EOI: advisor revealed');
-ok(post.specialConditions.length === 1, 'post-EOI: specialConditions surfaced');
-ok(post.anonymizedPreview.includes('SnackBrandPvtLtd'), 'post-EOI: full summary surfaced');
+  it('sparse teaser never leaks free text', () => {
+    const sparse = buildSafeTeaser({ ...cp, deal_structure: null, deal_size_min_cr: null, deal_size_max_cr: null, revenue_min_cr: null, revenue_max_cr: null });
+    for (const tok of IDENTITY_TOKENS) {
+      expect(sparse.includes(tok)).toBe(false);
+    }
+  });
 
-console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail > 0 ? 1 : 0);
+  it('post-EOI connected view reveals contact information', () => {
+    const post = buildBlindCounterparty(cp, true);
+    expect(post.revealedContact?.phone).toBe('9876543210');
+    expect(post.revealedContact?.advisor).toBe('Ramesh Advisor');
+    expect(post.specialConditions.length).toBe(1);
+    expect(post.anonymizedPreview.includes('SnackBrandPvtLtd')).toBe(true);
+  });
+});
