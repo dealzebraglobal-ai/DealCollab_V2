@@ -54,6 +54,9 @@ export interface UserProfile {
   profileAttachmentUrl?: string | null;
   additionalInfo?: string | null;
   profileCompletion?: number;
+  profileCompleted?: boolean;
+  profileCompletedOnce?: boolean;
+  onboardingTutorialCompleted?: boolean;
   currentFocus?: string[] | null;
   coAdvisory?: boolean | null;
   collaborationModels?: string[] | null;
@@ -69,12 +72,14 @@ interface UserContextType {
   login: () => void;
   logout: (reason?: 'session_expired' | 'link_expired') => void;
   refreshProfile: () => Promise<void>;
+  completeOnboardingTutorial: () => Promise<void>;
   onboarding: {
     phoneVerified: boolean;
     profileCompleted: boolean;
     dealSubmitted: boolean;
+    tutorialCompleted: boolean;
   };
-  setOnboarding: (step: 'phoneVerified' | 'profileCompleted' | 'dealSubmitted', value: boolean) => void;
+  setOnboarding: (step: 'phoneVerified' | 'profileCompleted' | 'dealSubmitted' | 'tutorialCompleted', value: boolean) => void;
   readinessScore: {
     phone: number;
     identity: number;
@@ -115,6 +120,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     phoneVerified: false,
     profileCompleted: false,
     dealSubmitted: false,
+    tutorialCompleted: false,
   });
 
   const [readinessScore, setReadinessScore] = useState({
@@ -137,7 +143,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     console.log("FETCHING PROFILE DATA FROM API FOR:", userEmail);
 
-    
     const response = await fetch('/api/profile');
     if (!response.ok) {
       const errorText = await response.text();
@@ -158,12 +163,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setTokens(dbTokens); 
       
       const rawDbImage = data.profile_image || data.profileImage;
-      // STRICT REJECTION: If DB value is a Google URL, ignore it (it shouldn't be there)
       const dbProfileImage = (rawDbImage && rawDbImage.includes('googleusercontent.com')) ? null : rawDbImage;
       const authImage = session?.user?.image;
-      
-      // UI Avatar Priority: 1. DB image, 2. Auth provider image
       const userAvatar = dbProfileImage || authImage || null;
+
+      const profileCompleted = !!(data.profileCompleted || data.profile_completed || data.profileCompletedOnce || data.profile_completed_once || (data.profileCompletion || data.profile_completion || 0) >= 100);
+      const tutorialCompleted = !!(data.onboardingTutorialCompleted || data.onboarding_tutorial_completed);
 
       setProfile({
         ...data,
@@ -180,10 +185,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         expertiseDescription: data.expertiseDescription || data.expertise_description,
         activeMandates: data.activeMandates || data.active_mandates,
         profileAttachmentUrl: data.profileAttachmentUrl || data.profile_attachment_url,
-        profileImage: dbProfileImage || null, // STRICT: Only DB value
-        userAvatar: userAvatar, // UI fallback
+        profileImage: dbProfileImage || null,
+        userAvatar: userAvatar,
         additionalInfo: data.additionalInfo || data.additional_info,
         profileCompletion: data.profileCompletion || data.profile_completion,
+        profileCompleted,
+        profileCompletedOnce: data.profileCompletedOnce ?? data.profile_completed_once,
+        onboardingTutorialCompleted: tutorialCompleted,
         intent: data.intent || data.currentFocus || [],
         currentFocus: data.currentFocus || data.intent || [],
         tokens: dbTokens,
@@ -191,17 +199,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       
       setOnboardingState(prev => ({
         phoneVerified: !!(data.is_phone_verified || data.phone),
-        profileCompleted: (data.profileCompletion || data.profile_completion || 0) >= 100,
+        profileCompleted,
         dealSubmitted: prev.dealSubmitted,
+        tutorialCompleted,
       }));
     }
-  }, [session, status, supabase]); // Removed profile to prevent loop
+  }, [session, status, supabase]);
+
+  const completeOnboardingTutorial = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dc_tutorial_completed', 'true');
+    }
+    setOnboardingState(prev => ({ ...prev, tutorialCompleted: true }));
+    setProfile(prev => prev ? { ...prev, onboardingTutorialCompleted: true } : null);
+
+    try {
+      await fetch('/api/profile/onboarding-tutorial', { method: 'POST' });
+    } catch (err) {
+      console.error('Failed to persist onboarding tutorial state:', err);
+    }
+  }, []);
 
   // Sync with Supabase (REAL DATA)
   useEffect(() => {
     if (status === 'authenticated') {
-      // Use a fire-and-forget pattern to avoid synchronous state-update warnings
-      // while maintaining the async fetch integrity
       (async () => {
         await fetchSupabaseData();
       })();
@@ -220,6 +241,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       phoneVerified: false,
       profileCompleted: false,
       dealSubmitted: false,
+      tutorialCompleted: false,
     });
     
     trackLogout();
@@ -229,7 +251,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setOnboarding = useCallback((step: 'phoneVerified' | 'profileCompleted' | 'dealSubmitted', value: boolean) => {
+  const setOnboarding = useCallback((step: 'phoneVerified' | 'profileCompleted' | 'dealSubmitted' | 'tutorialCompleted', value: boolean) => {
     setOnboardingState(prev => {
       if (prev[step] === value) return prev;
       return { ...prev, [step]: value };
@@ -320,10 +342,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       login, 
       logout,
       refreshProfile: fetchSupabaseData,
+      completeOnboardingTutorial,
       onboarding: status === 'authenticated' ? onboarding : {
         phoneVerified: false,
         profileCompleted: false,
         dealSubmitted: false,
+        tutorialCompleted: false,
       }, 
       setOnboarding, 
       readinessScore, 

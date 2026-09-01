@@ -278,7 +278,7 @@ export default function DealLogPage() {
         {/* Global Toolbar — Search + Filters (unchanged logic, applies to Chat Mandates) */}
         <div className="flex flex-wrap items-center gap-3 mb-10">
           {/* Search Bar */}
-          <div className="relative group w-full sm:w-64">
+          <div data-onboarding-target="search" className="relative group w-full sm:w-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#F97316] transition-colors" />
             <input
               type="text"

@@ -70,6 +70,7 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
         
         <form 
           onSubmit={handleSubmit}
+          data-onboarding-target="search"
           className="flex flex-col bg-[rgba(255,255,255,0.72)] backdrop-blur-xl border border-[rgba(17,17,17,0.08)] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all focus-within:ring-1 focus-within:ring-[#FF6A00]/30 focus-within:border-[#FF6A00]/50 overflow-hidden"
         >
           {/* File Attachment Preview Badge */}

@@ -18,6 +18,7 @@ export const users = pgTable('users', {
   isPhoneVerified: boolean('is_phone_verified').default(false),
   profileCompletedOnce: boolean('profile_completed_once').default(false),
   profileCompletion: integer('profile_completion').default(0),
+  onboardingTutorialCompleted: boolean('onboarding_tutorial_completed').default(false),
   tokens: integer('tokens').default(0),
 
   // Professional Profile Fields (PRD-aligned)

@@ -34,8 +34,8 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
 
   const menuItems = [
     { name: 'New Conversation', icon: Plus, href: '/home', isNewChat: true },
-    { name: 'Deal Log', icon: FileText, href: '/deal-log' },
-    { name: 'Deal Dashboard', icon: LayoutDashboard, href: '/deal-dashboard' },
+    { name: 'Deal Log', icon: FileText, href: '/deal-log', targetId: 'deal-log' },
+    { name: 'Deal Dashboard', icon: LayoutDashboard, href: '/deal-dashboard', targetId: 'deal-dashboard' },
     { name: 'Intelligence', icon: Sparkles, href: '/deal-intelligence' },
     { name: 'Notifications', icon: Bell, href: '/notifications', badge: unreadCount },
     { name: 'Guide & Trust', icon: BookOpen, href: '/guide' },
@@ -114,6 +114,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                data-onboarding-target={item.targetId}
                 onClick={() => onItemClick?.()}
                 className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-3 rounded-xl transition-all duration-300 w-full text-left ${
                   isActive 

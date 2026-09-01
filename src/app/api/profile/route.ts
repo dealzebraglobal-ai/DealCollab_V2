@@ -114,6 +114,9 @@ export async function GET(_req: NextRequest) {
       profileImage: profile.profile_image,
       additionalInfo: isBusinessPromoter ? null : profile.additional_info,
       profileCompletion: profile.profile_completion || 0,
+      profileCompletedOnce: !!profile.profile_completed_once,
+      profileCompleted: (profile.profile_completion || 0) >= 100 || !!profile.profile_completed_once,
+      onboardingTutorialCompleted: !!profile.onboarding_tutorial_completed,
       tokens: profile.tokens,
     };
 

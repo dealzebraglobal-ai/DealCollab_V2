@@ -69,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="hidden md:flex absolute top-6 right-8 z-50 items-center gap-3">
             <Link 
               href="/profile/tokens"
+              data-onboarding-target="tokens"
               className="flex items-center gap-2 px-4 py-2 bg-brand-sidebar border border-border rounded-full transition-all hover:bg-[#222222] group shadow-sm"
             >
               <Coins size={14} className="text-primary-hover" />
