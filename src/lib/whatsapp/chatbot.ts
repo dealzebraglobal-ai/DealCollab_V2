@@ -6,6 +6,7 @@ import { runChatTurn } from "@/lib/chatPipeline";
 import { sendWhatsAppMessage, sendWhatsAppButtons } from "./provider";
 import { WhatsAppProvider } from "./types";
 import { classifyWhatsAppCommand, WhatsAppUiScreen } from "./classifyCommand";
+import { newWaCtx, waLog, describePgError, type WaCtx } from "./webhookDiagnostics";
 
 type MatchCardLike = {
   rank?: string;
@@ -36,8 +37,14 @@ function formatProposalListMessage(matchCards: MatchCardLike[]): string {
   return matchMessage;
 }
 
-async function sendProposalList(provider: WhatsAppProvider, rawPhone: string, matchCards: MatchCardLike[]) {
+async function sendProposalList(
+  provider: WhatsAppProvider,
+  rawPhone: string,
+  matchCards: MatchCardLike[],
+  ctx: WaCtx,
+) {
   const matchMessage = formatProposalListMessage(matchCards);
+  waLog(ctx, "WAPPBIZ_REQUEST", "START", { kind: "proposal-list" });
   try {
     await sendWhatsAppButtons(provider, rawPhone, matchMessage, [
       { id: "VIEW_P1", title: "📄 View P1" },
@@ -48,6 +55,8 @@ async function sendProposalList(provider: WhatsAppProvider, rawPhone: string, ma
     console.error("Failed to send matches buttons:", e);
     await sendWhatsAppMessage(provider, rawPhone, matchMessage);
   }
+  ctx.responseSent = true;
+  waLog(ctx, "WAPPBIZ_REQUEST", "SUCCESS", { kind: "proposal-list" });
 }
 
 /** Fetches the user's latest proposal + its persisted matches — never reruns matching. */
@@ -76,8 +85,31 @@ export async function processIncomingMessage(
   rawPhone: string,
   text: string,
   provider: WhatsAppProvider,
+  providedCtx?: WaCtx,
 ) {
+  const ctx = providedCtx ?? newWaCtx(null, rawPhone);
   console.log(`[Wappbiz Chatbot] Inbound message received (provider=${provider})`);
+
+  // Local send wrappers — every outbound reply flips ctx.responseSent so the
+  // webhook route knows whether a safe fallback is still needed on a throw.
+  const reply = async (body: string) => {
+    waLog(ctx, "WAPPBIZ_REQUEST", "START", { kind: "text" });
+    const r = await sendWhatsAppMessage(provider, rawPhone, body);
+    ctx.responseSent = true;
+    waLog(ctx, "WAPPBIZ_REQUEST", "SUCCESS", { kind: "text" });
+    return r;
+  };
+  const replyButtons = async (body: string, buttons: Array<{ id: string; title: string }>) => {
+    waLog(ctx, "WAPPBIZ_REQUEST", "START", { kind: "buttons" });
+    try {
+      await sendWhatsAppButtons(provider, rawPhone, body, buttons);
+    } catch (e) {
+      console.error("Failed to send buttons:", e);
+      await sendWhatsAppMessage(provider, rawPhone, body);
+    }
+    ctx.responseSent = true;
+    waLog(ctx, "WAPPBIZ_REQUEST", "SUCCESS", { kind: "buttons" });
+  };
 
   // Auto-format phone to include '+'
   const cleanedPhone = rawPhone.replace(/[^\d+]/g, "");
@@ -86,24 +118,32 @@ export async function processIncomingMessage(
     : `+${cleanedPhone}`;
 
   // 1. Find or Create User
+  waLog(ctx, "USER_LOOKUP", "START");
   let user = await db.query.users.findFirst({
     where: eq(users.phone, formattedPhone),
   });
 
   if (!user) {
+    waLog(ctx, "USER_CREATED", "START");
     console.log(
       `[WHATSAPP] Creating new user for ${formattedPhone} via ${provider}`,
     );
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        email: `${formattedPhone.replace(/\D/g, "")}@dealcollab.ai`, // Placeholder
-        phone: formattedPhone,
-        isPhoneVerified: true,
-        source: provider === "meta" ? "whatsapp" : "whatsapp-wappbiz",
-      })
-      .returning();
-    user = newUser;
+    try {
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email: `${formattedPhone.replace(/\D/g, "")}@dealcollab.ai`, // Placeholder
+          phone: formattedPhone,
+          isPhoneVerified: true,
+          source: provider === "meta" ? "whatsapp" : "whatsapp-wappbiz",
+        })
+        .returning();
+      user = newUser;
+    } catch (err) {
+      waLog(ctx, "USER_CREATED", "FAILED", { ...describePgError(err) });
+      throw err;
+    }
+    waLog(ctx, "USER_CREATED", "SUCCESS", { userId: user?.id });
   } else if (
     !user.source ||
     user.source === "whatsapp" ||
@@ -124,19 +164,31 @@ export async function processIncomingMessage(
         .where(eq(users.id, user.id));
       user.source = "whatsapp";
     }
+    waLog(ctx, "USER_FOUND", "SUCCESS", { userId: user.id });
+  } else {
+    waLog(ctx, "USER_FOUND", "SUCCESS", { userId: user.id });
   }
 
   // Find the active chat session early — its whatsapp_ui_state tells us which
   // screen a bare "1"/"2"/"3" reply should be interpreted against.
-  const latestSession = await db.query.chatSessions.findFirst({
-    where: eq(chatSessions.whatsappPhoneNumber, formattedPhone),
-    orderBy: [desc(chatSessions.createdAt)],
-  });
+  waLog(ctx, "CHAT_SESSION_LOOKUP", "START");
+  let latestSession;
+  try {
+    latestSession = await db.query.chatSessions.findFirst({
+      where: eq(chatSessions.whatsappPhoneNumber, formattedPhone),
+      orderBy: [desc(chatSessions.createdAt)],
+    });
+  } catch (err) {
+    waLog(ctx, "CHAT_SESSION_LOOKUP", "FAILED", { ...describePgError(err) });
+    throw err;
+  }
+  waLog(ctx, "CHAT_SESSION_LOOKUP", "SUCCESS", { hasSession: !!latestSession });
   const currentScreen: WhatsAppUiScreen =
     (latestSession?.whatsappUiState as { screen?: WhatsAppUiScreen } | null)?.screen ?? null;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const command = classifyWhatsAppCommand(text, currentScreen);
+  waLog(ctx, "INTENT_DETECTED", "SUCCESS", { command: command.type, screen: currentScreen ?? "none" });
   console.log(`[WAPPBIZ CHAT] detected command: ${command.type} (screen=${currentScreen ?? "none"})`);
 
   if (command.type === "OPEN_WEBSITE") {
@@ -145,7 +197,7 @@ export async function processIncomingMessage(
       `🌐 *Your Secure DealCollab Portal*\n\n` +
       `Your chat mandate and matched counterparties are pre-loaded in your DealLog. Click below to log in instantly (no password needed):\n\n` +
       `👉 ${magicLinkUrl}`;
-    await sendWhatsAppMessage(provider, rawPhone, webMsg);
+    await reply(webMsg);
     return;
   }
 
@@ -161,15 +213,10 @@ export async function processIncomingMessage(
       `💡 *What would you like to do next?*\n\n` +
       `You can open your pre-loaded DealLog on the website (instant login without password) or start over with a new mandate:\n\n` +
       `🌐 *Direct Web Portal:* ${magicLinkUrl}`;
-    try {
-      await sendWhatsAppButtons(provider, rawPhone, actionMessage, [
-        { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
-        { id: "START_OVER", title: "🔄 Start Over" },
-      ]);
-    } catch (e) {
-      console.error("Failed to send action buttons:", e);
-      await sendWhatsAppMessage(provider, rawPhone, actionMessage);
-    }
+    await replyButtons(actionMessage, [
+      { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
+      { id: "START_OVER", title: "🔄 Start Over" },
+    ]);
     return;
   }
 
@@ -184,12 +231,10 @@ export async function processIncomingMessage(
         archetype: m.matchArchetype || "Strategic Opportunity",
         matchReason: m.matchReason || "Strong mandate-level alignment",
       }));
-      await sendProposalList(provider, rawPhone, matchCards);
+      await sendProposalList(provider, rawPhone, matchCards, ctx);
       if (latestSession) await setWhatsAppUiState(latestSession.id, { screen: "PROPOSAL_LIST" });
     } else {
-      await sendWhatsAppMessage(
-        provider,
-        rawPhone,
+      await reply(
         "❌ We couldn't find your proposal list. Try checking your full DealLog on the website!",
       );
     }
@@ -219,21 +264,15 @@ export async function processIncomingMessage(
         `💡 *Next Step:* Click below to view full teaser documents and request a direct introduction on your DealLog:\n` +
         `👉 ${magicLinkUrl}`;
 
-      try {
-        await sendWhatsAppButtons(provider, rawPhone, teaserMsg, [
-          { id: "BACK_TO_PROPOSALS", title: "⬅️ Back to View Proposals" },
-          { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
-          { id: "START_OVER", title: "🔄 Start Over" },
-        ]);
-      } catch {
-        await sendWhatsAppMessage(provider, rawPhone, teaserMsg);
-      }
+      await replyButtons(teaserMsg, [
+        { id: "BACK_TO_PROPOSALS", title: "⬅️ Back to View Proposals" },
+        { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
+        { id: "START_OVER", title: "🔄 Start Over" },
+      ]);
       if (latestSession) await setWhatsAppUiState(latestSession.id, { screen: "COUNTERPARTY_DETAIL", index: matchIdx });
       return;
     }
-    await sendWhatsAppMessage(
-      provider,
-      rawPhone,
+    await reply(
       "❌ We couldn't find the details for that counterparty match. Try checking your full DealLog on the website!",
     );
     return;
@@ -280,6 +319,7 @@ export async function processIncomingMessage(
   console.log("[Wappbiz Chatbot] Conversation resolved, processing started");
 
   let result;
+  waLog(ctx, "AI_REQUEST", "START", { reset: isResetCommand, newSession: !activeChatId });
   try {
     result = await runChatTurn({
       userId: user.id,
@@ -289,10 +329,12 @@ export async function processIncomingMessage(
       whatsappPhoneNumber: formattedPhone,
     });
   } catch (err) {
+    waLog(ctx, "AI_REQUEST", "FAILED", { ...describePgError(err) });
     console.error("[Wappbiz Chatbot] processing failed:", err instanceof Error ? err.message : err);
-    await sendWhatsAppMessage(provider, rawPhone, "Sorry, I couldn't process that right now. Please try again.");
+    await reply("Sorry, I couldn't process that right now. Please try again.");
     return;
   }
+  waLog(ctx, "AI_REQUEST", "SUCCESS", { isComplete: result.isComplete, hasProposal: !!result.proposalId });
 
   console.log("[Wappbiz Chatbot] Response generated");
 
@@ -304,7 +346,7 @@ export async function processIncomingMessage(
     .where(eq(chatSessions.id, result.chatId));
 
   // 5. Send AI reply back via WhatsApp
-  await sendWhatsAppMessage(provider, rawPhone, result.message);
+  await reply(result.message);
   console.log("[Wappbiz] Response sent");
 
   // 6. If matching counterparties were found, format and send them as WhatsApp cards!
@@ -336,7 +378,7 @@ export async function processIncomingMessage(
       // Deliberately NOT followed by the "what would you like to do next" menu — that is a
       // terminal action menu and must only appear when the user explicitly asks to finish
       // (handled earlier in this function), never automatically after showing matches.
-      await sendProposalList(provider, rawPhone, matchCards);
+      await sendProposalList(provider, rawPhone, matchCards, ctx);
       await setWhatsAppUiState(result.chatId, { screen: "PROPOSAL_LIST" });
     }
   }

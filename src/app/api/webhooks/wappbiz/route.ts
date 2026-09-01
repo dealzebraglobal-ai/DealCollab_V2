@@ -3,6 +3,9 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { whatsappInboundEvents } from '@/db/schema';
 import { processIncomingMessage } from '@/lib/whatsapp/chatbot';
+import { sendWappBizMessage } from '@/lib/whatsapp/wappbiz';
+import { parseWappbizInbound, type RawWappbizPayload } from '@/lib/whatsapp/parseInbound';
+import { newWaCtx, waLog, describePgError } from '@/lib/whatsapp/webhookDiagnostics';
 
 /**
  * WappBiz Inbound Webhook
@@ -33,45 +36,48 @@ import { processIncomingMessage } from '@/lib/whatsapp/chatbot';
  * invented HMAC scheme. Every other data.type (media, buttons, etc.) is
  * acknowledged and ignored rather than guessed at, since only "text" has
  * been observed so far.
+ *
+ * INSTRUMENTATION (2026-09-01): every stage now emits a `[WA <STAGE> <RESULT>]`
+ * log line keyed by a correlation id (see webhookDiagnostics.ts). The handler
+ * still returns 200 to WappBiz on any downstream failure (WappBiz has no
+ * documented retry/backoff), but the failure is now (a) logged with its
+ * Postgres/error code, (b) persisted to whatsapp_inbound_events.error, and
+ * (c) answered with a plain-text fallback to the user IF no reply was sent.
  */
-
-interface WappBizInboundPayload {
-  type?: string;
-  data?: {
-    id?: string;
-    from?: string;
-    text?: { body?: string };
-    type?: string;
-    api_key?: string;
-    timestamp?: string;
-  };
-}
 
 export async function POST(req: Request) {
   const rawBody = await req.text().catch(() => '');
 
-  let payload: WappBizInboundPayload | null = null;
+  let payload: RawWappbizPayload | null = null;
+  let jsonOk = true;
   try {
-    payload = rawBody ? JSON.parse(rawBody) : null;
+    payload = rawBody ? (JSON.parse(rawBody) as RawWappbizPayload) : null;
   } catch {
-    console.warn('[Wappbiz Webhook] Received non-JSON body — ignoring.');
+    jsonOk = false;
+  }
+
+  const ctx = newWaCtx(payload?.data?.id ?? null, payload?.data?.from ?? null);
+  waLog(ctx, 'WEBHOOK_RECEIVED', 'START', { bytes: rawBody.length, jsonOk });
+
+  if (!jsonOk) {
+    waLog(ctx, 'PAYLOAD_PARSED', 'REJECTED', { reason: 'NOT_JSON' });
     return new NextResponse('OK', { status: 200 });
   }
 
   const data = payload?.data;
   if (!data) {
-    console.warn('[Wappbiz Webhook] Payload missing "data" — ignoring.');
+    waLog(ctx, 'PAYLOAD_PARSED', 'REJECTED', { reason: 'NO_DATA' });
     return new NextResponse('OK', { status: 200 });
   }
+  waLog(ctx, 'PAYLOAD_PARSED', 'SUCCESS', { type: payload?.type, dataType: data.type });
 
   const expectedApiKey = process.env.WAPPBIZ_API_KEY;
   const apiKeyValid = !!expectedApiKey && data.api_key === expectedApiKey;
   if (!apiKeyValid) {
-    console.warn('[Wappbiz Webhook] api_key mismatch — rejecting request.');
+    waLog(ctx, 'WEBHOOK_AUTH', 'FAILED', { hasExpectedKey: !!expectedApiKey });
     return new NextResponse('Unauthorized', { status: 401 });
   }
-
-  console.log('[Wappbiz Webhook] Incoming event');
+  waLog(ctx, 'WEBHOOK_AUTH', 'SUCCESS');
 
   // Never persist the live API key at rest — redact before storing.
   const redactedPayload = {
@@ -82,37 +88,67 @@ export async function POST(req: Request) {
   const messageId = data.id || null;
 
   // Idempotency: a retried delivery of the same message id is a no-op.
-  const inserted = await db
-    .insert(whatsappInboundEvents)
-    .values({ provider: 'wappbiz', providerMessageId: messageId, rawPayload: redactedPayload })
-    .onConflictDoNothing({ target: [whatsappInboundEvents.provider, whatsappInboundEvents.providerMessageId] })
-    .returning({ id: whatsappInboundEvents.id });
+  let inserted: Array<{ id: string }>;
+  try {
+    waLog(ctx, 'INBOUND_EVENT_LOOKUP', 'START');
+    inserted = await db
+      .insert(whatsappInboundEvents)
+      .values({ provider: 'wappbiz', providerMessageId: messageId, rawPayload: redactedPayload })
+      .onConflictDoNothing({ target: [whatsappInboundEvents.provider, whatsappInboundEvents.providerMessageId] })
+      .returning({ id: whatsappInboundEvents.id });
+  } catch (err) {
+    // Previously an unhandled throw here → HTTP 500. Now logged (with pg code)
+    // and acked, so a table/constraint problem is visible instead of a bare 500.
+    waLog(ctx, 'INBOUND_EVENT_CREATED', 'FAILED', { ...describePgError(err) });
+    return new NextResponse('OK', { status: 200 });
+  }
 
   if (messageId && inserted.length === 0) {
-    console.log('[Wappbiz Webhook] Duplicate delivery for an already-processed message id — skipping.');
+    waLog(ctx, 'DUPLICATE_DELIVERY', 'SKIPPED');
     return new NextResponse('OK', { status: 200 });
   }
+  waLog(ctx, 'INBOUND_EVENT_CREATED', 'SUCCESS');
 
-  if (payload?.type !== 'incoming_message' || data.type !== 'text' || !data.from || !data.text?.body) {
-    console.log(`[Wappbiz Webhook] Ignoring unsupported event (type=${payload?.type}, data.type=${data.type})`);
+  const parsed = parseWappbizInbound(payload);
+  if (!parsed.ok) {
+    waLog(ctx, 'PAYLOAD_VALIDATED', 'REJECTED', { reason: parsed.reason, detail: parsed.detail });
     return new NextResponse('OK', { status: 200 });
   }
-
-  console.log('[Wappbiz Webhook] Message identified');
+  waLog(ctx, 'PAYLOAD_VALIDATED', 'SUCCESS');
 
   try {
-    await processIncomingMessage(data.from, data.text.body, 'wappbiz');
+    waLog(ctx, 'PROCESSING_STARTED', 'START');
+    await processIncomingMessage(parsed.from, parsed.text, 'wappbiz', ctx);
+    waLog(ctx, 'WEBHOOK_COMPLETED', 'SUCCESS', { responseSent: ctx.responseSent });
   } catch (err) {
-    console.error('[Wappbiz Chatbot] processing failed:', err instanceof Error ? err.message : err);
+    const info = describePgError(err);
+    waLog(ctx, 'WEBHOOK_FAILED', 'FAILED', { ...info, responseSent: ctx.responseSent });
+
     if (messageId) {
       await db
         .update(whatsappInboundEvents)
-        .set({ error: err instanceof Error ? err.message : 'unknown error' })
-        .where(eq(whatsappInboundEvents.providerMessageId, messageId));
+        .set({
+          error: `[${info.errorClass}${info.code ? ' ' + info.code : ''}${info.column ? ' col=' + info.column : ''}] ${info.message}`.slice(0, 500),
+        })
+        .where(eq(whatsappInboundEvents.providerMessageId, messageId))
+        .catch((e) => waLog(ctx, 'WEBHOOK_FAILED', 'FAILED', { note: 'error-persist-failed', ...describePgError(e) }));
     }
-    // Acknowledge anyway — WappBiz has no documented retry/backoff behavior
-    // to lean on, and the chatbot's own catch already sent the user a
-    // friendly fallback message.
+
+    // Safe fallback: only when processIncomingMessage never got a reply out.
+    if (!ctx.responseSent) {
+      try {
+        await sendWappBizMessage(
+          parsed.from,
+          "Sorry — I hit a snag processing that. Please send your message again in a moment.",
+        );
+        ctx.responseSent = true;
+        waLog(ctx, 'FALLBACK_SENT', 'SUCCESS');
+      } catch (e) {
+        waLog(ctx, 'FALLBACK_SENT', 'FAILED', { ...describePgError(e) });
+      }
+    }
+
+    // Acknowledge anyway — WappBiz has no documented retry/backoff behavior.
     return new NextResponse('OK', { status: 200 });
   }
 
@@ -120,7 +156,8 @@ export async function POST(req: Request) {
     await db
       .update(whatsappInboundEvents)
       .set({ processed: true, processedAt: new Date() })
-      .where(eq(whatsappInboundEvents.providerMessageId, messageId));
+      .where(eq(whatsappInboundEvents.providerMessageId, messageId))
+      .catch((e) => waLog(ctx, 'WEBHOOK_COMPLETED', 'FAILED', { note: 'processed-flag-persist-failed', ...describePgError(e) }));
   }
 
   return new NextResponse('OK', { status: 200 });

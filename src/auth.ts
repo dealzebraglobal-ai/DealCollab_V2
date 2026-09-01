@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import authConfig from "./auth.config";
 import { db } from "./db";
 import { accounts, sessions, users, verificationTokens } from "./db/schema";
+import { authStep, describeAuthError, maskEmail, wrapAdapterWithDiagnostics } from "./lib/authDiagnostics";
 
 // Config-presence check only (booleans, never the secret values themselves) —
 // kept to dev/preview so it doesn't add noise to production logs.
@@ -19,12 +20,14 @@ if (process.env.NODE_ENV !== "production") {
 
 import { eq } from "drizzle-orm";
 
-const adapter = DrizzleAdapter(db, {
-  usersTable: users,
-  accountsTable: accounts,
-  sessionsTable: sessions,
-  verificationTokensTable: verificationTokens,
-});
+const adapter = wrapAdapterWithDiagnostics(
+  DrizzleAdapter(db, {
+    usersTable: users,
+    accountsTable: accounts,
+    sessionsTable: sessions,
+    verificationTokensTable: verificationTokens,
+  }),
+);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter,
@@ -119,61 +122,106 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // callbacks below already fully populate token.*/session.user for the
   // "token" branch — they were written for JWT strategy, not "database".
   session: { strategy: "jwt" },
+  // Events run AFTER the adapter has persisted the user/account, so `user.id`
+  // here is the real `users.id` UUID for both new and existing sign-ins. This
+  // is the safe place for post-sign-in writes (last-login stamp, WhatsApp
+  // phone link). Every handler is fully guarded: a throw from an event is
+  // wrapped by Auth.js as CallbackRouteError → `error=Configuration`.
+  events: {
+    async createUser({ user }) {
+      authStep("google-user-create:event", { userId: user.id });
+    },
+    async linkAccount({ account }) {
+      authStep("google-account-create:event", { provider: account.provider });
+    },
+    async signIn({ user, isNewUser }) {
+      if (!user.id) return;
+      const userId = user.id;
+      authStep("session-create", { userId, isNewUser: !!isNewUser });
+
+      // Last-login stamp (keyed on the real UUID).
+      try {
+        await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
+      } catch (err) {
+        authStep("last-login-stamp:fail", { ...describeAuthError(err) });
+      }
+
+      // WhatsApp phone link — deferred from the signIn callback so the row exists.
+      try {
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        const whatsappPhone = cookieStore.get("whatsapp_phone")?.value;
+        if (whatsappPhone) {
+          const existingUserWithPhone = await db.query.users.findFirst({
+            where: eq(users.phone, whatsappPhone),
+          });
+          if (existingUserWithPhone && existingUserWithPhone.id !== userId) {
+            if (existingUserWithPhone.email?.endsWith("@dealcollab.ai")) {
+              await db.delete(users).where(eq(users.id, existingUserWithPhone.id));
+            } else {
+              // Real conflict — leave the other account untouched, don't steal the phone.
+              authStep("whatsapp-link:conflict", { userId: userId });
+              cookieStore.delete("whatsapp_phone");
+              return;
+            }
+          }
+          await db
+            .update(users)
+            .set({ phone: whatsappPhone, isPhoneVerified: true })
+            .where(eq(users.id, userId));
+          cookieStore.delete("whatsapp_phone");
+          authStep("whatsapp-link:ok", { userId: userId });
+        }
+      } catch (err) {
+        authStep("whatsapp-link:fail", { ...describeAuthError(err) });
+      }
+
+      authStep("auth-complete", { userId: userId, isNewUser: !!isNewUser });
+    },
+  },
   callbacks: {
     // @ts-expect-error - callbacks might not be present in authConfig
     ...authConfig.callbacks,
-    async signIn({ user }) {
-      console.log("SIGNIN FLOW:", { userId: user.id, userEmail: user.email });
-      if (!user.id) return true;
+    // NOTE: For a brand-new OAuth user this callback runs BEFORE the adapter
+    // has created the row (Auth.js order: signIn callback → handleLoginOrRegister),
+    // and the `user` argument is the raw provider profile — `user.id` is
+    // Google's `sub`, NOT our `users.id` UUID. Using it in a
+    // `where(eq(users.id, user.id))` throws Postgres 22P02
+    // ("invalid input syntax for type uuid"), which Auth.js surfaces to the
+    // browser as `error=Configuration`. So: identify by EMAIL here, never by
+    // `user.id`, keep every branch inside its own try/catch (a throw from
+    // this callback becomes AccessDenied / Configuration), and defer all
+    // writes that need the real UUID to `events.signIn` below.
+    async signIn({ user, account }) {
+      authStep("google-callback:start", {
+        provider: account?.provider ?? "unknown",
+        email: maskEmail(user?.email),
+      });
 
-      // Track last login/visit time
+      const email = typeof user?.email === "string" ? user.email : null;
+      if (!email) return true;
+
+      // Hard-conflict check only (read-only). The actual phone link happens in
+      // events.signIn once the user row (and its UUID) exists.
       try {
-        await db.update(users)
-          .set({ lastLoginAt: new Date() })
-          .where(eq(users.id, user.id));
-        console.log("SIGNIN: Updated lastLoginAt for user", user.id);
-      } catch (err: any) {
-        console.error("SIGNIN: Failed to update lastLoginAt", err.message);
-      }
-
-      const { cookies } = await import("next/headers");
-      const cookieStore = await cookies();
-      const whatsappPhone = cookieStore.get("whatsapp_phone")?.value;
-      console.log("SIGNIN WHATSAPP CHECK:", { whatsappPhone });
-
-      if (whatsappPhone) {
-        const existingUserWithPhone = await db.query.users.findFirst({
-          where: eq(users.phone, whatsappPhone),
-        });
-
-        // Case: User logs in with an EXISTING Google account, but we have a WhatsApp phone to link
-        if (existingUserWithPhone && existingUserWithPhone.id !== user.id) {
-          // If the conflict is with a placeholder, delete the placeholder and take the phone
-          if (existingUserWithPhone.email?.endsWith('@dealcollab.ai')) {
-            console.log("SIGNIN: Deleting placeholder user", existingUserWithPhone.id);
-            await db.delete(users).where(eq(users.id, existingUserWithPhone.id));
-          } else {
-            // Actual conflict with another real user
-            console.warn("SIGNIN CONFLICT: Phone already linked to another user", { 
-              whatsappPhone, 
-              existingUserId: existingUserWithPhone.id,
-              currentUserId: user.id
-            });
-            // DO NOT return a string here as it causes a redirect loop in App Router
-            return false; 
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        const whatsappPhone = cookieStore.get("whatsapp_phone")?.value;
+        if (whatsappPhone) {
+          const existingUserWithPhone = await db.query.users.findFirst({
+            where: eq(users.phone, whatsappPhone),
+          });
+          const isPlaceholder = existingUserWithPhone?.email?.endsWith("@dealcollab.ai");
+          const isSamePerson = existingUserWithPhone?.email === email;
+          if (existingUserWithPhone && !isPlaceholder && !isSamePerson) {
+            authStep("google-callback:phone-conflict", { email: maskEmail(email) });
+            // DO NOT return a string here — it causes a redirect loop in App Router.
+            return false;
           }
         }
-
-        // Link the phone to this real Google user
-        console.log("SIGNIN: Linking phone to user", { userId: user.id, phone: whatsappPhone });
-        await db.update(users)
-          .set({
-            phone: whatsappPhone,
-            isPhoneVerified: true
-          })
-          .where(eq(users.id, user.id));
-
-        cookieStore.delete("whatsapp_phone");
+      } catch (err) {
+        // A failure here must not block sign-in.
+        authStep("google-callback:conflict-check:fail", { ...describeAuthError(err) });
       }
 
       return true;
