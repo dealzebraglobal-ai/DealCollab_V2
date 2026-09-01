@@ -157,6 +157,19 @@ type MasterSearchPayload = {
     warnings?: string[];
 };
 
+type RecentVisitor = {
+    id: string;
+    name: string | null;
+    email: string;
+    phone?: string | null;
+    firm_name?: string | null;
+    role?: string | null;
+    profile_completion: number | null;
+    tokens: number | null;
+    last_login_at: string | null;
+    created_at: string;
+};
+
 type DashboardPayload = {
     admin: { email: string };
     generatedAt: string;
@@ -165,6 +178,7 @@ type DashboardPayload = {
     pendingEois: PendingEoi[];
     proposalHealth: ProposalHealth[];
     incompleteUsers: IncompleteUser[];
+    recentVisitors: RecentVisitor[];
 };
 
 class AdminAccessError extends Error {
@@ -945,7 +959,7 @@ export default function AdminPage() {
                     </div>
                 </section>
 
-                <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+                <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
                     <section className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm">
                         <SectionHeader title="Proposal health" description="No-match, pending-embedding, and fraud-flagged proposals." />
                         <div className="mt-5 space-y-3">
@@ -992,6 +1006,31 @@ export default function AdminPage() {
                                         <span>Joined: {formatDate(user.created_at)}</span>
                                     </div>
                                     <p className="mt-3 text-xs font-bold text-gray-400">Action: {user.actionHint}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <section className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm">
+                        <SectionHeader title="Platform visitors today" description="Who visited or signed up on the platform today." />
+                        <div className="mt-5 space-y-3">
+                            {!data.recentVisitors || data.recentVisitors.length === 0 ? (
+                                <div className="rounded-3xl border border-orange-100 bg-orange-50 p-6 text-sm font-bold text-orange-700">No visitors recorded on the platform today.</div>
+                            ) : data.recentVisitors.map((user) => (
+                                <div key={user.id} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="font-black text-gray-950 truncate max-w-[150px]">{user.name || user.email}</p>
+                                            <p className="mt-1 text-xs font-bold text-gray-400">{user.firm_name || 'No firm'} • {user.role || 'No role'}</p>
+                                        </div>
+                                        <span className="rounded-full border border-green-100 bg-green-50 px-3 py-1 text-xs font-black text-green-700">
+                                            {user.last_login_at ? formatDate(user.last_login_at) : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-gray-500">
+                                        <span className="truncate max-w-[200px]" title={user.email}>{user.email}</span>
+                                        <span>Tokens: {user.tokens || 0}</span>
+                                    </div>
                                 </div>
                             ))}
                         </div>

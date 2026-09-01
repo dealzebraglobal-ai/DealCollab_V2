@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAccess } from '@/lib/admin';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { sql } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -146,13 +149,13 @@ async function getDetailRows(supabase: NonNullable<ReturnType<typeof createServe
         case 'users':
             return supabase
                 .from('users')
-                .select('id,name,email,phone,firm_name,role,profile_completion,profile_completed_once,is_phone_verified,source,tokens,created_at')
+                .select('id,name,email,phone,firm_name,role,profile_completion,profile_completed_once,is_phone_verified,source,tokens,created_at,last_login_at')
                 .order('created_at', { ascending: false })
                 .limit(1000);
         case 'profiles-completed':
             return supabase
                 .from('users')
-                .select('id,name,email,phone,firm_name,role,profile_completion,profile_completed_once,is_phone_verified,source,tokens,created_at')
+                .select('id,name,email,phone,firm_name,role,profile_completion,profile_completed_once,is_phone_verified,source,tokens,created_at,last_login_at')
                 .or('profile_completed_once.eq.true,profile_completion.gte.80')
                 .order('created_at', { ascending: false })
                 .limit(1000);
@@ -200,7 +203,7 @@ async function getDetailRows(supabase: NonNullable<ReturnType<typeof createServe
         case 'tokens-present':
             return supabase
                 .from('users')
-                .select('id,name,email,phone,firm_name,role,tokens,created_at')
+                .select('id,name,email,phone,firm_name,role,tokens,created_at,last_login_at')
                 .order('tokens', { ascending: false })
                 .limit(1000);
         case 'tokens-deducted':
@@ -459,6 +462,24 @@ export async function GET(req: NextRequest) {
             });
         }
 
+        const recentVisitors = await db
+            .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+                phone: users.phone,
+                firm_name: users.firmName,
+                role: users.role,
+                profile_completion: users.profileCompletion,
+                tokens: users.tokens,
+                last_login_at: users.lastLoginAt,
+                created_at: users.createdAt,
+            })
+            .from(users)
+            .where(sql`${users.lastLoginAt} >= ${new Date(todayIso)}`)
+            .orderBy(sql`${users.lastLoginAt} DESC`)
+            .limit(100);
+
         const [
             totalUsersRes,
             newUsersRes,
@@ -675,6 +696,7 @@ export async function GET(req: NextRequest) {
             savedSearches: savedSearchQueue,
             proposalHealth,
             incompleteUsers,
+            recentVisitors: recentVisitors || [],
         });
     } catch (error: unknown) {
         const errorMsg = getErrorMessage(error);

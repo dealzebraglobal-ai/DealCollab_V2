@@ -186,7 +186,7 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
                                         <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">Connected</span>
                                     )}
                                 </div>
-                                <span className="text-xs text-gray-400 shrink-0">Score {(m.finalScore * 100).toFixed(0)}%</span>
+                                <span className="text-xs text-gray-400 shrink-0">Score {m.finalScore.toFixed(0)}%</span>
                             </div>
                             <p className="text-sm font-medium mb-1">{m.summary}</p>
                             <p className="text-xs text-gray-600 mb-2">{m.reason}</p>
@@ -219,7 +219,7 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
                         <h3 className="text-sm font-semibold">{selected.rank}</h3>
                         <span className={`text-xs px-2 py-0.5 rounded font-medium ${labelClass}`}>{labelText}</span>
                     </div>
-                    <span className="text-xs text-gray-400">Score {(selected.finalScore * 100).toFixed(0)}%</span>
+                    <span className="text-xs text-gray-400">Score {selected.finalScore.toFixed(0)}%</span>
                 </div>
                 <p className="text-sm font-medium">{selected.summary}</p>
                 <p className="text-xs text-gray-600">{selected.reason}</p>

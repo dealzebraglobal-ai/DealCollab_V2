@@ -52,6 +52,7 @@ export const users = pgTable('users', {
 
   source: text('source').default('web'),
 
+  lastLoginAt: timestamp('last_login_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

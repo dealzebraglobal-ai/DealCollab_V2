@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Mail, Phone, MessageSquare, Download, Copy, Check, FileText, User, Building2, Calendar, Coins } from 'lucide-react';
+import { Mail, Phone, MessageSquare, Download, Copy, Check, FileText, User, Building2 } from 'lucide-react';
 
 interface ConnectionDetailsProps {
   item: {
@@ -151,20 +151,6 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
               />
            </div>
         </div>
-      </div>
-
-      {/* FOOTER */}
-      <div className="mt-10 pt-6 border-t border-[#E5E7EB] flex flex-col sm:flex-row items-center justify-between gap-4">
-         <div className="flex items-center gap-2 text-[11px] font-bold text-[#6B7280]">
-            <Calendar size={14} />
-            <span>Connected on April 20, 2024</span>
-            <span className="text-gray-300 mx-1">·</span>
-            <div className="flex items-center gap-1">
-               <Coins size={14} className="text-[#F97316]" />
-               <span>50 tokens used</span>
-            </div>
-         </div>
-         <p className="text-[10px] font-medium text-gray-400">Transaction ID: DC-99812-XA</p>
       </div>
     </div>
   );

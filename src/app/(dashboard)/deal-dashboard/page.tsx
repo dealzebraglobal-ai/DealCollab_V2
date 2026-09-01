@@ -183,12 +183,7 @@ export default function DealDashboardPage() {
             <p className="text-gray-500 text-sm font-medium">Intelligent matchmaking and engagement tracking</p>
           </div>
 
-          {data.length > 0 && (
-            <button className="flex items-center gap-2 bg-[#1F2937] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-[#F97316] transition-all shadow-sm">
-              <PlusCircle size={18} />
-              Create Deal
-            </button>
-          )}
+
         </div>
 
         {/* Main Content Area */}
@@ -202,8 +197,6 @@ export default function DealDashboardPage() {
             <EmptyState
               title="No matches found yet"
               description="Our Intelligence Layer is scanning for opportunities. Create a new deal to accelerate the process."
-              actionLabel="Create Deal"
-              onAction={() => { }}
               icon={<LayoutGrid size={32} />}
             />
           ) : (

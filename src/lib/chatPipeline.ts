@@ -365,7 +365,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
           void notifyMatchViaWhatsApp({
             userId,
             companySummary: `${topCard.sector || 'General'} • ${topCard.geography || 'Global'} • ${topCard.sizeRange || 'Undisclosed'}`,
-            matchScorePercent: topCard.finalScore * 100,
+            matchScorePercent: topCard.finalScore,
           });
         }
 

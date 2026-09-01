@@ -39,7 +39,28 @@ const fetcher = async (url: string) => {
 function stringifyValue(value: RowValue): string {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.map(stringifyValue).join(', ');
-    if (typeof value === 'object') return JSON.stringify(value);
+    if (typeof value === 'object') {
+        const obj = value as Record<string, any>;
+        // Case 1: User details object (name, email)
+        if ('email' in obj || 'name' in obj) {
+            const name = obj.name || 'Unknown';
+            const email = obj.email || 'No email';
+            const firm = obj.firm_name ? ` (${obj.firm_name})` : '';
+            return `${name} <${email}>${firm}`;
+        }
+        // Case 2: Proposal / Deal details object
+        if ('normalised_text' in obj) {
+            const intent = obj.intent ? `[${obj.intent}] ` : '';
+            return `${intent}${obj.normalised_text || ''}`;
+        }
+        // Case 3: Generic query_object or options map
+        return Object.entries(obj)
+            .map(([key, val]) => {
+                const formattedVal = val && typeof val === 'object' ? JSON.stringify(val) : String(val);
+                return `${key.replaceAll('_', ' ')}: ${formattedVal}`;
+            })
+            .join(' | ');
+    }
     return String(value);
 }
 
@@ -48,7 +69,7 @@ function getRowSearchText(row: AdminRow): string {
 }
 
 function getSortableDate(row: AdminRow): number {
-    const value = row.created_at || row.createdAt || row.expires_at || row.notified_at || row.id || '';
+    const value = row.last_login_at || row.lastLoginAt || row.created_at || row.createdAt || row.expires_at || row.notified_at || row.id || '';
     const dateValue = Date.parse(String(value));
     if (!Number.isNaN(dateValue)) return dateValue;
     return String(value).toLowerCase().charCodeAt(0) || 0;
@@ -190,11 +211,18 @@ export default function AdminDetailsPage({ params }: { params: Promise<{ type: s
                                     </tr>
                                 ) : filteredRows.map((row, index) => (
                                     <tr key={String(row.id || row.search_id || `${type}-${index}`)} className="border-b border-gray-50 align-top">
-                                        {columns.map((column) => (
-                                            <td key={column} className="max-w-[320px] px-3 py-4 text-xs font-semibold leading-relaxed text-gray-600">
-                                                <span className="line-clamp-4 break-words">{stringifyValue(row[column]) || '—'}</span>
-                                            </td>
-                                        ))}
+                                        {columns.map((column) => {
+                                            const val = row[column];
+                                            const isDateCol = ['created_at', 'createdAt', 'last_login_at', 'lastLoginAt', 'expires_at', 'notified_at', 'email_verified'].includes(column);
+                                            const displayValue = isDateCol && val
+                                                ? formatDate(String(val))
+                                                : stringifyValue(val);
+                                            return (
+                                                <td key={column} className="max-w-[320px] px-3 py-4 text-xs font-semibold leading-relaxed text-gray-600">
+                                                    <span className="line-clamp-4 break-words">{displayValue || '—'}</span>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>

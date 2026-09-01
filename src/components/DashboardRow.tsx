@@ -6,6 +6,7 @@ import MatchCard from './MatchCard';
 import StatusButton, { DashboardStatus } from './StatusButton';
 import ConnectionDetails from './ConnectionDetails';
 import IncomingEOIDetails from './IncomingEOIDetails';
+import { formatRelativeTime } from '@/utils/date';
 
 export interface DashboardDeal {
   id: string | number;
@@ -54,12 +55,17 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
       <div className="grid grid-cols-1 sm:grid-cols-12 items-stretch gap-4 p-4">
         {/* YOUR DEAL */}
         <div className="sm:col-span-12 md:col-span-5 flex flex-col">
-          <div className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest mb-2 px-1 flex items-center gap-2">
+          <div className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest mb-2 px-1 flex items-center gap-2 w-full">
             {isIncoming ? 'Your Offer' : 'Your Deal'}
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider ${isIncoming ? 'bg-[#F97316]/10 text-[#F97316]' : 'bg-blue-50 text-blue-600'
               }`}>
               {isIncoming ? 'INCOMING' : 'SENT'}
             </span>
+            {item.createdAt && (
+              <span className="text-[10px] text-gray-400 font-semibold normal-case ml-1.5">
+                • {formatRelativeTime(item.createdAt)}
+              </span>
+            )}
           </div>
           <DealCard title={item.deal} description={item.dealDesc} />
         </div>

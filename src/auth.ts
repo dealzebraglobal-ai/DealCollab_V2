@@ -111,6 +111,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       console.log("SIGNIN FLOW:", { userId: user.id, userEmail: user.email });
       if (!user.id) return true;
 
+      // Track last login/visit time
+      try {
+        await db.update(users)
+          .set({ lastLoginAt: new Date() })
+          .where(eq(users.id, user.id));
+        console.log("SIGNIN: Updated lastLoginAt for user", user.id);
+      } catch (err: any) {
+        console.error("SIGNIN: Failed to update lastLoginAt", err.message);
+      }
+
       const { cookies } = await import("next/headers");
       const cookieStore = await cookies();
       const whatsappPhone = cookieStore.get("whatsapp_phone")?.value;

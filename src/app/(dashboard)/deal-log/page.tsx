@@ -108,16 +108,16 @@ export default function DealLogPage() {
       rank: i + 1,
       label: `P${i + 1}`,
       proposalId: dbDeal.id,
-      finalScore: parseFloat(m.score) * 100,
-      confidenceScore: parseFloat(m.similarity) * 100,
+      finalScore: m.score ? parseFloat(m.score) : 0,
+      confidenceScore: m.similarity ? parseFloat(m.similarity) * 100 : 0,
       // scores: MatchScores — derive from available data; breakdown not stored in this endpoint
       scores: {
-        intent: parseFloat(m.score) * 100,
-        industry: parseFloat(m.score) * 100,
-        financial: parseFloat(m.score) * 100,
+        intent: m.score ? parseFloat(m.score) : 0,
+        industry: m.score ? parseFloat(m.score) : 0,
+        financial: m.score ? parseFloat(m.score) : 0,
         niche: 0,
         geography: 0,
-        similarity: parseFloat(m.similarity) * 100,
+        similarity: m.similarity ? parseFloat(m.similarity) * 100 : 0,
       },
       matchReason: m.reason || 'AI alignment detected.',
       counterparty: {
@@ -295,8 +295,6 @@ export default function DealLogPage() {
             <EmptyState
               title="Your Deal Log is empty"
               description="You haven't added any deals yet. Start by defining your first acquisition or sell-side proposal."
-              actionLabel="Create Deal"
-              onAction={() => { }}
               icon={<Layers size={32} />}
             />
           ) : filteredDeals.length === 0 ? (

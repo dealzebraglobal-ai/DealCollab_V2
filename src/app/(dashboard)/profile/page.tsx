@@ -91,21 +91,21 @@ export default function ProfilePage() {
 
 function HeroSection() {
    return (
-      <section className="w-full bg-[#0B1B2B] py-20 relative overflow-hidden shrink-0">
-         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#F97316]/5 rounded-full -mr-64 -mt-64 blur-[120px] opacity-30 pointer-events-none" />
+      <section className="w-full bg-[#0B1B2B] py-10 relative overflow-hidden shrink-0">
+         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#F97316]/5 rounded-full -mr-40 -mt-40 blur-[100px] opacity-30 pointer-events-none" />
          <div className="max-w-7xl mx-auto px-6 relative z-10">
-            <div className="flex flex-col items-center lg:items-start gap-6 text-center lg:text-left">
-               <div className="flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-                  <div className="bg-[#F97316] text-white p-1 rounded-md shadow-lg">
-                     <Sparkles size={14} />
+            <div className="flex flex-col items-center lg:items-start gap-3 text-center lg:text-left">
+               <div className="flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
+                  <div className="bg-[#F97316] text-white p-0.5 rounded shadow-lg">
+                     <Sparkles size={11} />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Professional Intelligence Layer</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/80">Professional Intelligence Layer</span>
                </div>
-               <div className="space-y-4">
-                  <h1 className="text-4xl md:text-6xl font-black text-white leading-tight tracking-tight">
+               <div className="space-y-2">
+                  <h1 className="text-2xl md:text-3xl font-black text-white leading-tight tracking-tight">
                      Professional <span className="text-[#F97316]">Intelligence Profile</span>
                   </h1>
-                  <p className="text-gray-400 font-medium max-w-2xl text-base md:text-lg leading-relaxed">
+                  <p className="text-gray-400 font-medium max-w-2xl text-xs md:text-sm leading-relaxed">
                      Your verified profile determines the quality of deal matches and collaborator credibility within the DealCollab network.
                   </p>
                </div>

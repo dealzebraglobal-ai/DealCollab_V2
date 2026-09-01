@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
                 void notifyMatchViaWhatsApp({
                     userId: ss.user_id,
                     companySummary: `${bestCandidate.sectors?.[0] || 'General'} • ${bestCandidate.geographies?.[0] || 'Global'}`,
-                    matchScorePercent: bestScore * 100,
+                    matchScorePercent: bestScore,
                 });
             }
 
