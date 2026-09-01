@@ -17,7 +17,7 @@
  *   ✘ Prompt construction     → promptRouter.ts
  */
 
-import { normalizeSize } from './dataQuality';
+import { normalizeSize, normalizeIntent } from './dataQuality';
 import type { RouterState, DealIntent, SectorKey, ConversationPhase } from './types';
 import { VALID_SECTOR_KEYS } from './detectors';
 import {
@@ -63,6 +63,13 @@ export function createBlankState(): RouterState {
     intent_validated:        null,
     m4_questions_asked:      false,
     is_captured:             false,
+    currency:                null,
+    urgency:                 null,
+    inferred_urgency:        null,
+    buyer_type:              null,
+    inferred_buyer_type:     null,
+    advisor_name:            null,
+    contact_phone:           null,
     phase:                   'ENTRY',
     turn_count:              0,
     refinement_count:        0,
@@ -182,6 +189,16 @@ export function updateStateFromExtraction(
     updated.intent_focus    = extraction.state.intent_focus as string;
     updated.strategic_intent = extraction.state.intent_focus as string;
   }
+
+  // Document-derived canonical fields (currency/urgency/buyer_type/advisor_name/
+  // contact_phone): only overwrite when the model actually supplied a value, so a
+  // fact seeded at document intake (initializeStateFromDocument) is never erased by
+  // a later turn where the model is silent on these fields.
+  if (extraction.state.currency)      updated.currency      = extraction.state.currency as string;
+  if (extraction.state.urgency)       updated.urgency       = extraction.state.urgency as string;
+  if (extraction.state.buyer_type)    updated.buyer_type    = extraction.state.buyer_type as string;
+  if (extraction.state.advisor_name)  updated.advisor_name  = extraction.state.advisor_name as string;
+  if (extraction.state.contact_phone) updated.contact_phone = extraction.state.contact_phone as string;
 
   // Industry data — merge, never overwrite
   if (extraction.state.industry_data &&
@@ -339,25 +356,82 @@ export function updateStateFromExtraction(
 // ─────────────────────────────────────────────────────────────
 
 export function initializeStateFromDocument(structuredData: Record<string, unknown>): RouterState {
-  const state   = createBlankState();
-  const intent  = structuredData.intent as DealIntent ?? null;
-  const sectorStr = structuredData.sector as string ?? '';
-  const location  = structuredData.geography as string ?? structuredData.location as string ?? '';
+  const state = createBlankState();
+  // The canonical document extraction prompt (cleanAndStructureDocument) is instructed
+  // to return one of the 5 DealIntent enum values, but normalize defensively anyway —
+  // this is the ONE place both Chat (parse-document/route.ts) and Bulk (bulk-upload/route.ts)
+  // seed intent from a document, so canonicalizing here keeps them identical by
+  // construction and reuses the same normalizer chat/route.ts uses at insert time
+  // (dataQuality.normalizeIntent), instead of each caller re-deriving it independently.
+  const intent = normalizeIntent(typeof structuredData.intent === 'string' ? structuredData.intent : null);
+
+  // CANONICAL FIELD NAMES: cleanAndStructureDocument() (the one shared document
+  // extraction layer — src/lib/intelligenceEngine.ts) returns `sectors` and
+  // `geographies` as ARRAYS (matching the proposals.sectors / proposals.geographies
+  // text[] columns). RouterState only tracks a single coarse sector/geography per
+  // conversation, so we take the first extracted value. Reading the old singular
+  // `sector`/`geography` keys here (which the canonical parser never emits) silently
+  // dropped every document-derived sector/geography — this is also why the legacy
+  // `location` fallback key is still accepted for older callers.
+  const sectorsArr: string[] = Array.isArray(structuredData.sectors)
+    ? (structuredData.sectors as unknown[]).filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+    : [];
+  const legacySectorStr = typeof structuredData.sector === 'string' ? structuredData.sector : '';
+  const sectorStr = sectorsArr[0] || legacySectorStr;
+
+  const geographiesArr: string[] = Array.isArray(structuredData.geographies)
+    ? (structuredData.geographies as unknown[]).filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+    : [];
+  const legacyLocationStr =
+    (typeof structuredData.geography === 'string' && structuredData.geography) ||
+    (typeof structuredData.location === 'string' && structuredData.location) ||
+    '';
+  const location = geographiesArr[0] || legacyLocationStr;
 
   if (intent) state.intent = intent;
   if (sectorStr) {
     const raw      = sectorStr.toLowerCase().trim();
     const validKey = VALID_SECTOR_KEYS.find(k => k === raw);
-    state.sector   = validKey || detectSectorFromText(sectorStr);
+    state.sector   = validKey || detectSectorFromText(sectorStr) || detectSectorFromText(sectorsArr.join(' '));
   }
   if (location)                  state.geography = location;
   if (structuredData.industry)   state.industry  = String(structuredData.industry);
   if (structuredData.sub_sector) state.sub_sector = String(structuredData.sub_sector);
   if (structuredData.deal_size)  state.deal_size  = String(structuredData.deal_size);
   if (structuredData.revenue)    state.revenue    = String(structuredData.revenue);
-  if (structuredData.structure)  state.structure  = String(structuredData.structure);
+  if (structuredData.structure || structuredData.deal_structure) {
+    state.structure = String(structuredData.structure || structuredData.deal_structure);
+  }
   if (structuredData.company_overview) {
     state.industry_data = { ...state.industry_data, company_overview: structuredData.company_overview };
+  }
+
+  // Document-derived / AI-extracted canonical fields (33-field schema) that were
+  // previously dropped entirely by this function — they exist on RouterState
+  // (types.ts) but nothing wrote them here, so Chat's document intake never saw
+  // currency/urgency/buyer_type/advisor_name/contact_phone even when the source
+  // document stated them explicitly (Bulk only "worked" because bulk-upload's
+  // route read structuredData directly, bypassing this state entirely).
+  if (typeof structuredData.currency === 'string' && structuredData.currency) {
+    state.currency = structuredData.currency;
+  }
+  if (typeof structuredData.urgency === 'string' && structuredData.urgency) {
+    state.urgency = structuredData.urgency;
+  }
+  if (typeof structuredData.buyer_type === 'string' && structuredData.buyer_type) {
+    state.buyer_type = structuredData.buyer_type;
+  }
+  if (typeof structuredData.advisor_name === 'string' && structuredData.advisor_name) {
+    state.advisor_name = structuredData.advisor_name;
+  }
+  if (typeof structuredData.contact_phone === 'string' && structuredData.contact_phone) {
+    state.contact_phone = structuredData.contact_phone;
+  }
+  if (Array.isArray(structuredData.special_conditions)) {
+    const sc = (structuredData.special_conditions as unknown[]).filter(
+      (x): x is string => typeof x === 'string' && x.trim() !== '',
+    );
+    if (sc.length > 0) state.special_conditions = sc;
   }
 
   // Helper utilities

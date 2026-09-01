@@ -10,7 +10,7 @@ import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import PhoneVerification from '@/components/auth/PhoneVerification';
 import EmailVerification from '@/components/auth/EmailVerification';
 import EmailOtpVerification from '@/components/auth/EmailOtpVerification';
-import { ShieldCheck, Sparkles, Mail } from 'lucide-react';
+import { ShieldCheck, Sparkles, Mail, MessageSquare } from 'lucide-react';
 
 const stepVariants = {
   initial: { opacity: 0, x: 20 },
@@ -26,8 +26,11 @@ function AuthContent() {
   const error = searchParams.get('error');
   const logoutSuccess = searchParams.get('logout') === 'success';
   const isFromWhatsApp = source === 'whatsapp';
+  const phoneParam = searchParams.get('phone');
 
-  const [step, setStep] = useState<'google' | 'email' | 'otp' | 'phone' | 'verified'>('google');
+  const [step, setStep] = useState<'google' | 'email' | 'otp' | 'phone' | 'verified'>(
+    isFromWhatsApp ? 'phone' : 'google'
+  );
   const [pendingEmail, setPendingEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { status, data: session } = useSession();
@@ -164,14 +167,25 @@ function AuthContent() {
                   <div className="flex-grow border-t border-gray-100" />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setStep('email')}
-                  className="w-full bg-white text-[#1F2937] py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-[#E5E7EB] hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
-                >
-                  <Mail size={18} className="text-gray-400 group-hover:text-[#F97316] transition-colors" />
-                  <span className="font-semibold tracking-tight">Sign in with Email</span>
-                </button>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep('phone')}
+                    className="w-full bg-[#25D366] text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-[#1EBE5D] transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
+                  >
+                    <MessageSquare size={18} className="text-white group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold tracking-tight">Sign in with WhatsApp</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStep('email')}
+                    className="w-full bg-white text-[#1F2937] py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-[#E5E7EB] hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
+                  >
+                    <Mail size={18} className="text-gray-400 group-hover:text-[#F97316] transition-colors" />
+                    <span className="font-semibold tracking-tight">Sign in with Email</span>
+                  </button>
+                </div>
 
                 <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-widest pt-4 opacity-50">
                   Institutional Grade Security
@@ -235,6 +249,8 @@ function AuthContent() {
                 <PhoneVerification
                   onVerify={handlePhoneSuccess}
                   onBack={() => setStep('google')}
+                  initialPhone={phoneParam}
+                  isFromWhatsApp={isFromWhatsApp}
                 />
               </motion.div>
             )}

@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import { ChatProvider } from '@/components/ChatProvider';
-import DashboardLayout from '@/components/DashboardLayout';
 
 export const metadata: Metadata = {
   title: { default: 'Guide & Trust — DealCollab', template: '%s — DealCollab' },
@@ -16,9 +14,5 @@ export const metadata: Metadata = {
  * a signed-in user never feels like they left the product.
  */
 export default function GuideLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ChatProvider>
-      <DashboardLayout>{children}</DashboardLayout>
-    </ChatProvider>
-  );
+  return <>{children}</>;
 }

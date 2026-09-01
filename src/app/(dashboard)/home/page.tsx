@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { useChat } from '@/components/ChatProvider';
 import { useRouter } from 'next/navigation';
 import { MatchPanel } from '@/components/MatchPanel';
+import { validateParseDocumentRequest, type ParseDocumentRequest } from '@/lib/parseDocumentContract';
 
 export default function Home() {
   const {
@@ -69,8 +70,36 @@ export default function Home() {
         }
         
         const { uploadUrl, path } = await signedUrlRes.json();
+        // Defensive: fail fast with an actionable message rather than
+        // sending a parse-document request we already know is malformed.
+        // A signed-url response with a missing/empty uploadUrl or path is
+        // never valid (the server always derives a non-empty path), so if
+        // this ever fires it's a real signal to the user, not a silent
+        // pass-through into a confusing downstream 400.
+        if (!uploadUrl || typeof path !== 'string' || !path) {
+          throw new Error('Upload authorization was incomplete. Please refresh the page and try again.');
+        }
         console.log("[CLIENT] Uploading directly to Supabase storage path:", path);
-        
+
+        // The exact bucket/path from THIS signed-upload response is carried
+        // straight through to the parse request below, in the same async
+        // chain — never re-derived, never read back from component state,
+        // so there is no way for a stale/previous file's path to leak in.
+        const parseDocumentRequest: ParseDocumentRequest = {
+          bucket: 'pdfs',
+          path,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        };
+        const clientShapeCheck = validateParseDocumentRequest(parseDocumentRequest);
+        if (!clientShapeCheck.valid) {
+          // Should be unreachable given the checks above, but fails fast
+          // with the server's own validation logic rather than sending a
+          // request already known to be malformed.
+          throw new Error(clientShapeCheck.message || 'Invalid upload request');
+        }
+
         // 2. Upload file directly using PUT
         const uploadRes = await fetch(uploadUrl, {
           method: 'PUT',
@@ -84,15 +113,14 @@ export default function Home() {
           throw new Error(`Direct upload to storage failed with status ${uploadRes.status}`);
         }
         
-        // 3. Construct public URL
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        if (!supabaseUrl) {
-          throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
-        }
-        const publicUrl = `${supabaseUrl}/storage/v1/object/public/pdfs/${path}`;
-        console.log("[CLIENT] Direct upload successful! Public URL:", publicUrl);
+        // 3. Send the storage bucket/path to parse-document — NOT a
+        // manually constructed public URL. The server downloads the object
+        // itself via its own authenticated Supabase client, which is more
+        // reliable (no public-bucket assumption, no propagation-timing
+        // race) and safer (the server never fetches a URL the browser
+        // handed it) than fetching a guessed public URL string.
+        console.log("[CLIENT] Direct upload successful! Storage path:", path);
 
-        // 4. Send public URL to parse-document route for extraction
         let parseRes: Response;
         try {
           parseRes = await fetch('/api/chat/parse-document', {
@@ -100,12 +128,7 @@ export default function Home() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              fileUrl: publicUrl,
-              fileName: file.name,
-              fileType: file.type,
-              fileSize: file.size,
-            }),
+            body: JSON.stringify(parseDocumentRequest),
           });
         } catch (fetchErr) {
           throw new Error(`Parse request failed: ${fetchErr}`);
@@ -125,8 +148,12 @@ export default function Home() {
         console.log("=== PARSE RESPONSE BODY ===", JSON.stringify(parseData).slice(0, 300));
 
         if (!parseRes.ok || !parseData.success) {
-          // Surface the error to the user clearly instead of swallowing it
-          throw new Error(parseData.error || `Document parsing failed with status ${parseRes.status}`);
+          // Surface the error to the user clearly instead of swallowing it.
+          // Keep the backend's machine-readable `code` in the message so the
+          // catch block below can show a specific, accurate reason instead
+          // of one generic "extraction failed" message for every case.
+          const baseMsg = parseData.error || `Document parsing failed with status ${parseRes.status}`;
+          throw new Error(parseData.code ? `${parseData.code}: ${baseMsg}` : baseMsg);
         }
 
         documentText = parseData.text || '';
@@ -139,6 +166,17 @@ export default function Home() {
 
         if (!documentText || documentText.trim().length < 10) {
           throw new Error('Document appears empty or unreadable. Try a different file.');
+        }
+
+        // AI structuring is separate from document extraction — the document
+        // itself was read successfully, so this is a distinct, non-fatal
+        // notice rather than an error bubble.
+        if (parseData.aiStructuringFailed) {
+          setMessages(prev => [...prev, {
+            role: 'assistant' as const,
+            content: 'ℹ️ The document was read successfully, but structured deal-field extraction didn\'t complete. You can still continue — just confirm the details as we go.',
+            id: (Date.now() + 3).toString(),
+          }]);
         }
       }
 
@@ -222,19 +260,66 @@ export default function Home() {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       console.error('[CHAT ERROR]', errorMessage);
 
-      // Format document errors more helpfully
-      const isDocError = errorMessage.includes('image-based') ||
-        errorMessage.includes('IMAGE_BASED_PDF') ||
-        errorMessage.includes('extract text');
-
-      const displayMessage = isDocError
-        ? '❌ This PDF contains images rather than text, so I cannot read it directly.\n\n' +
+      // Format document errors more helpfully — a specific, accurate message
+      // per failure reason instead of one generic "extraction failed" line
+      // for every case (large file, scanned PDF, timeout, unsupported type
+      // are all different problems with different user-facing fixes).
+      let displayMessage: string;
+      if (errorMessage.includes('UNAUTHORIZED')) {
+        displayMessage = '❌ Your session has expired. Please refresh the page and sign in again.';
+      } else if (errorMessage.includes('STORAGE_ACCESS_DENIED')) {
+        displayMessage = "❌ We couldn't verify access to this file. Please upload it again.";
+      } else if (errorMessage.includes('RATE_LIMITED')) {
+        displayMessage = '❌ Too many uploads in a short time. Please wait a few minutes and try again.';
+      } else if (errorMessage.includes('FILE_TOO_LARGE')) {
+        displayMessage = "❌ This file is too large to upload (max 10MB). Please upload a smaller file, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('FILE_CONTENT_TYPE_MISMATCH')) {
+        displayMessage = "❌ The uploaded file's content doesn't match its file type. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('CORRUPTED_FILE')) {
+        displayMessage = "❌ The uploaded file appears to be empty or corrupted. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('STORAGE_OBJECT_NOT_FOUND')) {
+        displayMessage = "❌ We couldn't find the uploaded file. Please try uploading it again.";
+      } else if (errorMessage.includes('STORAGE_DOWNLOAD_TIMEOUT')) {
+        displayMessage = "❌ Retrieving the uploaded file took too long. Please try again in a moment.";
+      } else if (errorMessage.includes('STORAGE_DOWNLOAD_FAILED')) {
+        displayMessage = "❌ Document storage is temporarily unavailable. Please try again in a moment.";
+      } else if (errorMessage.includes('MISSING_BUCKET') || errorMessage.includes('MISSING_PATH') || errorMessage.includes('INVALID_PATH') || errorMessage.includes('MISSING_FILE_NAME')) {
+        displayMessage = "❌ The upload request was incomplete. Please refresh the page and try uploading again.";
+      } else if (errorMessage.includes('OCR_FAILED')) {
+        // Distinct from the image-based/IMAGE_BASED_PDF case below: OCR
+        // support exists and was genuinely attempted here — it just didn't
+        // produce usable text (garbled scan, a render/recognition failure).
+        // Telling the user "convert to DOCX" would be actively misleading.
+        displayMessage =
+          "❌ We couldn't extract text from this scanned PDF.\n\n" +
+          'Please try again, or upload a higher-quality scan. You can also paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('image-based') || errorMessage.includes('IMAGE_BASED_PDF') || errorMessage.includes('extract text')) {
+        displayMessage =
+          '❌ This PDF contains images rather than text, so I cannot read it directly.\n\n' +
           'To fix this:\n' +
           '• Open the PDF in Word or Google Docs\n' +
           '• Save/Export as DOCX format\n' +
           '• Upload the DOCX file instead\n\n' +
-          'Alternatively, paste the key deal details directly in the chat.'
-        : `❌ ${errorMessage}`;
+          'Alternatively, paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('DOCUMENT_TOO_LARGE')) {
+        displayMessage =
+          "❌ Your PDF is readable, but it's too large to process in one request.\n\n" +
+          'Please upload a smaller document or split it into sections, or paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('DOCUMENT_PARSE_TIMEOUT')) {
+        displayMessage =
+          '❌ This document is taking too long to process (it may be very large or have many scanned pages).\n\n' +
+          'Please try a smaller or text-based document, or paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('UNSUPPORTED_FILE_TYPE')) {
+        displayMessage = '❌ This file type is not supported yet. Please upload a PDF, DOCX, or TXT file, or paste the key deal details directly in the chat.';
+      } else if (errorMessage.includes('EXTRACTION_FAILED')) {
+        displayMessage = "❌ We couldn't read this file — it may be empty, corrupted, or password-protected. Please upload the original file again, or paste the key deal details directly in the chat.";
+      } else if (errorMessage.includes('INVALID_REQUEST')) {
+        displayMessage = "❌ The upload request was invalid. Please try uploading the file again.";
+      } else if (errorMessage.includes('INTERNAL_PARSING_ERROR')) {
+        displayMessage = "❌ Something went wrong while processing this document. Please try again, or paste the key deal details directly in the chat.";
+      } else {
+        displayMessage = `❌ ${errorMessage}`;
+      }
 
       setMessages(prev => [...prev, {
         role: 'assistant' as const,

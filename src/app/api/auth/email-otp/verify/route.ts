@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { hashOtp } from '@/lib/emailOtp';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,16 @@ const MAX_ATTEMPTS = 5;
 
 export async function POST(req: Request) {
   try {
+    // SECURITY: independent of the per-user otpAttempts counter below (which
+    // only starts limiting once a code has actually been issued for that
+    // exact email) — this stops a single source from brute-forcing across
+    // many different email addresses. Matches the same convention already
+    // used in /api/auth/otp/verify (phone OTP).
+    const perIp = checkRateLimit(`email-otp-verify:ip:${getClientIp(req)}`, 20, 10 * 60 * 1000);
+    if (!perIp.allowed) {
+      return NextResponse.json({ error: 'Too many attempts — please wait before trying again' }, { status: 429 });
+    }
+
     const { email, code } = await req.json();
 
     if (!email || typeof email !== 'string') {

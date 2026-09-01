@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useNotifications } from './NotificationProvider';
 import { useSession, signOut } from 'next-auth/react';
 import { createSupabaseClient } from '@/utils/supabase/client';
+import { trackLogout } from '@/lib/analytics';
 
 export interface UserProfile {
   id: string;
@@ -221,9 +222,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       dealSubmitted: false,
     });
     
-    await signOut({ 
+    trackLogout();
+    await signOut({
       callbackUrl: reason ? `/?error=${reason}` : '/?logout=success',
-      redirect: true 
+      redirect: true
     });
   }, []);
 

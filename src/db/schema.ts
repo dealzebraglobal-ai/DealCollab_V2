@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { bigint, boolean, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Enums
 export const dealStatusEnum = pgEnum('deal_status', ['draft', 'live', 'paused', 'closed']);
@@ -145,6 +145,73 @@ export const tokenTransactions = pgTable('token_transactions', {
   action: text('action').notNull(),
   amount: integer('amount').notNull(),
   balanceAfter: integer('balance_after').notNull(),
+  // Stage 3 (Razorpay + promo + token economy) additions — nullable, additive only.
+  balanceBefore: integer('balance_before'),
+  referenceType: text('reference_type'),
+  referenceId: uuid('reference_id'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 5.1 TOKEN PACKAGES — server-authoritative pricing, DB-driven so the team
+// can set/change real commercial numbers without a code deploy. Seeded
+// empty/inactive; see supabase/migrations/20260827_token_economy_and_payments.sql.
+export const tokenPackages = pgTable('token_packages', {
+  id: text('id').primaryKey(), // short slug, e.g. 'starter'
+  name: text('name').notNull(),
+  tokens: integer('tokens').notNull(),
+  pricePaise: bigint('price_paise', { mode: 'number' }).notNull(),
+  currency: text('currency').default('INR').notNull(),
+  active: boolean('active').default(false).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 5.2 PROMO CODES
+export const promocodes = pgTable('promocodes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  code: text('code').notNull().unique(),
+  discountType: text('discount_type').notNull(), // 'PERCENTAGE' | 'FIXED_AMOUNT' | 'TOKEN_BONUS'
+  discountValue: numeric('discount_value').default('0').notNull(),
+  tokenBonus: integer('token_bonus'),
+  startAt: timestamp('start_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  maxTotalUses: integer('max_total_uses'),
+  maxUsesPerUser: integer('max_uses_per_user').default(1).notNull(),
+  minimumPurchaseAmountPaise: bigint('minimum_purchase_amount_paise', { mode: 'number' }).default(0).notNull(),
+  active: boolean('active').default(true).notNull(),
+  applicablePackageIds: text('applicable_package_ids').array(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 5.3 PAYMENT TRANSACTIONS — one row per Razorpay order attempt (or one
+// free-promo redemption, which never touches Razorpay — see razorpayOrderId).
+export const paymentTransactions = pgTable('payment_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  packageId: text('package_id').references(() => tokenPackages.id).notNull(),
+  razorpayOrderId: text('razorpay_order_id'),
+  razorpayPaymentId: text('razorpay_payment_id'),
+  amountPaise: bigint('amount_paise', { mode: 'number' }).notNull(),
+  originalAmountPaise: bigint('original_amount_paise', { mode: 'number' }).notNull(),
+  discountAmountPaise: bigint('discount_amount_paise', { mode: 'number' }).default(0).notNull(),
+  currency: text('currency').default('INR').notNull(),
+  tokenQuantity: integer('token_quantity').notNull(),
+  promoCodeId: uuid('promo_code_id').references(() => promocodes.id),
+  status: text('status').default('CREATED').notNull(), // CREATED | AUTHORIZED | CAPTURED | FAILED | REFUNDED
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+});
+
+// 5.4 PROMO REDEMPTIONS — one row per successful use, inserted only when
+// the associated payment actually succeeds (never for a failed/cancelled attempt).
+export const promoRedemptions = pgTable('promo_redemptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  promoCodeId: uuid('promo_code_id').references(() => promocodes.id).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  paymentTransactionId: uuid('payment_transaction_id').references(() => paymentTransactions.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -212,6 +279,19 @@ export const proposals = pgTable('proposals', {
   metadata: jsonb('metadata').default({}),
   embeddingStatus: text('embedding_status').default('PENDING'),
   summaryText: text('summary_text'),
+  
+  // Missing canonical fields (newly added)
+  currency: text('currency'),
+  urgency: text('urgency'),
+  inferredUrgency: text('inferred_urgency'),
+  buyerType: text('buyer_type'),
+  inferredBuyerType: text('inferred_buyer_type'),
+  intentValidated: boolean('intent_validated'),
+  
+  // Existing in DB, but previously missing from Drizzle
+  documentUrl: text('document_url'),
+  documentText: text('document_text'),
+  
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -264,6 +344,11 @@ export const chatSessions = pgTable('chat_sessions', {
   stateVersion: integer('state_version').default(0).notNull(),  // ADDED for OCC
   source: text('source').default('WEB').notNull(),
   whatsappPhoneNumber: text('whatsapp_phone_number'),
+  // WhatsApp-only UI navigation context (which screen a numbered reply like
+  // "1" should be interpreted against — e.g. { screen: 'COUNTERPARTY_DETAIL',
+  // index: 1 }). Kept as its own column, same pattern as whatsappPhoneNumber
+  // above, rather than folded into the mandate-intake `state` blob.
+  whatsappUiState: jsonb('whatsapp_ui_state'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   whatsappPhoneIdx: index('idx_chat_sessions_whatsapp_phone').on(table.whatsappPhoneNumber),
@@ -291,6 +376,23 @@ export const savedSearches = pgTable('saved_searches', {
 }, (table) => ({
   statusIdx: index('idx_saved_searches_status').on(table.status),
   userIdx: index('idx_saved_searches_user').on(table.userId),
+}));
+
+// 12. WHATSAPP INBOUND EVENTS — raw capture + idempotency ledger for inbound
+// webhook deliveries (WappBiz's inbound payload/signature format is not
+// documented, so raw_payload is stored as-is; provider_message_id is filled
+// in once a real field is confirmed from an observed payload).
+export const whatsappInboundEvents = pgTable('whatsapp_inbound_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  provider: text('provider').default('wappbiz').notNull(),
+  providerMessageId: text('provider_message_id'),
+  rawPayload: jsonb('raw_payload').notNull(),
+  processed: boolean('processed').default(false).notNull(),
+  processedAt: timestamp('processed_at'),
+  error: text('error'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  providerMessageIdx: index('idx_whatsapp_inbound_provider_msg').on(table.providerMessageId),
 }));
 
 // Relations

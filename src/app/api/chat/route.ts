@@ -30,6 +30,7 @@ import { type MatchCard, type MatchmakingResult } from '@/lib/matchmakingEngine'
 import crypto from 'crypto';
 import { resolveCompletion, type Extraction } from '@/lib/resolveCompletion';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { isValidAdminSecret } from '@/lib/adminSecret';
 
 /**
  * DealCollab Chat Route
@@ -58,17 +59,6 @@ import { checkRateLimit } from '@/lib/rateLimit';
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
-
-function isValidAdminSecret(header: string | null): boolean {
-  const expected = process.env.ADMIN_API_KEY;
-  if (!expected || !header) return false;
-
-  const expectedBuf = Buffer.from(expected);
-  const headerBuf = Buffer.from(header);
-  if (expectedBuf.length !== headerBuf.length) return false;
-
-  return crypto.timingSafeEqual(expectedBuf, headerBuf);
-}
 
 // ─────────────────────────────────────────────────────────────
 // GET — chat history list
@@ -105,8 +95,9 @@ export async function GET() {
   } catch (error: unknown) {
     const err = error as Error;
     console.error("🔥 HISTORY FETCH ERROR:", err);
+    // SECURITY: stack traces must never reach the client — kept server-side only.
     return NextResponse.json(
-      { success: false, error: err.message, stack: err.stack },
+      { success: false, error: err.message },
       { status: 500 },
     );
   }
@@ -706,16 +697,16 @@ export async function POST(req: NextRequest) {
             raw_text: message,
             normalised_text: JSON.stringify(extraction),
             intent: normalizedIntentForSave,
-            sectors: s.sector ? [s.sector] : [],
-            geographies: s.geography ? [s.geography] : [],
+            sectors: (updatedState.sector ?? s.sector) ? [updatedState.sector ?? s.sector] : [],
+            geographies: (updatedState.geography ?? s.geography) ? [updatedState.geography ?? s.geography] : [],
             deal_size_min_cr: size.min,
             deal_size_max_cr: size.max,
             revenue_min_cr: revenue.min,
             revenue_max_cr: revenue.max,
             deal_structure: s.structure,
             special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
-            urgency: "Medium",
-            buyer_type: s.intent_focus || "Strategic",
+            urgency: updatedState.urgency ?? s.urgency ?? "Medium",
+            buyer_type: updatedState.buyer_type ?? s.buyer_type ?? s.intent_focus ?? "Strategic",
             status: 'ACTIVE',
             source: source,
             document_url: documentUrl,
@@ -754,20 +745,30 @@ export async function POST(req: NextRequest) {
             userId,
             intent: extraction.intent,
             raw_text: message,
-            sector: s.sector ?? null,
+            sector: updatedState.sector ?? s.sector ?? null,
             industry: updatedState.industry ?? s.industry ?? null,
-            sub_sector: s.sub_sector ?? null,
-            geography: s.geography ?? null,
+            sub_sector: updatedState.sub_sector ?? s.sub_sector ?? null,
+            geography: updatedState.geography ?? s.geography ?? null,
             deal_size: s.deal_size ?? null,
             revenue: s.revenue ?? null,
-            structure: s.structure ?? null,
+            structure: updatedState.structure ?? s.structure ?? null,
             intent_focus: s.intent_focus ?? null,
             industry_data: { ...((s.industry_data as Record<string, unknown>) ?? {}), ...((updatedState.industry ?? s.industry) ? { industry: updatedState.industry ?? s.industry } : {}) },
-            special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
+            special_conditions: updatedState.special_conditions?.length ? updatedState.special_conditions : (s.industry_data ? [JSON.stringify(s.industry_data)] : []),
             deal_size_min: size.min,
             deal_size_max: size.max,
             revenue_min: revenue.min,
             revenue_max: revenue.max,
+            currency: updatedState.currency ?? s.currency ?? null,
+            urgency: updatedState.urgency ?? s.urgency ?? null,
+            inferred_urgency: updatedState.inferred_urgency ?? null,
+            buyer_type: updatedState.buyer_type ?? s.buyer_type ?? null,
+            inferred_buyer_type: updatedState.inferred_buyer_type ?? null,
+            advisor_name: updatedState.advisor_name ?? s.advisor_name ?? null,
+            contact_phone: updatedState.contact_phone ?? s.contact_phone ?? null,
+            intent_validated: updatedState.intent_validated ?? true,
+            document_url: documentUrl || null,
+            document_text: documentText || null,
             is_shell_query: updatedState.is_shell_query ?? false,
             source: source,
           });
@@ -851,18 +852,19 @@ export async function POST(req: NextRequest) {
       matches: matchCards,
       matchSummary: matchSummary,
       is_document_intake: updatedState.is_document_intake,
+      reason: completion.reason,
+      m4GuardFired: completion.m4GuardFired,
     });
 
   } catch (error: unknown) {
     console.error("❌ CHAT ERROR:", error);
 
     let errorMessage = "An unknown error occurred";
-    let errorStack: string | undefined = undefined;
 
     if (error instanceof Error) {
       errorMessage = error.message;
-      errorStack = error.stack;
-      console.error("STACK:", errorStack);
+      // SECURITY: stack traces must never reach the client — logged server-side only.
+      console.error("STACK:", error.stack);
     } else if (typeof error === 'string') {
       errorMessage = error;
     }
@@ -870,7 +872,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: false,
       error: errorMessage,
-      stack: errorStack,
       is_document_intake: updatedState.is_document_intake,
     }, { status: 500 });
   }

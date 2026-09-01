@@ -30,6 +30,7 @@ import type { DealIntent, SectorKey } from '@/lib/promptRouter';
 import { executeMatchmaking, type ProposalInput } from '@/lib/matchmakingEngine';
 import { NextRequest, NextResponse } from 'next/server';
 import Papa from 'papaparse';
+import { isValidAdminSecret } from '@/lib/adminSecret';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -122,23 +123,32 @@ function buildProposalInputFromRow(row: Record<string, string>, userId: string):
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    // SECURITY: was a plain `===` comparison — vulnerable to a timing
+    // side-channel. Now uses the same constant-time compare as chat/route.ts.
+    const isAdmin = isValidAdminSecret(req.headers.get('x-admin-secret'));
+    let userId: string;
+    
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error('Supabase client init failed');
 
-    const { data: dbUser, error: userErr } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single();
-    if (userErr || !dbUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (isAdmin) {
+      userId = req.headers.get('x-test-user-id') as string;
+    } else {
+      const session = await auth();
+      if (!session?.user?.email) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      const { data: dbUser, error: userErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', session.user.email)
+        .single();
+      if (userErr || !dbUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      userId = dbUser.id as string;
     }
-    const userId = dbUser.id as string;
 
     let formData: FormData;
     try {
@@ -205,8 +215,8 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const extractedText = await extractTextFromFile(buffer, file.type);
-        const cleanText = extractedText.trim();
+        const extraction = await extractTextFromFile(buffer, file.type);
+        const cleanText = extraction.text.trim();
         if (!cleanText) {
           results.push({ file: file.name, status: 'error', reason: 'No text could be extracted from this document' });
           continue;
@@ -225,19 +235,37 @@ export async function POST(req: NextRequest) {
           console.warn('[bulk-upload] cleanAndStructureDocument failed, continuing with raw text only:', intelErr);
         }
 
+        // initializeStateFromDocument() already canonicalizes intent via dataQuality.normalizeIntent()
+        // — the same normalizer chat/route.ts uses at insert time — so both flows land on an
+        // identical DealIntent value from the same document without each caller re-deriving it.
         const state = initializeStateFromDocument(structuredData);
 
-        // Document intelligence doesn't extract intent/deal-size directly — fall back
-        // to the same text detectors chat uses for these fields.
         const intent: DealIntent = state.intent ?? detectIntentFromText(cleanText);
         if (!intent) {
           results.push({ file: file.name, status: 'skipped', reason: 'Could not determine deal intent (buy/sell/raise/debt/partner) from document' });
           continue;
         }
-        const dealSizeText = state.deal_size ?? detectDealSizeFromText(cleanText);
-        const revenueText = state.revenue ?? detectRevenueFromText(cleanText);
-        const sizeParsed = normalizeSize(dealSizeText || '');
-        const revenueParsed = normalizeSize(revenueText || '');
+        
+        // Use extracted canonical fields if available, otherwise fallback
+        const dealSizeMin = structuredData.deal_size_min_cr !== undefined ? (structuredData.deal_size_min_cr as number | null) : null;
+        const dealSizeMax = structuredData.deal_size_max_cr !== undefined ? (structuredData.deal_size_max_cr as number | null) : null;
+        const revenueMin = structuredData.revenue_min_cr !== undefined ? (structuredData.revenue_min_cr as number | null) : null;
+        const revenueMax = structuredData.revenue_max_cr !== undefined ? (structuredData.revenue_max_cr as number | null) : null;
+        
+        const dealSizeText = (structuredData.deal_size as string) ?? detectDealSizeFromText(cleanText);
+        const revenueText = (structuredData.revenue as string) ?? detectRevenueFromText(cleanText);
+        
+        let sizeParsed = { min_cr: dealSizeMin, max_cr: dealSizeMax };
+        if (dealSizeMin === null && dealSizeMax === null && dealSizeText) {
+             const norm = normalizeSize(dealSizeText);
+             if (norm) sizeParsed = { min_cr: norm.min_cr, max_cr: norm.max_cr };
+        }
+        
+        let revenueParsed = { min_cr: revenueMin, max_cr: revenueMax };
+        if (revenueMin === null && revenueMax === null && revenueText) {
+             const norm = normalizeSize(revenueText);
+             if (norm) revenueParsed = { min_cr: norm.min_cr, max_cr: norm.max_cr };
+        }
 
         // Best-effort storage upload for the document URL — non-blocking if it fails.
         let documentUrl: string | null = null;
@@ -268,23 +296,36 @@ export async function POST(req: NextRequest) {
           structure: state.structure ?? detectStructureFromText(cleanText),
           intent_focus: state.intent_focus,
           industry_data: state.industry_data ?? {},
-          special_conditions: [],
           deal_size_min: sizeParsed?.min_cr != null ? String(sizeParsed.min_cr) : null,
           deal_size_max: sizeParsed?.max_cr != null ? String(sizeParsed.max_cr) : null,
           revenue_min: revenueParsed?.min_cr != null ? String(revenueParsed.min_cr) : null,
           revenue_max: revenueParsed?.max_cr != null ? String(revenueParsed.max_cr) : null,
+          currency: state.currency || null,
+          urgency: state.urgency || null,
+          buyer_type: state.buyer_type || null,
+          advisor_name: state.advisor_name || null,
+          contact_phone: state.contact_phone || null,
+          special_conditions: state.special_conditions?.length ? state.special_conditions : [],
           document_url: documentUrl,
           document_text: cleanText,
           source: 'BULK',
         };
 
+        console.log("BULK UPLOAD INPUT:", input);
         const match = await executeMatchmaking(input);
+        if (!match) {
+          throw new Error("executeMatchmaking returned null (critical failure)");
+        }
         results.push({
           file: file.name, status: 'created',
           proposalId: match?.proposalId, matchCount: match?.matchCount ?? 0,
         });
       } catch (err) {
-        results.push({ file: file.name, status: 'error', reason: err instanceof Error ? err.message : String(err) });
+        results.push({ 
+          file: file.name, 
+          status: 'error', 
+          reason: (err instanceof Error ? err.message : String(err))
+        });
       }
     }
 

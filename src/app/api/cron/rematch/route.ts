@@ -18,9 +18,18 @@ const NOTIFICATION_THRESHOLD = 0.70;
 const MAX_PER_RUN = 100;
 
 export async function GET(req: NextRequest) {
-    // Vercel cron auth
+    // Vercel cron auth. SECURITY: previously `if (process.env.CRON_SECRET && ...)`
+    // meant an UNSET CRON_SECRET short-circuited the whole check to false —
+    // silently allowing any unauthenticated caller through. This endpoint
+    // triggers real OpenAI API calls and WhatsApp notifications, so a missing
+    // secret must fail closed (reject everyone), never fail open.
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+        console.error('[cron/rematch] CRON_SECRET is not configured — rejecting all requests.');
+        return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+    }
     const authHeader = req.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
         return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 

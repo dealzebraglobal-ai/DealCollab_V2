@@ -144,7 +144,7 @@ export function buildSavedSearchRecord(
         sectors: input.sector ? [normalizeSector(input.sector)] : [],
         geographies: input.geography ? [input.geography] : [],
         min_score: MIN_MATCH_SCORE,
-        status: 'ACTIVE',               // always-on watch — not the old PENDING/zero-match queue
+        status: 'PENDING',               // always-on watch
         match_count: matchCount,
         match_attempt_count: 1,         // this synchronous run is attempt #1; the async worker increments
         last_checked_at: new Date().toISOString(),
