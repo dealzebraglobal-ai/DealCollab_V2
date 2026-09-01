@@ -199,7 +199,7 @@ export function buildSystemPrompt(
     : `# SHELL_COMPANY_DETECTED: false`;
 
   const documentIntakeLine = state.is_document_intake
-    ? `# DOCUMENT_INTAKE_MODE: active — synthesis confirmation ONLY.`
+    ? `# DOCUMENT_INTAKE_MODE: active — confirm document synthesis or apply user corrections.`
     : `# DOCUMENT_INTAKE_MODE: inactive`;
 
   const gatewayLine = state.gateway_clarifier

@@ -23,6 +23,7 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
     "@google/generative-ai": "^0.24.1",
+    "@napi-rs/canvas": "^0.1.100",
     "@supabase/supabase-js": "^2.49.1",
     "canvas-confetti": "^1.9.4",
     "dotenv": "^17.4.2",

@@ -179,8 +179,20 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
   console.error(`${tag} STEP parser-init:start`);
   let parser: PDFParse;
   try {
+    // In Node.js / Next.js server runtime, pdf-parse v2 requires pdf-parse/worker
+    // to be imported first so that @napi-rs/canvas registers DOMMatrix globally
+    // and provides CanvasFactory for page rendering and text processing.
+    let CanvasFactory: any = undefined;
+    try {
+      const workerModule = await import('pdf-parse/worker');
+      CanvasFactory = workerModule.CanvasFactory;
+    } catch (workerErr) {
+      console.warn('[PDF] Note: pdf-parse/worker load warning:', workerErr);
+    }
+
     const pdfParseModule = await import('pdf-parse');
-    parser = new pdfParseModule.PDFParse({ data: buffer });
+    const PDFParseConstructor = pdfParseModule.PDFParse || (pdfParseModule as any).default;
+    parser = new PDFParseConstructor({ data: buffer, CanvasFactory });
   } catch (initErr) {
     // A parser-init exception is evidence the file is unreadable/corrupt —
     // it says nothing about whether the document is scanned. Classifying

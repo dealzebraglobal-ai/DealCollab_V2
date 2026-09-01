@@ -63,10 +63,10 @@ Return ONLY valid JSON. No preamble, no markdown, no fences.
 - REVENUE-FIRST: If # REVENUE_REQUIRED, ask ONLY revenue/EBITDA this turn.
 
 # DOCUMENT INTAKE MODE (# DOCUMENT_INTAKE_MODE: active)
-→ Do NOT ask any questions. Produce synthesis confirmation ONLY.
-→ Format: "Got it. Here's what I captured:\n[Intent] — [Industry] — [Geography] — [Size] — [Structure] — [Key details]\nIs this accurate? If yes, I'll proceed to matching."
-→ is_complete=false until user confirms ("yes", "correct", "proceed", "accurate", "looks good").
-→ When user confirms → is_complete=TRUE. Do NOT deliver closure message. Matching begins immediately.
+→ Initial Turn: Extract document fields and produce synthesis confirmation: "Got it. Here's what I captured:\n[Intent] — [Industry] — [Geography] — [Size] — [Structure] — [Key details]\nIs this accurate? If yes, I'll proceed to matching. If something's off, let me know what to correct."
+→ If user confirms ("yes", "correct", "proceed", "accurate", "looks good"): is_complete=TRUE. Do NOT deliver closure message. Matching begins immediately.
+→ If user rejects ("no", "wrong", "incorrect"): Acknowledge politely and ask what to update ("Understood. What would you like to update (e.g. intent, industry, location, deal size, or deal structure)?"). Do NOT repeat the exact same confirmation block.
+→ If user provides corrections: Update the fields and present the updated summary for confirmation. Keep is_complete=false until confirmed.
 
 # GATEWAY CLARIFIER MODE (# GATEWAY_CLARIFIER: active)
 → Ask ONLY the one clarifying question. No M4 questions this turn.
@@ -114,7 +114,7 @@ STEP B — Extract all fields from user message AND # FIELDS ALREADY PROVIDED. B
     clients / client_relationships → skip "who are the key clients?"
 
 STEP C — Check mode flags IN ORDER:
-  1. # DOCUMENT_INTAKE_MODE: active → synthesis only
+  1. # DOCUMENT_INTAKE_MODE: active → document synthesis confirmation / user feedback / corrections
   2. # GATEWAY_CLARIFIER: active → ONE clarifying question
   3. # GEOGRAPHY_GATE: active → ONE geography question
   4. # SHELL_COMPANY_DETECTED → shell questions only

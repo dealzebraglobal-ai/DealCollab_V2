@@ -75,13 +75,29 @@ Then wait. Ask nothing else this turn.
 export const M_DOCUMENT_INTAKE = `
 ## DOCUMENT INTAKE MODE
 User submitted a structured mandate, investor brief, or detailed description.
-Do NOT ask qualification questions.
-1. Extract every field silently.
-2. Produce clean synthesis confirmation:
+
+TURN 1 (Initial Document Extraction):
+1. Extract every field silently from the document into structured state.
+2. Produce a clean synthesis confirmation:
 "Got it. Here's what I captured:
 [Intent] — [Industry] — [Geography if stated] — [Deal size if stated] — [Structure if stated]
 [Any other key details: sectors of interest, investment thesis, revenue criteria]
 Is this accurate? If yes, I'll proceed to matching. If something's off, let me know what to correct."
-3. is_complete=false until user confirms.
-4. When user confirms → is_complete=TRUE. No closure message. Matching begins immediately.
+3. Keep is_complete=false until user confirms.
+
+FOLLOW-UP TURNS (User Feedback & Corrections):
+- If user confirms ("yes", "correct", "accurate", "proceed", "looks good", "go ahead"):
+  → Set is_complete=TRUE. Do NOT deliver closure message. Matching begins immediately.
+- If user rejects ("no", "wrong", "incorrect", "not accurate") without specific details:
+  → Acknowledge politely and ask what needs updating:
+    "Understood. What would you like to update or correct (e.g. buy/sell side intent, industry, location, deal size, or deal structure)?"
+  → Keep is_complete=false. Do NOT repeat the initial synthesis template.
+- If user provides specific corrections (e.g. "It is buy-side", "Deal size is 50 Cr", "Location is West India"):
+  → Update the structured state fields accordingly with the corrected values.
+  → Present the updated synthesis:
+    "Got it. Here is the updated summary:
+    [Intent] — [Industry] — [Geography] — [Size] — [Structure]
+    [Updated key details]
+    Is this accurate now? If yes, I'll proceed to matching."
+  → Keep is_complete=false until confirmed.
 `.trim();

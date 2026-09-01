@@ -26,7 +26,7 @@ const contentSecurityPolicy = [
   // GA4 sends event beacons to google-analytics.com (and regional subdomains like
   // region1.google-analytics.com) in addition to the googletagmanager.com script host.
   // Razorpay Checkout's own script calls api.razorpay.com and lumberjack.razorpay.com.
-  "connect-src 'self' https://*.supabase.co https://accounts.google.com https://www.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com https://*.razorpay.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in wss://*.supabase.in https://accounts.google.com https://www.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com https://*.razorpay.com https://*.vercel-insights.com https://va.vercel-scripts.com",
   // Razorpay Checkout opens its payment form (card entry, 3D-Secure, UPI) in an iframe.
   "frame-src 'self' https://accounts.google.com https://*.razorpay.com",
   "frame-ancestors 'none'",
@@ -120,7 +120,7 @@ const nextConfig: NextConfig = {
   // evidence-based (not confirmed via a captured stack trace) hypothesis
   // for the production 500 on /api/chat/parse-document — see the
   // documentParser.ts history comment for the incident this addresses.
-  serverExternalPackages: ['pdf-parse', 'tesseract.js', 'mammoth'],
+  serverExternalPackages: ['pdf-parse', '@napi-rs/canvas', 'tesseract.js', 'mammoth'],
   async headers() {
     return [
       {
