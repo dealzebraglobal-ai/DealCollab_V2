@@ -7,9 +7,9 @@ export const metadata = {
     description: 'Developer-facing architecture explorer generated from DealCollab cartography JSON.',
 };
 
-async function readCartographyJson<T>(relativePath: string, fallback: T): Promise<T> {
+async function readCartographyJson<T>(subPath: string, fallback: T): Promise<T> {
     try {
-        const fullPath = path.join(process.cwd(), relativePath);
+        const fullPath = path.join(process.cwd(), 'cartography', subPath);
         const file = await readFile(fullPath, 'utf8');
         return JSON.parse(file) as T;
     } catch {
@@ -34,20 +34,20 @@ export default async function CartographyPage() {
         scarRegistry,
         staleness,
     ] = await Promise.all([
-        readCartographyJson('cartography/inventory/files.json', []),
-        readCartographyJson('cartography/inventory/routes.json', []),
-        readCartographyJson('cartography/inventory/tables.json', []),
-        readCartographyJson('cartography/inventory/state-objects.json', []),
-        readCartographyJson('cartography/inventory/env-vars.json', []),
-        readCartographyJson('cartography/inventory/external-services.json', []),
-        readCartographyJson('cartography/topology/import-graph.json', { nodes: [], edges: [], hub_score: {} }),
-        readCartographyJson('cartography/topology/data-flows.json', []),
-        readCartographyJson('cartography/topology/state-mutations.json', []),
-        readCartographyJson('cartography/topology/module-decision-tree.json', { nodes: [], edges: [] }),
-        readCartographyJson('cartography/topology/prompt-assembly.json', { order: [] }),
-        readCartographyJson('cartography/narrative/why-cards.json', []),
-        readCartographyJson('cartography/narrative/scar-registry.json', []),
-        readCartographyJson('cartography/meta/staleness-report.json', {}),
+        readCartographyJson('inventory/files.json', []),
+        readCartographyJson('inventory/routes.json', []),
+        readCartographyJson('inventory/tables.json', []),
+        readCartographyJson('inventory/state-objects.json', []),
+        readCartographyJson('inventory/env-vars.json', []),
+        readCartographyJson('inventory/external-services.json', []),
+        readCartographyJson('topology/import-graph.json', { nodes: [], edges: [], hub_score: {} }),
+        readCartographyJson('topology/data-flows.json', []),
+        readCartographyJson('topology/state-mutations.json', []),
+        readCartographyJson('topology/module-decision-tree.json', { nodes: [], edges: [] }),
+        readCartographyJson('topology/prompt-assembly.json', { order: [] }),
+        readCartographyJson('narrative/why-cards.json', []),
+        readCartographyJson('narrative/scar-registry.json', []),
+        readCartographyJson('meta/staleness-report.json', {}),
     ]);
 
     return (
