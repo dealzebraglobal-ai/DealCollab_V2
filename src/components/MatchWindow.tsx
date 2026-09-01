@@ -53,17 +53,20 @@ interface MatchWindowProps {
 // SCORE BADGE — color-coded confidence indicator
 // ─────────────────────────────────────────────────────────────
 
+import { formatMatchScore, normalizeMatchScoreNum } from '@/utils/formatters';
+
 function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
-    : score >= 60 ? 'text-amber-700 bg-amber-50 border-amber-100'
+  const normScore = normalizeMatchScoreNum(score);
+  const color = normScore >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+    : normScore >= 60 ? 'text-amber-700 bg-amber-50 border-amber-100'
       : 'text-gray-600 bg-gray-50 border-gray-100';
 
-  const label = score >= 80 ? 'Strong' : score >= 60 ? 'Good' : 'Moderate';
+  const label = normScore >= 80 ? 'Strong' : normScore >= 60 ? 'Good' : 'Moderate';
 
   return (
     <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${color}`}>
       <TrendingUp size={10} />
-      <span>{score.toFixed(0)}% {label}</span>
+      <span>{formatMatchScore(score)} {label}</span>
     </div>
   );
 }

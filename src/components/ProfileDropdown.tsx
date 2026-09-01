@@ -5,11 +5,13 @@ import { useUser } from './UserProvider';
 import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
+import HelpSupportModal from './HelpSupportModal';
 
 export default function ProfileDropdown() {
   const { tokens, logout, profile } = useUser();
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,22 +88,24 @@ export default function ProfileDropdown() {
               </div>
               <span className="font-bold">Billing</span>
             </Link>
-            <a 
-              href="mailto:support@dealcollab.in"
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-brand-secondary hover:text-foreground hover:bg-primary-soft transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
-              title="Need help? Contact our support team"
+            <button 
+              onClick={() => {
+                setIsOpen(false);
+                setIsSupportOpen(true);
+              }}
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-brand-secondary hover:text-foreground hover:bg-primary-soft transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group cursor-pointer"
             >
               <div className="w-8 h-8 rounded-lg bg-primary-soft/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
                 <LifeBuoy size={16} className="group-hover:text-primary-hover transition-colors" />
               </div>
               <span className="font-bold">Help & Support</span>
-            </a>
+            </button>
             
             <div className="my-2 border-t border-primary-soft mx-2" />
             
             <button 
               onClick={() => logout()}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-red-500 hover:bg-red-50 transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-red-500 hover:bg-red-50 transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group cursor-pointer"
             >
               <div className="w-8 h-8 rounded-lg bg-red-50/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
                 <LogOut size={16} className="group-hover:text-red-600 transition-colors" />
@@ -111,6 +115,12 @@ export default function ProfileDropdown() {
           </div>
         </div>
       )}
+
+      <HelpSupportModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        userEmail={profile?.email || session?.user?.email}
+      />
     </div>
   );
 }

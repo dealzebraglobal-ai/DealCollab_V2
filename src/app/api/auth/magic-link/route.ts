@@ -24,6 +24,6 @@ export async function GET(req: Request) {
   // NextAuth v5 signIn handles setting the session cookies and throwing a redirect
   await signIn('credentials', { 
     phone: result.payload.phone, 
-    redirectTo: '/deal-log' 
+    redirectTo: '/deal-log?tab=whatsapp' 
   });
 }

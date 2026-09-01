@@ -1,6 +1,6 @@
 'use client';
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import DealLogCard from '@/components/DealLogCard';
 import { DealLogSkeleton, EmptyState, ErrorState } from '@/components/Skeleton';
@@ -9,14 +9,11 @@ import { Match } from '@/components/MatchWindow';
 import BulkMandatesTab from '@/components/BulkMandatesTab';
 import { BulkMandate } from '@/components/BulkMandateCard';
 import BulkUploadModal from '@/components/BulkUploadModal';
-import { Search, X, Layers } from 'lucide-react';
+import { Search, X, Layers, MessageSquare, MessageCircle, UploadCloud } from 'lucide-react';
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   const data = await res.json();
-  // If the API returned an error shape (or a non-array), treat it as an error
-  // so SWR populates `error` instead of `data`, and the page shows ErrorState
-  // rather than crashing with ".map is not a function".
   if (!res.ok || !Array.isArray(data)) {
     const msg = (data as { error?: string })?.error || `HTTP ${res.status}`;
     throw new Error(msg);
@@ -49,7 +46,7 @@ interface DBDeal {
   raw_text?: string | null;
   normalised_text?: string | null;
   summary_text?: string | null;
-  metadata?: { mandate_summary?: string;[key: string]: unknown };
+  metadata?: { mandate_summary?: string; [key: string]: unknown };
   source?: string;
   created_at?: string;
 }
@@ -77,8 +74,20 @@ const INTENT_LABELS: Record<string, string> = {
   STRATEGIC_PARTNERSHIP: 'Strategic Partnership',
 };
 
+function isWhatsAppSource(source?: string | null): boolean {
+  if (!source) return false;
+  const s = source.toUpperCase();
+  return s.includes('WHATSAPP') || s.includes('WAPPBIZ');
+}
+
+function isBulkSource(source?: string | null): boolean {
+  if (!source) return false;
+  return source.toUpperCase().includes('BULK');
+}
+
 export default function DealLogPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { data: rawDeals, error, mutate, isValidating } = useSWR('/api/deals', fetcher, {
     refreshInterval: 15000, // Re-fetch every 15s for realtime feel
@@ -92,6 +101,14 @@ export default function DealLogPage() {
   const [statusFilter, setStatusFilter] = useState<'All' | 'Searching Match' | 'Matched'>('All');
   const [activeTab, setActiveTab] = useState<'chat' | 'whatsapp' | 'bulk'>('chat');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // Sync tab from URL query param on mount or update (e.g. from WhatsApp magic link)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'whatsapp' || tabParam === 'bulk' || tabParam === 'chat') {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const deals: Deal[] = (Array.isArray(rawDeals) ? rawDeals : []).map((dbDeal: DBDeal) => ({
     id: dbDeal.id,
@@ -110,7 +127,6 @@ export default function DealLogPage() {
       proposalId: dbDeal.id,
       finalScore: m.score ? parseFloat(m.score) : 0,
       confidenceScore: m.similarity ? parseFloat(m.similarity) * 100 : 0,
-      // scores: MatchScores — derive from available data; breakdown not stored in this endpoint
       scores: {
         intent: m.score ? parseFloat(m.score) : 0,
         industry: m.score ? parseFloat(m.score) : 0,
@@ -134,10 +150,10 @@ export default function DealLogPage() {
   }));
 
   // Chat, WhatsApp, and Bulk Uploaded Mandates are three independent sources —
-  // split by proposals.source, never merged.
-  const webDeals = deals.filter(d => d.source !== 'BULK' && d.source !== 'WHATSAPP');
-  const whatsappDeals = deals.filter(d => d.source === 'WHATSAPP');
-  const bulkDeals = deals.filter(d => d.source === 'BULK');
+  // split by normalized source, never merged.
+  const webDeals = deals.filter(d => !isBulkSource(d.source) && !isWhatsAppSource(d.source));
+  const whatsappDeals = deals.filter(d => isWhatsAppSource(d.source));
+  const bulkDeals = deals.filter(d => isBulkSource(d.source));
   const chatDeals = activeTab === 'whatsapp' ? whatsappDeals : webDeals;
 
   const bulkMandates: BulkMandate[] = bulkDeals.map(d => ({
@@ -205,34 +221,57 @@ export default function DealLogPage() {
           <p className="text-[#6B7280] text-sm font-medium">Real-time status of your active proposals</p>
         </div>
 
-        {/* Mandate Source Tabs — always visible; two independent, non-merged sources */}
-        <div className="flex items-center gap-1 bg-gray-50 p-1 border border-gray-200 rounded-xl w-full sm:w-fit mb-6 overflow-x-auto">
+        {/* Mandate Source Tabs — distinctly styled with icons, badge counts, and clear active states */}
+        <div className="flex items-center gap-2 bg-[#F3F4F6] p-1.5 border border-gray-200/80 rounded-2xl w-full sm:w-fit mb-8 overflow-x-auto shadow-inner">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 sm:flex-none whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'chat'
-              ? 'bg-white text-[#F97316] shadow-sm ring-1 ring-[#000000]/5'
-              : 'text-gray-500 hover:text-gray-700'
-              }`}
+            className={`flex items-center gap-2 flex-1 sm:flex-none whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+              activeTab === 'chat'
+                ? 'bg-white text-[#F97316] shadow-md ring-1 ring-black/5 font-extrabold scale-[1.02]'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+            }`}
           >
-            Chat Mandates
+            <MessageSquare size={16} className={activeTab === 'chat' ? 'text-[#F97316]' : 'text-gray-400'} />
+            <span>Chat Mandates</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+              activeTab === 'chat' ? 'bg-orange-100/80 text-[#F97316]' : 'bg-gray-200 text-gray-600'
+            }`}>
+              {webDeals.length}
+            </span>
           </button>
+
           <button
             onClick={() => setActiveTab('whatsapp')}
-            className={`flex-1 sm:flex-none whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'whatsapp'
-              ? 'bg-white text-[#F97316] shadow-sm ring-1 ring-[#000000]/5'
-              : 'text-gray-500 hover:text-gray-700'
-              }`}
+            className={`flex items-center gap-2 flex-1 sm:flex-none whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+              activeTab === 'whatsapp'
+                ? 'bg-white text-emerald-600 shadow-md ring-1 ring-black/5 font-extrabold scale-[1.02]'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+            }`}
           >
-            WhatsApp Mandates
+            <MessageCircle size={16} className={activeTab === 'whatsapp' ? 'text-emerald-500' : 'text-gray-400'} />
+            <span>WhatsApp Mandates</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+              activeTab === 'whatsapp' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'
+            }`}>
+              {whatsappDeals.length}
+            </span>
           </button>
+
           <button
             onClick={() => setActiveTab('bulk')}
-            className={`flex-1 sm:flex-none whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'bulk'
-              ? 'bg-white text-[#F97316] shadow-sm ring-1 ring-[#000000]/5'
-              : 'text-gray-500 hover:text-gray-700'
-              }`}
+            className={`flex items-center gap-2 flex-1 sm:flex-none whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+              activeTab === 'bulk'
+                ? 'bg-white text-blue-600 shadow-md ring-1 ring-black/5 font-extrabold scale-[1.02]'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+            }`}
           >
-            Bulk Uploaded Mandates
+            <UploadCloud size={16} className={activeTab === 'bulk' ? 'text-blue-500' : 'text-gray-400'} />
+            <span>Bulk Uploaded Mandates</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+              activeTab === 'bulk' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+            }`}>
+              {bulkDeals.length}
+            </span>
           </button>
         </div>
 

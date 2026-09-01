@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/components/UserProvider';
 import { Sparkles, Loader2 } from 'lucide-react';
 import ProfileStepper from '@/components/profile-setup/ProfileStepper';
@@ -9,6 +9,8 @@ import ProfileSuccessScreen from '@/components/profile-setup/ProfileSuccessScree
 
 export default function ProfilePage() {
    const router = useRouter();
+   const searchParams = useSearchParams();
+   const returnUrl = searchParams.get('returnUrl');
    const { profile, onboarding } = useUser();
    const [isEditing, setIsEditing] = useState(false);
    const [showSuccess, setShowSuccess] = useState(false);
@@ -34,11 +36,20 @@ export default function ProfilePage() {
    }
 
    if (showSuccess) {
-      return <ProfileSuccessScreen onDashboardClick={() => {
-         router.push('/profile');
-         setShowSuccess(false);
-         setIsEditing(false);
-      }} />;
+      return (
+         <ProfileSuccessScreen 
+            returnUrl={returnUrl}
+            onDashboardClick={() => {
+               if (returnUrl) {
+                  router.push(returnUrl);
+               } else {
+                  router.push('/deal-dashboard');
+               }
+               setShowSuccess(false);
+               setIsEditing(false);
+            }} 
+         />
+      );
    }
 
    // If onboarding not completed and not currently editing, show onboarding

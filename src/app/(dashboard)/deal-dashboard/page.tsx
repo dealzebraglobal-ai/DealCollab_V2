@@ -6,7 +6,7 @@ import DashboardRow, { DashboardDeal } from '@/components/DashboardRow';
 import { DashboardStatus } from '@/components/StatusButton';
 import { DashboardSkeleton, EmptyState, ErrorState } from '@/components/Skeleton';
 import SendEOIModal from '@/components/SendEOIModal';
-import { LayoutGrid, PlusCircle } from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -196,7 +196,7 @@ export default function DealDashboardPage() {
           ) : data.length === 0 ? (
             <EmptyState
               title="No matches found yet"
-              description="Our Intelligence Layer is scanning for opportunities. Create a new deal to accelerate the process."
+              description="Our Intelligence Layer is continuously scanning for opportunities. Share your requirements with the AI chatbot or upload documents to accelerate matches."
               icon={<LayoutGrid size={32} />}
             />
           ) : (

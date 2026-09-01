@@ -16,13 +16,15 @@ type MatchCardLike = {
   matchReason?: string;
 };
 
+import { formatMatchScore, normalizeMatchScoreNum } from "@/utils/formatters";
+
 /** Reused by both the initial post-capture display and BACK_TO_PROPOSALS — one renderer, no duplicate format. */
 function formatProposalListMessage(matchCards: MatchCardLike[]): string {
   let matchMessage = `🏢 *Aligned Counterparties (${matchCards.length})*\n\n`;
   matchCards.slice(0, 3).forEach((card, index) => {
     const rank = card.rank || `P${index + 1}`;
-    const score = card.finalScore ? ` | Score: ${Math.round(Number(card.finalScore))}%` : "";
-    const label = card.scoreLabel || (Number(card.finalScore) >= 80 ? "High Confidence" : "Good Fit");
+    const score = card.finalScore ? ` | Score: ${formatMatchScore(card.finalScore)}` : "";
+    const label = card.scoreLabel || (normalizeMatchScoreNum(card.finalScore) >= 80 ? "High Confidence" : "Good Fit");
     const title = card.archetype || card.sector || "Strategic Opportunity";
     const reason = card.matchReason || "Exact sector and geographic match";
 
@@ -209,7 +211,7 @@ export async function processIncomingMessage(
       const teaserMsg =
         `🏢 *Counterparty Details — P${matchIdx + 1}*\n\n` +
         `📌 *Title:* ${targetProposal?.summaryText || targetProposal?.normalisedText?.slice(0, 60) || m.matchArchetype || "Strategic Opportunity"}\n` +
-        `🎯 *Match Score:* ${Math.round(Number(m.finalScore))}%\n` +
+        `🎯 *Match Score:* ${formatMatchScore(m.finalScore)}\n` +
         `💼 *Sector:* ${targetProposal?.sectors?.join(", ") || "General Business"}\n` +
         `📍 *Location:* ${targetProposal?.geographies?.join(", ") || "India"}\n` +
         `💰 *Revenue Range:* ${targetProposal?.revenueMinCr ? "₹" + targetProposal.revenueMinCr + "–" + (targetProposal.revenueMaxCr || "") + " Cr" : "Undisclosed"}\n\n` +

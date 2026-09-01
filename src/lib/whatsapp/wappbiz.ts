@@ -265,13 +265,14 @@ export async function sendWappBizOTP(phone: string, otp: string) {
  * template is provisioned in this account, so outside the window this
  * fails loudly instead of attempting an undocumented workaround.
  */
+import { formatMatchScore } from '@/utils/formatters';
+
 export async function sendWappBizMatchNotification(
   phone: string,
   params: { companySummary: string; matchScore: number; magicLinkUrl: string },
-) {
-  const config = getWappBizConfig();
-  if (!config) {
-    console.log(`[Wappbiz:stub] match notification → ${normalizePhone(phone)}`);
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  if (!getWappBizConfig()) {
+    console.log(`[Wappbiz DEV] Match notification to ${phone} suppressed (Wappbiz not configured)`);
     return { success: true };
   }
 
@@ -288,7 +289,9 @@ export async function sendWappBizMatchNotification(
   const text =
     `New match found on DealCollab 🎯\n\n` +
     `${companySummary}\n` +
-    `Match score: ${Math.round(matchScore)}%\n\n` +
+    `Match score: ${formatMatchScore(matchScore)}\n\n` +
     `View Match: ${magicLinkUrl}`;
   return sendServiceTextMessage(phone, text);
 }
+
+export const sendMatchNotification = sendWappBizMatchNotification;

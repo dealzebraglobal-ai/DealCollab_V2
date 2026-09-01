@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { evaluateReturningUserUpdate } from '@/lib/chatReturnUpdate';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -181,17 +182,45 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (isMounted) {
           if (Array.isArray(data)) {
             setSessions(data);
+
+            // Check if returning user after 3-4 days needs a contextual recap
+            const storedChatId = typeof window !== 'undefined'
+              ? sessionStorage.getItem('dc_active_chat')
+              : null;
+            const returnUpdateShown = typeof window !== 'undefined'
+              ? sessionStorage.getItem('dc_return_update_shown')
+              : null;
+
+            if (!storedChatId && !returnUpdateShown && data.length > 0) {
+              const evalResult = evaluateReturningUserUpdate({
+                sessions: data.map(d => ({
+                  id: d.id,
+                  title: d.title,
+                  createdAt: d.created_at || d.createdAt,
+                })),
+              });
+
+              if (evalResult.shouldShow && evalResult.updateMessage) {
+                setMessages([{
+                  role: 'assistant',
+                  content: evalResult.updateMessage,
+                  id: `return-update-${Date.now()}`,
+                  type: 'intro',
+                }]);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('dc_return_update_shown', 'true');
+                }
+              }
+            }
           }
 
           // Bug Fix 3: Restore previously active chat on page refresh.
-          // Only restores if the stored chat ID still exists in the sessions list.
           const storedChatId = typeof window !== 'undefined'
             ? sessionStorage.getItem('dc_active_chat')
             : null;
           if (storedChatId && Array.isArray(data) && data.some((s: Session) => s.id === storedChatId)) {
             loadChat(storedChatId);
           } else if (storedChatId) {
-            // Chat was deleted; remove stale entry
             sessionStorage.removeItem('dc_active_chat');
           }
         }

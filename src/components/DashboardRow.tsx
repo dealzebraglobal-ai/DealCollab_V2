@@ -6,7 +6,7 @@ import MatchCard from './MatchCard';
 import StatusButton, { DashboardStatus } from './StatusButton';
 import ConnectionDetails from './ConnectionDetails';
 import IncomingEOIDetails from './IncomingEOIDetails';
-import { formatRelativeTime } from '@/utils/date';
+import { formatDealTimestamp } from '@/utils/date';
 
 export interface DashboardDeal {
   id: string | number;
@@ -61,11 +61,26 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
               }`}>
               {isIncoming ? 'INCOMING' : 'SENT'}
             </span>
-            {item.createdAt && (
-              <span className="text-[10px] text-gray-400 font-semibold normal-case ml-1.5">
-                • {formatRelativeTime(item.createdAt)}
-              </span>
-            )}
+            {item.createdAt && (() => {
+              const ts = formatDealTimestamp(item.createdAt);
+              return (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-gray-500 font-semibold normal-case ml-1 bg-gray-100/70 border border-gray-200/50 px-2 py-0.5 rounded-md" title={ts.exact}>
+                    {ts.exact} • <strong className="text-gray-700">{ts.relative}</strong>
+                  </span>
+                  {ts.isNearDeadline && (
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                      Approaching 3-day window ({ts.hoursRemaining}h left)
+                    </span>
+                  )}
+                  {ts.isExpired && (
+                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded">
+                      Window Closed
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <DealCard title={item.deal} description={item.dealDesc} />
         </div>

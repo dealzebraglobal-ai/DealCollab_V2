@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import { X, Info, Building2, Lock, TrendingUp, BarChart3, Target } from 'lucide-react';
+import { formatMatchScore } from '@/utils/formatters';
 import { useUser } from './UserProvider';
 import type { Match } from './MatchWindow';
 
@@ -89,7 +90,7 @@ export default function MatchDetailsModal({ isOpen, onClose, match, matchName, m
                 <TrendingUp size={12} />
                 <span>Compatibility</span>
               </div>
-              <div className={`text-2xl font-black ${scoreColor}`}>{finalScore.toFixed(0)}%</div>
+              <div className={`text-2xl font-black ${scoreColor}`}>{formatMatchScore(finalScore)}</div>
               <div className="text-[10px] text-gray-500 font-medium">{scoreLabel}</div>
             </div>
             <div className="p-3 bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-100">
@@ -97,7 +98,7 @@ export default function MatchDetailsModal({ isOpen, onClose, match, matchName, m
                 <Target size={12} />
                 <span>Confidence</span>
               </div>
-              <div className="text-2xl font-black text-blue-700">{confidenceScore.toFixed(0)}%</div>
+              <div className="text-2xl font-black text-blue-700">{formatMatchScore(confidenceScore)}</div>
               <div className="text-[10px] text-gray-500 font-medium">
                 {confidenceScore >= 75 ? 'High' : confidenceScore >= 50 ? 'Medium' : 'Low'} Confidence
               </div>

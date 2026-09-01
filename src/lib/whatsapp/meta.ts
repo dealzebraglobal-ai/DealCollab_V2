@@ -85,6 +85,8 @@ export async function sendMetaOTP(phone: string, otp: string) {
   return sendMetaMessage(phone, message);
 }
 
+import { formatMatchScore } from '@/utils/formatters';
+
 /** Match notification with a "View Match" magic-link CTA (Feature 7). */
 export async function sendMetaMatchNotification(phone: string, params: {
   companySummary: string;
@@ -95,7 +97,7 @@ export async function sendMetaMatchNotification(phone: string, params: {
   const text =
     `New match found on DealCollab 🎯\n\n` +
     `${companySummary}\n` +
-    `Match score: ${Math.round(matchScore)}%\n\n` +
+    `Match score: ${formatMatchScore(matchScore)}\n\n` +
     `View Match: ${magicLinkUrl}`;
   return sendMetaMessage(phone, text);
 }

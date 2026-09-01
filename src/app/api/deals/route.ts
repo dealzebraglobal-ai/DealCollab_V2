@@ -42,21 +42,45 @@ interface DealRow {
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    const authUser = session?.user as { id?: string; email?: string; phone?: string } | undefined;
+    if (!authUser?.id && !authUser?.email && !authUser?.phone) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    // ── 1. Resolve user ID ──────────────────────────────────────────────────
-    const { data: dbUser, error: userErr } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single();
+    // ── 1. Resolve user ID (supports ID, Email, and Phone for WhatsApp users) ──
+    let dbUser: { id: string } | null = null;
 
-    if (userErr || !dbUser) {
+    if (authUser.id) {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', authUser.id)
+        .single();
+      if (data) dbUser = data;
+    }
+
+    if (!dbUser && authUser.email) {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', authUser.email)
+        .single();
+      if (data) dbUser = data;
+    }
+
+    if (!dbUser && authUser.phone) {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', authUser.phone)
+        .single();
+      if (data) dbUser = data;
+    }
+
+    if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 

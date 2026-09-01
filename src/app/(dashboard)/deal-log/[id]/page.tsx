@@ -12,6 +12,8 @@ import { useNotifications } from '@/components/NotificationProvider';
 
 import useSWR from 'swr';
 
+import { formatMatchScore, normalizeMatchScoreNum } from '@/utils/formatters';
+
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 const getIntentLabel = (intent: string) => {
@@ -60,11 +62,11 @@ export default function MatchDetailPage() {
    );
 
    if (!data) return (
-      <div className="flex-1 p-10 max-w-6xl mx-auto w-full space-y-8 animate-pulse">
+      <div className="flex-1 p-10 max-w-7xl mx-auto w-full space-y-8 animate-pulse">
          <div className="w-48 h-8 bg-gray-100 rounded-xl" />
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 h-96 bg-gray-50 rounded-[40px]" />
-            <div className="lg:col-span-4 h-96 bg-gray-50 rounded-[40px]" />
+            <div className="lg:col-span-8 h-96 bg-gray-50 rounded-[32px]" />
+            <div className="lg:col-span-4 h-96 bg-gray-50 rounded-[32px]" />
          </div>
       </div>
    );
@@ -76,7 +78,7 @@ export default function MatchDetailPage() {
    const handleSendEOI = async () => {
       // 1. Pre-check: Must have completed profile
       if (!onboarding?.profileCompleted) {
-         setSendError('Please complete your profile');
+         setSendError('Please complete your profile to unlock and send Expressions of Interest.');
          return;
       }
 
@@ -289,9 +291,9 @@ export default function MatchDetailPage() {
                         <div className="flex-1 min-w-0">
                            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-[#6B7280]">Intelligence Match</p>
                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xl font-black text-[#1F2937] leading-none">{match.finalScore}%</span>
+                              <span className="text-xl font-black text-[#1F2937] leading-none">{formatMatchScore(match.finalScore)}</span>
                               <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                 <div className="h-full bg-gradient-to-r from-orange-400 to-[#F97316] rounded-full" style={{ width: `${match.finalScore}%` }} />
+                                 <div className="h-full bg-gradient-to-r from-orange-400 to-[#F97316] rounded-full transition-all duration-500" style={{ width: `${normalizeMatchScoreNum(match.finalScore)}%` }} />
                               </div>
                            </div>
                         </div>
@@ -348,7 +350,7 @@ export default function MatchDetailPage() {
                               <p className="font-bold text-red-600">{sendError}</p>
                               {sendError.toLowerCase().includes('complete your profile') ? (
                                  <Link
-                                    href="/profile"
+                                    href={`/profile?returnUrl=${encodeURIComponent(`/deal-log/${id}`)}`}
                                     className="font-black text-[#F97316] uppercase tracking-widest hover:underline text-[10px] mt-0.5"
                                  >
                                     Complete Profile →
