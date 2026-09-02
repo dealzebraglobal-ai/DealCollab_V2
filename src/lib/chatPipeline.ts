@@ -91,6 +91,32 @@ async function resolveWhatsAppChatId(
   return existing.id;
 }
 
+/**
+ * On an OCC persist miss, fold this turn's state over whatever a concurrent
+ * turn wrote. Per key: this turn's value wins **only when it actually set one**
+ * (non-null / non-undefined) — so the user's latest answer is never dropped —
+ * otherwise the concurrent write's value is kept, so a field the other message
+ * captured isn't clobbered by this turn's default null. Boolean "sticky" flags
+ * (is_complete / is_captured / is_sufficient) latch true if either side has it.
+ * Pure + exported for tests.
+ */
+export function remergeConcurrentState(
+  blank: RouterState,
+  concurrent: Partial<RouterState> | null | undefined,
+  thisTurn: RouterState,
+): RouterState {
+  const base: Record<string, unknown> = { ...blank, ...(concurrent || {}) };
+  const out: Record<string, unknown> = { ...base };
+  for (const [k, v] of Object.entries(thisTurn as unknown as Record<string, unknown>)) {
+    if (v !== null && v !== undefined) out[k] = v;
+  }
+  const turn = thisTurn as unknown as Record<string, unknown>;
+  for (const flag of ['is_complete', 'is_captured', 'is_sufficient'] as const) {
+    out[flag] = Boolean(base[flag]) || Boolean(turn[flag]);
+  }
+  return out as unknown as RouterState;
+}
+
 export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResult> {
   const { userId, channel } = params;
   const message = normalizeMessage(params.rawMessage || '');
@@ -109,16 +135,34 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
   let storedState: RouterState = createBlankState();
 
   if (activeChatId) {
-    const { data: existingSession } = await supabase
+    const { data: existingSession, error: loadErr } = await supabase
       .from('chat_sessions')
       .select('id, state')
       .eq('id', activeChatId)
       .single();
 
-    if (!existingSession) {
+    if (loadErr) {
+      // PGRST116 = "no rows" → the id is genuinely gone; safe to start fresh.
+      // ANY other error (transient/network/permission) must NOT wipe the
+      // user's in-progress mandate by silently creating a blank session —
+      // surface it so chatbot.ts sends a safe "try again" and the state
+      // survives for the next message.
+      if (loadErr.code === 'PGRST116') {
+        console.warn(`[SESSION] chatId ${activeChatId} not found — starting a new session.`);
+        activeChatId = null;
+      } else {
+        console.error('[SESSION] state load failed (preserving session, not wiping):', loadErr.message);
+        throw new Error(`Session state load failed: ${loadErr.message}`);
+      }
+    } else if (!existingSession) {
       activeChatId = null;
     } else {
       storedState = { ...createBlankState(), ...((existingSession.state as Partial<RouterState>) || {}) };
+      console.log(
+        `[SESSION] loaded chatId=${activeChatId} intent=${storedState.intent ?? '-'} sector=${storedState.sector ?? '-'} ` +
+          `geo=${storedState.geography ?? '-'} size=${storedState.deal_size ?? '-'} rev=${storedState.revenue ?? '-'} ` +
+          `phase=${storedState.phase} complete=${storedState.is_complete} captured=${storedState.is_captured ?? false} turn=${storedState.turn_count}`,
+      );
     }
   }
 
@@ -145,7 +189,12 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
   }
 
   // ─── PERSIST USER MESSAGE ─────────────────────────────────
-  await supabase.from('chat_messages').insert([{ chat_id: activeChatId, role: 'user', content: message }]);
+  const { error: userMsgErr } = await supabase
+    .from('chat_messages')
+    .insert([{ chat_id: activeChatId, role: 'user', content: message }]);
+  if (userMsgErr) {
+    console.error('[CHATBOT] user message insert failed — AI history may be truncated this turn:', userMsgErr.message);
+  }
 
   // ─── FETCH HISTORY ────────────────────────────────────────
   const { data: history } = await supabase
@@ -265,14 +314,26 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
     candidateState,
     modulesLoaded,
   });
-  const updatedState = completion.state;
+  let updatedState = completion.state;
   extraction = completion.extraction as typeof extraction;
+
+  console.log(
+    `[CHATBOT] turn chatId=${activeChatId} out{intent:${updatedState.intent ?? '-'},sector:${updatedState.sector ?? '-'},` +
+      `geo:${updatedState.geography ?? '-'},size:${updatedState.deal_size ?? '-'},rev:${updatedState.revenue ?? '-'},` +
+      `phase:${updatedState.phase},complete:${updatedState.is_complete},turn:${updatedState.turn_count}} ` +
+      `shouldInsert=${completion.shouldInsert} reason=${completion.reason ?? '-'}`,
+  );
 
   // ─── FINAL MESSAGE ─────────────────────────────────────────
   const finalMessage = buildFinalMessage(extraction);
   extraction.message = finalMessage;
 
-  await supabase.from('chat_messages').insert([{ chat_id: activeChatId, role: 'assistant', content: JSON.stringify(extraction) }]);
+  const { error: asstMsgErr } = await supabase
+    .from('chat_messages')
+    .insert([{ chat_id: activeChatId, role: 'assistant', content: JSON.stringify(extraction) }]);
+  if (asstMsgErr) {
+    console.error('[CHATBOT] assistant message insert failed — next turn history may be truncated:', asstMsgErr.message);
+  }
 
   // ─── CLOSURE: MANDATE/DEAL/PROPOSAL PERSISTENCE + MATCHMAKING ─
   const s = extraction.state;
@@ -393,14 +454,64 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
     }
   }
 
-  // ─── PERSIST FINAL STATE (OCC) ──────────────────────────────
-  const { data: sessionRow } = await supabase.from('chat_sessions').select('state_version').eq('id', activeChatId).single();
-  const currentVersion = ((sessionRow as { state_version?: number } | null)?.state_version) ?? 0;
-  await supabase
-    .from('chat_sessions')
-    .update({ state: updatedState, state_version: currentVersion + 1 })
-    .eq('id', activeChatId)
-    .eq('state_version', currentVersion);
+  // ─── PERSIST FINAL STATE (OCC-aware, checked, one retry) ─────
+  // WhatsApp users fire rapid consecutive messages, so the OCC guard on
+  // chat_sessions.state_version WILL lose races. Previously the losing write
+  // silently matched 0 rows → that turn's extracted fields (sector, budget,
+  // revenue…) were dropped → the next turn reloaded stale state and the bot
+  // "forgot" what the user just said / re-asked a question. Now: verify the
+  // write landed; on an OCC miss re-merge this turn's fields over the newer
+  // state and retry once; if the state_version column is absent, degrade to
+  // an unconditional update by id (never a silent no-op).
+  const persistState = async (attempt: number): Promise<void> => {
+    const { data: sessionRow, error: verErr } = await supabase
+      .from('chat_sessions')
+      .select('state_version')
+      .eq('id', activeChatId)
+      .single();
+
+    const hasVersioning = !verErr;
+    if (verErr && !/state_version/i.test(verErr.message)) {
+      console.error('[SESSION] state_version read error:', verErr.message);
+    }
+    const currentVersion = ((sessionRow as { state_version?: number } | null)?.state_version) ?? 0;
+
+    let upd = supabase
+      .from('chat_sessions')
+      .update(hasVersioning ? { state: updatedState, state_version: currentVersion + 1 } : { state: updatedState })
+      .eq('id', activeChatId);
+    if (hasVersioning) upd = upd.eq('state_version', currentVersion);
+
+    const { data: written, error: writeErr } = await upd.select('id');
+
+    if (writeErr) {
+      console.error(`[SESSION] state persist failed (attempt ${attempt}):`, writeErr.message);
+      return;
+    }
+    if (hasVersioning && (!written || written.length === 0)) {
+      if (attempt < 2) {
+        const { data: fresh } = await supabase
+          .from('chat_sessions')
+          .select('state')
+          .eq('id', activeChatId)
+          .single();
+        updatedState = remergeConcurrentState(
+          createBlankState(),
+          fresh?.state as Partial<RouterState> | null,
+          updatedState,
+        );
+        console.warn('[SESSION] OCC miss — re-merged this turn over the concurrent write, retrying persist.');
+        return persistState(attempt + 1);
+      }
+      console.error('[SESSION] OCC miss after retry — this turn\'s state was NOT saved.');
+      return;
+    }
+    console.log(
+      `[SESSION] persisted chatId=${activeChatId} v=${hasVersioning ? currentVersion + 1 : 'n/a'} ` +
+        `complete=${updatedState.is_complete} phase=${updatedState.phase}`,
+    );
+  };
+  await persistState(1);
 
   return {
     message: finalMessage,
