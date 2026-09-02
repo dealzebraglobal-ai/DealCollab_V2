@@ -4,6 +4,7 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { hashOtp } from '@/lib/emailOtp';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { describeAuthError as describeDbError } from '@/lib/authDiagnostics';
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,12 @@ export async function POST(req: Request) {
     const normalizedEmail = email.trim().toLowerCase();
     console.log('[email-otp/verify] OTP received', { email: normalizedEmail });
 
+    // Select ONLY the columns this route reads — resilient to an unrelated
+    // `users` column in schema.ts being ahead of the deployed DB (the
+    // relational-query default is SELECT <all schema columns>, which throws
+    // 42703 for any column the production table is missing).
     const user = await db.query.users.findFirst({
+      columns: { id: true, otpCode: true, otpExpires: true, otpAttempts: true, phone: true },
       where: eq(users.email, normalizedEmail),
     });
 
@@ -69,7 +75,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, email: normalizedEmail, hasPhone: !!user.phone });
   } catch (error: unknown) {
-    console.error('[email-otp/verify] error:', error);
+    const info = describeDbError(error);
+    console.error('[email-otp/verify] error:', { ...info });
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
   }
 }
