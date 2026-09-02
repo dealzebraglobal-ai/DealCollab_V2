@@ -222,12 +222,13 @@ export default function DealLogPage() {
         </div>
 
         {/* Mandate Source Tabs — distinctly styled with icons, badge counts, and clear active states */}
-        <div className="flex items-center gap-2 bg-[#F3F4F6] p-1.5 border border-gray-200/80 rounded-2xl w-full sm:w-fit mb-8 overflow-x-auto shadow-inner">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-[#F3F4F6] p-1.5 border border-gray-200/80 rounded-2xl w-fit max-w-full mb-8 shadow-inner">
           <button
+            type="button"
             onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-2 flex-1 sm:flex-none whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
               activeTab === 'chat'
-                ? 'bg-white text-[#F97316] shadow-md ring-1 ring-black/5 font-extrabold scale-[1.02]'
+                ? 'bg-white text-[#F97316] shadow-sm ring-1 ring-black/5 font-extrabold'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
             }`}
           >
@@ -241,10 +242,11 @@ export default function DealLogPage() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('whatsapp')}
-            className={`flex items-center gap-2 flex-1 sm:flex-none whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
               activeTab === 'whatsapp'
-                ? 'bg-white text-emerald-600 shadow-md ring-1 ring-black/5 font-extrabold scale-[1.02]'
+                ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-black/5 font-extrabold'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
             }`}
           >
@@ -258,10 +260,11 @@ export default function DealLogPage() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('bulk')}
-            className={`flex items-center gap-2 flex-1 sm:flex-none whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
               activeTab === 'bulk'
-                ? 'bg-white text-blue-600 shadow-md ring-1 ring-black/5 font-extrabold scale-[1.02]'
+                ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5 font-extrabold'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
             }`}
           >

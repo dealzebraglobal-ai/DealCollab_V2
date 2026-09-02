@@ -229,15 +229,6 @@ const AuthContent = () => {
                 <div className="space-y-3">
                   <button
                     type="button"
-                    onClick={() => setStep('phone')}
-                    className="w-full bg-[#25D366] text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-[#1EBE5D] transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
-                  >
-                    <MessageSquare size={18} className="text-white group-hover:scale-110 transition-transform" />
-                    <span className="font-semibold tracking-tight">Sign in with WhatsApp</span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setStep('email')}
                     className="w-full bg-white text-foreground py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 border border-border hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm hover:shadow-md group"
                   >
