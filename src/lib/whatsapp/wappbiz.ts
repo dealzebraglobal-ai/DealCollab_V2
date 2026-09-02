@@ -243,6 +243,10 @@ export async function sendWappBizButtons(phone: string, text: string, buttons: A
 
   if (!interactiveButtonsDisabled && trimmed.length > 0) {
     const config = getWappBizConfig();
+    // Loud, structured diagnostics — this is the ONLY way to tell whether
+    // (A) we never send, (B) our payload is invalid, (C) WappBiz rejects it,
+    // or (D) WappBiz accepts but WhatsApp doesn't render. No phone/keys logged.
+    console.log(`[WAPPBIZ INTERACTIVE] action=send endpoint=${WAPPBIZ_BUTTON_ENDPOINT} buttonCount=${trimmed.length}`);
     const res = await wappBizRequest<{ message_id?: string }>(WAPPBIZ_BUTTON_ENDPOINT, {
       body: {
         phone: normalizePhone(phone),
@@ -251,13 +255,18 @@ export async function sendWappBizButtons(phone: string, text: string, buttons: A
         ...(config?.businessNumber ? { business_number: config.businessNumber } : {}),
       },
     });
+    console.log(`[WAPPBIZ INTERACTIVE] responseStatus=${res.status ?? 0} success=${res.success}`);
     if (res.success) return res;
 
+    // NEVER silently fall back — surface the exact reason at error level.
+    console.error(
+      `[WAPPBIZ INTERACTIVE] send FAILED — status=${res.status ?? 0} reason="${res.error ?? 'unknown'}". ` +
+        `Falling back to numbered text. If status=404 the '${WAPPBIZ_BUTTON_ENDPOINT}' endpoint does not exist on this ` +
+        `WappBiz plan — set WAPPBIZ_BUTTONS_ENDPOINT to the correct path or confirm WappBiz supports interactive messages.`,
+    );
     if (res.status === 404 || res.status === 400) {
       interactiveButtonsDisabled = true;
-      console.warn(`[Wappbiz] Interactive button endpoint unavailable (HTTP ${res.status}) — using numbered text for the rest of this process.`);
-    } else {
-      console.warn(`[Wappbiz] Button send failed (HTTP ${res.status ?? '?'}) — numbered-text fallback for this message.`);
+      console.error(`[WAPPBIZ INTERACTIVE] endpoint disabled for this process after HTTP ${res.status} — numbered text only until redeploy.`);
     }
   }
 

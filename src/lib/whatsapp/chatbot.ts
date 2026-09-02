@@ -6,7 +6,16 @@ import { runChatTurn } from "@/lib/chatPipeline";
 import { sendWhatsAppMessage, sendWhatsAppButtons } from "./provider";
 import { WhatsAppProvider } from "./types";
 import { classifyWhatsAppCommand } from "./classifyCommand";
-import { selectMatchPage, type WhatsAppUiState } from "./matchNav";
+import {
+  selectMatchPage,
+  formatProposalListMessage,
+  scoreLabelFor,
+  firstSentence,
+  crRange,
+  type WhatsAppUiState,
+  type MatchCard as MatchCardLike,
+} from "./matchNav";
+import { formatMatchScore } from "@/utils/formatters";
 import { newWaCtx, waLog, describePgError, type WaCtx } from "./webhookDiagnostics";
 
 const MATCH_PAGE_SIZE = 3;
@@ -14,35 +23,6 @@ const MATCH_ROW_FETCH_LIMIT = 12;
 
 type PmRow = typeof proposalMatches.$inferSelect;
 type ProposalRow = typeof proposals.$inferSelect;
-
-type MatchCardLike = {
-  rank?: string;
-  finalScore?: number | string;
-  scoreLabel?: string;
-  archetype?: string;
-  sector?: string | null;
-  matchReason?: string;
-};
-
-import { formatMatchScore, normalizeMatchScoreNum } from "@/utils/formatters";
-
-/** Reused by both the initial post-capture display and BACK_TO_PROPOSALS — one renderer, no duplicate format. */
-function formatProposalListMessage(matchCards: MatchCardLike[]): string {
-  let matchMessage = `🏢 *Aligned Counterparties (${matchCards.length})*\n\n`;
-  matchCards.slice(0, 3).forEach((card, index) => {
-    const rank = card.rank || `P${index + 1}`;
-    const score = card.finalScore ? ` | Score: ${formatMatchScore(card.finalScore)}` : "";
-    const label = card.scoreLabel || (normalizeMatchScoreNum(card.finalScore) >= 80 ? "High Confidence" : "Good Fit");
-    const title = card.archetype || card.sector || "Strategic Opportunity";
-    const reason = card.matchReason || "Exact sector and geographic match";
-
-    matchMessage += `*${rank} — ${label}${score}*\n`;
-    matchMessage += `📌 *${title}*\n`;
-    matchMessage += `• ${reason}\n\n`;
-  });
-  matchMessage += `💡 _Select a button below to inspect individual counterparty teasers:_`;
-  return matchMessage;
-}
 
 async function setWhatsAppUiState(sessionId: string, state: WhatsAppUiState | null) {
   await db.update(chatSessions).set({ whatsappUiState: state }).where(eq(chatSessions.id, sessionId));
@@ -95,10 +75,6 @@ async function loadMatchedProposals(ids: string[]): Promise<Map<string, Proposal
   return new Map(rows.map((p) => [p.id, p]));
 }
 
-function scoreLabelFor(n: number): string {
-  return n >= 80 ? "High Confidence" : n >= 62 ? "Good Fit" : "Possible";
-}
-
 function cardsForPage(pageRows: PmRow[], byId: Map<string, ProposalRow>): MatchCardLike[] {
   return pageRows.map((r, i) => {
     const p = byId.get(r.matchedProposalId);
@@ -106,9 +82,14 @@ function cardsForPage(pageRows: PmRow[], byId: Map<string, ProposalRow>): MatchC
       rank: `P${i + 1}`,
       finalScore: Number(r.finalScore),
       scoreLabel: scoreLabelFor(Number(r.finalScore)),
-      archetype: r.matchArchetype || p?.sectors?.[0] || "Strategic Opportunity",
+      archetype: r.matchArchetype ?? null,
       sector: p?.sectors?.[0] ?? null,
-      matchReason: r.matchReason || "Strong mandate-level alignment",
+      city: p?.geographies?.[0] ?? null,
+      sizeLabel: crRange(p?.dealSizeMinCr, p?.dealSizeMaxCr) ?? crRange(p?.revenueMinCr, p?.revenueMaxCr),
+      structure: p?.dealStructure ?? null,
+      summaryLine: firstSentence(p?.summaryText),
+      ref: p?.refCode || (r.matchedProposalId ? `#${r.matchedProposalId.slice(-6).toUpperCase()}` : null),
+      matchReason: r.matchReason || null,
     };
   });
 }
@@ -135,6 +116,21 @@ async function sendMatchPage(
 ) {
   const tBuild = Date.now();
   const byId = await loadMatchedProposals(opts.pageRows.map((r) => r.matchedProposalId));
+
+  // Diagnostic: the exact candidate set being rendered — for spotting duplicate
+  // companies / repeated pages. IDs truncated; no names / contacts / directors.
+  opts.pageRows.forEach((r, i) => {
+    const p = byId.get(r.matchedProposalId);
+    console.log(
+      `[MATCH CANDIDATES] p${i + 1} matchRow=${r.id.slice(-8)} proposal=${r.matchedProposalId.slice(-8)} ` +
+        `sector=${p?.sectors?.[0] ?? "-"} city=${p?.geographies?.[0] ?? "-"} ` +
+        `size=${crRange(p?.dealSizeMinCr, p?.dealSizeMaxCr) ?? "-"} score=${Number(r.finalScore)} ` +
+        `archetype=${r.matchArchetype ?? "-"} page=${opts.page}`,
+    );
+  });
+  const uniqueCompanies = new Set(opts.pageRows.map((r) => r.matchedProposalId)).size;
+  waLog(ctx, "MATCH_DEDUP", "SUCCESS", { rows: opts.pageRows.length, uniqueCompanies });
+
   const cards = cardsForPage(opts.pageRows, byId);
   let listMsg = formatProposalListMessage(cards);
   if (opts.remaining > 0) {

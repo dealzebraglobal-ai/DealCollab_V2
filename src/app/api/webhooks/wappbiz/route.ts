@@ -114,7 +114,7 @@ export async function POST(req: Request) {
     waLog(ctx, 'PAYLOAD_VALIDATED', 'REJECTED', { reason: parsed.reason, detail: parsed.detail });
     return new NextResponse('OK', { status: 200 });
   }
-  waLog(ctx, 'PAYLOAD_VALIDATED', 'SUCCESS');
+  waLog(ctx, 'PAYLOAD_VALIDATED', 'SUCCESS', { kind: parsed.kind });
 
   try {
     waLog(ctx, 'PROCESSING_STARTED', 'START');

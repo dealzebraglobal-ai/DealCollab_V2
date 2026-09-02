@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { selectMatchPage, parseViewMatchToken, type MatchRowLike } from "../matchNav";
+import {
+  selectMatchPage,
+  parseViewMatchToken,
+  formatProposalListMessage,
+  firstSentence,
+  crRange,
+  type MatchRowLike,
+  type MatchCard,
+} from "../matchNav";
 
 const row = (id: string, matchedProposalId: string, finalScore: number | string): MatchRowLike => ({
   id,
@@ -87,5 +95,57 @@ describe("parseViewMatchToken", () => {
     expect(parseViewMatchToken("P2")).toBeNull();
     expect(parseViewMatchToken("VIEW_P2")).toBeNull(); // 'P2' is not a hex id
     expect(parseViewMatchToken("show me more")).toBeNull();
+  });
+});
+
+describe("crRange / firstSentence", () => {
+  it("crRange formats single value and range, tolerates strings/nulls", () => {
+    expect(crRange(20, 20)).toBe("₹20 Cr");
+    expect(crRange("18", "22")).toBe("₹18–22 Cr");
+    expect(crRange(null, "30")).toBe("₹30 Cr");
+    expect(crRange(null, null)).toBeNull();
+    expect(crRange("", "")).toBeNull();
+    expect(crRange(20.75, null)).toBe("₹20.8 Cr");
+  });
+  it("firstSentence takes the first sentence and caps length", () => {
+    expect(firstSentence("Strategic acquisition in Pune. Revenue ₹100 Cr.")).toBe("Strategic acquisition in Pune.");
+    expect(firstSentence(null)).toBeNull();
+    expect(firstSentence("x".repeat(200))!.length).toBeLessThanOrEqual(140);
+  });
+});
+
+describe("formatProposalListMessage — distinct cards, no fabrication", () => {
+  const base: MatchCard = { rank: "P1", finalScore: 85, scoreLabel: "High Confidence" };
+
+  it("renders each candidate's OWN city / size / structure / summary", () => {
+    const msg = formatProposalListMessage([
+      { ...base, rank: "P1", sector: "manufacturing", city: "Pune", sizeLabel: "₹18–22 Cr", structure: "100% acquisition", summaryLine: "Defence OEM with in-house machining." },
+      { ...base, rank: "P2", finalScore: 77, sector: "defence", city: "Nashik", sizeLabel: "₹25 Cr", structure: "majority stake", summaryLine: "Avionics sub-systems supplier to HAL." },
+    ]);
+    expect(msg).toContain("manufacturing · Pune");
+    expect(msg).toContain("defence · Nashik");
+    expect(msg).toContain("₹18–22 Cr · 100% acquisition");
+    expect(msg).toContain("₹25 Cr · majority stake");
+    expect(msg).toContain("Defence OEM with in-house machining.");
+    expect(msg).toContain("Avionics sub-systems supplier to HAL.");
+  });
+
+  it("appends the stable #REF only when two summary lines are byte-identical", () => {
+    const identical = "Same-sector consolidation opportunity.";
+    const msg = formatProposalListMessage([
+      { ...base, rank: "P1", sector: "defence", city: "Maharashtra", summaryLine: identical, ref: "#AAA111" },
+      { ...base, rank: "P2", sector: "defence", city: "Maharashtra", summaryLine: identical, ref: "#BBB222" },
+      { ...base, rank: "P3", sector: "defence", city: "Maharashtra", summaryLine: "A genuinely different rationale.", ref: "#CCC333" },
+    ]);
+    expect(msg).toContain("#AAA111");
+    expect(msg).toContain("#BBB222");
+    expect(msg).not.toContain("#CCC333"); // its line is unique → no ref needed
+  });
+
+  it("falls back to matchReason then a neutral line — never invents facts", () => {
+    const msg = formatProposalListMessage([{ ...base, sector: "saas", matchReason: "Exact sector + geography." }]);
+    expect(msg).toContain("Exact sector + geography.");
+    const bare = formatProposalListMessage([{ rank: "P1" }]);
+    expect(bare).toContain("Aligned with your mandate criteria.");
   });
 });

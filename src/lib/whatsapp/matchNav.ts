@@ -98,3 +98,84 @@ export function parseViewMatchToken(text: string): { matchId: string } | null {
   const m = text.trim().match(/^VIEW(?:_MATCH)?[:_ ]([0-9a-f-]{6,})$/i);
   return m ? { matchId: m[1] } : null;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Card rendering (pure) — each card shows REAL per-candidate data so two
+// genuinely-different companies in the same sector don't render identically.
+// Nothing is fabricated; a stable #REF is appended only when two summary
+// lines are byte-identical.
+// ─────────────────────────────────────────────────────────────
+
+import { formatMatchScore } from "@/utils/formatters";
+
+export interface MatchCard {
+  rank?: string;
+  finalScore?: number | string;
+  scoreLabel?: string;
+  archetype?: string | null;
+  sector?: string | null;
+  city?: string | null;
+  sizeLabel?: string | null;
+  structure?: string | null;
+  summaryLine?: string | null;
+  ref?: string | null;
+  matchReason?: string | null;
+}
+
+export function scoreLabelFor(n: number): string {
+  return n >= 80 ? "High Confidence" : n >= 62 ? "Good Fit" : "Possible";
+}
+
+/** First sentence of a summary, capped for a WhatsApp card. */
+export function firstSentence(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const first = s.trim().split(/(?<=[.!?])\s+/)[0]?.trim();
+  if (!first) return null;
+  return first.length > 140 ? first.slice(0, 137).trimEnd() + "…" : first;
+}
+
+/** "₹18–22 Cr" / "₹20 Cr" from a min/max pair; null when no usable numbers. */
+export function crRange(min: unknown, max: unknown): string | null {
+  const lo = min == null || min === "" ? null : Number(min);
+  const hi = max == null || max === "" ? null : Number(max);
+  const loOk = lo != null && Number.isFinite(lo);
+  const hiOk = hi != null && Number.isFinite(hi);
+  if (!loOk && !hiOk) return null;
+  if (loOk && hiOk && lo !== hi) return `₹${trimNum(lo as number)}–${trimNum(hi as number)} Cr`;
+  return `₹${trimNum(hiOk ? (hi as number) : (lo as number))} Cr`;
+}
+function trimNum(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+}
+
+/**
+ * One WhatsApp message for a page of up to 3 counterparties. Reused by the
+ * initial display, BACK_TO_PROPOSALS and SHOW_MORE.
+ */
+export function formatProposalListMessage(matchCards: MatchCard[]): string {
+  const cards = matchCards.slice(0, 3);
+  const lineFreq = new Map<string, number>();
+  for (const c of cards) {
+    const k = (c.summaryLine || c.matchReason || "").trim().toLowerCase();
+    if (k) lineFreq.set(k, (lineFreq.get(k) ?? 0) + 1);
+  }
+
+  let msg = `🏢 *Aligned Counterparties (${cards.length})*\n\n`;
+  cards.forEach((card, index) => {
+    const rank = card.rank || `P${index + 1}`;
+    const score = card.finalScore ? ` | ${formatMatchScore(card.finalScore)}` : "";
+    const label = card.scoreLabel || "Good Fit";
+    const head = [card.sector, card.city].filter(Boolean).join(" · ") || card.archetype || "Strategic opportunity";
+    const meta = [card.sizeLabel, card.structure].filter(Boolean).join(" · ");
+    const line = card.summaryLine || card.matchReason || "Aligned with your mandate criteria.";
+    const dupKey = (card.summaryLine || card.matchReason || "").trim().toLowerCase();
+    const needRef = card.ref && dupKey && (lineFreq.get(dupKey) ?? 0) > 1;
+
+    msg += `*${rank} — ${label}${score}*\n`;
+    msg += `📌 ${head}${needRef ? `  ${card.ref}` : ""}\n`;
+    if (meta) msg += `💰 ${meta}\n`;
+    msg += `• ${line}\n\n`;
+  });
+  msg += `👇 Tap a button below to open a counterparty's full teaser.`;
+  return msg;
+}
