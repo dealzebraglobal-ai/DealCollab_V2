@@ -47,6 +47,8 @@ interface WappBizResult<T> {
   success: boolean;
   data?: T;
   error?: string;
+  /** HTTP status of the WappBiz response (0 if the request never completed). */
+  status?: number;
 }
 
 function normalizePhone(phone: string): string {
@@ -97,10 +99,10 @@ async function wappBizRequest<T = unknown>(
       console.error(
         `[Wappbiz error] ${endpointPath} → HTTP ${res.status}${parsed?.message ? `: ${parsed.message}` : ''}`,
       );
-      return { success: false, error: parsed?.message || `Wappbiz API returned ${res.status}` };
+      return { success: false, status: res.status, error: parsed?.message || `Wappbiz API returned ${res.status}` };
     }
 
-    return { success: true, data: parsed?.data };
+    return { success: true, status: res.status, data: parsed?.data };
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       console.error(`[Wappbiz error] ${endpointPath} timed out after ${REQUEST_TIMEOUT_MS}ms`);
@@ -215,10 +217,56 @@ export async function sendWappBizMessage(phone: string, text: string) {
  * ("1", "2", "3") in addition to the button-id-style commands it expects
  * today, since a user is now replying to numbered text, not tapping a button.
  */
-export async function sendWappBizButtons(phone: string, text: string, buttons: Array<{ id: string; title: string }>) {
+// Self-disabling: once WappBiz answers the interactive endpoint with a
+// structural error (404 unknown route / 400 bad param), stop calling it for
+// the rest of this process and go straight to numbered text — so a provider
+// that has NOT actually shipped buttons costs at most one extra round-trip,
+// once, not on every message (Problem 1: response speed).
+let interactiveButtonsDisabled = process.env.WAPPBIZ_BUTTONS_DISABLED === '1';
+
+const WAPPBIZ_BUTTON_ENDPOINT = process.env.WAPPBIZ_BUTTONS_ENDPOINT || '/sendServiceButtonMessage';
+
+/** Numbered-text rendering — the always-available fallback and the pre-buttons behaviour. */
+function buttonsAsNumberedText(text: string, buttons: Array<{ id: string; title: string }>): string {
   const optionsText = buttons.map((b, i) => `${i + 1}. ${b.title}`).join('\n');
-  const combined = `${text}\n\n${optionsText}\n\n_Reply with the option number._`;
-  return sendServiceTextMessage(phone, combined);
+  return `${text}\n\n${optionsText}\n\n_Reply with the option number._`;
+}
+
+/**
+ * Interactive reply buttons. Sends via WappBiz's button endpoint — same
+ * envelope as /sendServiceTextMessage plus a `buttons` array of {id,title}
+ * (confirmed shape). On ANY failure it falls back to numbered text, so the
+ * pre-existing behaviour is never lost. WhatsApp caps quick-reply buttons at 3.
+ */
+export async function sendWappBizButtons(phone: string, text: string, buttons: Array<{ id: string; title: string }>) {
+  const trimmed = buttons.slice(0, 3);
+
+  if (!interactiveButtonsDisabled && trimmed.length > 0) {
+    const config = getWappBizConfig();
+    const res = await wappBizRequest<{ message_id?: string }>(WAPPBIZ_BUTTON_ENDPOINT, {
+      body: {
+        phone: normalizePhone(phone),
+        message: text,
+        buttons: trimmed.map((b) => ({ id: b.id, title: b.title })),
+        ...(config?.businessNumber ? { business_number: config.businessNumber } : {}),
+      },
+    });
+    if (res.success) return res;
+
+    if (res.status === 404 || res.status === 400) {
+      interactiveButtonsDisabled = true;
+      console.warn(`[Wappbiz] Interactive button endpoint unavailable (HTTP ${res.status}) — using numbered text for the rest of this process.`);
+    } else {
+      console.warn(`[Wappbiz] Button send failed (HTTP ${res.status ?? '?'}) — numbered-text fallback for this message.`);
+    }
+  }
+
+  return sendServiceTextMessage(phone, buttonsAsNumberedText(text, trimmed.length ? trimmed : buttons));
+}
+
+/** Test/diagnostics hook — reflects whether the process has disabled the button endpoint. */
+export function __isInteractiveButtonsDisabled(): boolean {
+  return interactiveButtonsDisabled;
 }
 
 /**

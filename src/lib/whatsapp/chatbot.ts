@@ -1,12 +1,19 @@
 import { db } from "@/db";
 import { users, chatSessions, proposalMatches, proposals } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc, inArray } from "drizzle-orm";
 import { createMagicLinkToken } from "@/lib/magicLink";
 import { runChatTurn } from "@/lib/chatPipeline";
 import { sendWhatsAppMessage, sendWhatsAppButtons } from "./provider";
 import { WhatsAppProvider } from "./types";
-import { classifyWhatsAppCommand, WhatsAppUiScreen } from "./classifyCommand";
+import { classifyWhatsAppCommand } from "./classifyCommand";
+import { selectMatchPage, type WhatsAppUiState } from "./matchNav";
 import { newWaCtx, waLog, describePgError, type WaCtx } from "./webhookDiagnostics";
+
+const MATCH_PAGE_SIZE = 3;
+const MATCH_ROW_FETCH_LIMIT = 12;
+
+type PmRow = typeof proposalMatches.$inferSelect;
+type ProposalRow = typeof proposals.$inferSelect;
 
 type MatchCardLike = {
   rank?: string;
@@ -37,48 +44,124 @@ function formatProposalListMessage(matchCards: MatchCardLike[]): string {
   return matchMessage;
 }
 
-async function sendProposalList(
-  provider: WhatsAppProvider,
-  rawPhone: string,
-  matchCards: MatchCardLike[],
-  ctx: WaCtx,
-) {
-  const matchMessage = formatProposalListMessage(matchCards);
-  waLog(ctx, "WAPPBIZ_REQUEST", "START", { kind: "proposal-list" });
-  try {
-    await sendWhatsAppButtons(provider, rawPhone, matchMessage, [
-      { id: "VIEW_P1", title: "📄 View P1" },
-      { id: "VIEW_P2", title: "📄 View P2" },
-      { id: "VIEW_P3", title: "📄 View P3" },
-    ]);
-  } catch (e) {
-    console.error("Failed to send matches buttons:", e);
-    await sendWhatsAppMessage(provider, rawPhone, matchMessage);
-  }
-  ctx.responseSent = true;
-  waLog(ctx, "WAPPBIZ_REQUEST", "SUCCESS", { kind: "proposal-list" });
+async function setWhatsAppUiState(sessionId: string, state: WhatsAppUiState | null) {
+  await db.update(chatSessions).set({ whatsappUiState: state }).where(eq(chatSessions.id, sessionId));
 }
 
-/** Fetches the user's latest proposal + its persisted matches — never reruns matching. */
-async function fetchLatestProposalMatches(userId: string) {
+function readUiState(session: { whatsappUiState?: unknown } | null | undefined): WhatsAppUiState {
+  const s = (session?.whatsappUiState as Partial<WhatsAppUiState> | null) ?? {};
+  return {
+    screen: s.screen ?? null,
+    index: s.index,
+    proposalId: s.proposalId,
+    pageMatchIds: Array.isArray(s.pageMatchIds) ? s.pageMatchIds : [],
+    shownMatchedProposalIds: Array.isArray(s.shownMatchedProposalIds) ? s.shownMatchedProposalIds : [],
+    page: s.page,
+  };
+}
+
+/**
+ * The user's latest proposal + up to 12 of its already-persisted match rows
+ * (final_score desc, id asc for a stable tie-break). The matchmaking engine
+ * is NEVER re-run here — "show more" is pagination over rows already on disk.
+ */
+async function fetchLatestProposalWithMatchRows(userId: string, ctx: WaCtx) {
+  const t = Date.now();
   const userProposals = await db.query.proposals.findMany({
     where: eq(proposals.userId, userId),
     orderBy: [desc(proposals.createdAt)],
     limit: 1,
   });
-  if (userProposals.length === 0) return null;
-
+  if (userProposals.length === 0) {
+    waLog(ctx, "MATCH_QUERY", "SUCCESS", { stageMs: Date.now() - t, proposal: false });
+    return null;
+  }
   const latestProp = userProposals[0];
-  const matches = await db.query.proposalMatches.findMany({
+  const rows = (await db.query.proposalMatches.findMany({
     where: eq(proposalMatches.proposalId, latestProp.id),
-    orderBy: [desc(proposalMatches.finalScore)],
-    limit: 3,
-  });
-  return { latestProp, matches };
+    orderBy: [desc(proposalMatches.finalScore), asc(proposalMatches.id)],
+    limit: MATCH_ROW_FETCH_LIMIT,
+  })) as PmRow[];
+  waLog(ctx, "MATCH_QUERY", "SUCCESS", { stageMs: Date.now() - t, rows: rows.length });
+  return { latestProp, rows };
 }
 
-async function setWhatsAppUiState(sessionId: string, state: { screen: WhatsAppUiScreen; index?: number } | null) {
-  await db.update(chatSessions).set({ whatsappUiState: state }).where(eq(chatSessions.id, sessionId));
+/** Load the matched-proposal records for a page in ONE query, keyed by id (never array position). */
+async function loadMatchedProposals(ids: string[]): Promise<Map<string, ProposalRow>> {
+  if (ids.length === 0) return new Map();
+  const rows = (await db.query.proposals.findMany({
+    where: inArray(proposals.id, ids),
+  })) as ProposalRow[];
+  return new Map(rows.map((p) => [p.id, p]));
+}
+
+function scoreLabelFor(n: number): string {
+  return n >= 80 ? "High Confidence" : n >= 62 ? "Good Fit" : "Possible";
+}
+
+function cardsForPage(pageRows: PmRow[], byId: Map<string, ProposalRow>): MatchCardLike[] {
+  return pageRows.map((r, i) => {
+    const p = byId.get(r.matchedProposalId);
+    return {
+      rank: `P${i + 1}`,
+      finalScore: Number(r.finalScore),
+      scoreLabel: scoreLabelFor(Number(r.finalScore)),
+      archetype: r.matchArchetype || p?.sectors?.[0] || "Strategic Opportunity",
+      sector: p?.sectors?.[0] ?? null,
+      matchReason: r.matchReason || "Strong mandate-level alignment",
+    };
+  });
+}
+
+/**
+ * Renders one page of counterparties, sends it (interactive buttons carrying
+ * the STABLE proposal_matches.id, numbered-text fallback handled by the
+ * provider), and persists navigation state so a later "1"/"2"/"3" or a
+ * "show more" resolves against the exact rows the user is looking at.
+ */
+async function sendMatchPage(
+  provider: WhatsAppProvider,
+  rawPhone: string,
+  ctx: WaCtx,
+  opts: {
+    sessionId?: string;
+    proposalId: string;
+    pageRows: PmRow[];
+    /** The FULL cumulative set of matched_proposal_ids the user has now seen. */
+    cumulativeShownMatchedProposalIds: string[];
+    page: number;
+    remaining: number;
+  },
+) {
+  const tBuild = Date.now();
+  const byId = await loadMatchedProposals(opts.pageRows.map((r) => r.matchedProposalId));
+  const cards = cardsForPage(opts.pageRows, byId);
+  let listMsg = formatProposalListMessage(cards);
+  if (opts.remaining > 0) {
+    listMsg += `\n\n_${opts.remaining} more available — reply *more*._`;
+  }
+  const buttons = opts.pageRows.map((r, i) => ({ id: `VIEW_MATCH:${r.id}`, title: `📄 View P${i + 1}` }));
+  waLog(ctx, "RESPONSE_BUILD", "SUCCESS", { cards: cards.length, stageMs: Date.now() - tBuild });
+
+  waLog(ctx, "WAPPBIZ_REQUEST", "START", { kind: "match-page", page: opts.page });
+  try {
+    await sendWhatsAppButtons(provider, rawPhone, listMsg, buttons);
+  } catch (e) {
+    console.error("Failed to send match page:", e);
+    await sendWhatsAppMessage(provider, rawPhone, listMsg);
+  }
+  ctx.responseSent = true;
+  waLog(ctx, "WAPPBIZ_REQUEST", "SUCCESS", { kind: "match-page", page: opts.page });
+
+  if (opts.sessionId) {
+    await setWhatsAppUiState(opts.sessionId, {
+      screen: "PROPOSAL_LIST",
+      proposalId: opts.proposalId,
+      pageMatchIds: opts.pageRows.map((r) => r.id),
+      shownMatchedProposalIds: Array.from(new Set(opts.cumulativeShownMatchedProposalIds)),
+      page: opts.page,
+    });
+  }
 }
 
 export async function processIncomingMessage(
@@ -183,8 +266,8 @@ export async function processIncomingMessage(
     throw err;
   }
   waLog(ctx, "CHAT_SESSION_LOOKUP", "SUCCESS", { hasSession: !!latestSession });
-  const currentScreen: WhatsAppUiScreen =
-    (latestSession?.whatsappUiState as { screen?: WhatsAppUiScreen } | null)?.screen ?? null;
+  const uiState = readUiState(latestSession);
+  const currentScreen = uiState.screen;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const command = classifyWhatsAppCommand(text, currentScreen);
@@ -220,60 +303,125 @@ export async function processIncomingMessage(
     return;
   }
 
-  if (command.type === "BACK_TO_PROPOSALS") {
-    console.log("[WAPPBIZ CHAT] back to proposals requested");
-    const found = await fetchLatestProposalMatches(user.id);
-    if (found && found.matches.length > 0) {
-      const matchCards: MatchCardLike[] = found.matches.map((m, idx) => ({
-        rank: `P${idx + 1}`,
-        scoreLabel: Number(m.finalScore) >= 80 ? "High Confidence" : "Good Fit",
-        finalScore: Number(m.finalScore),
-        archetype: m.matchArchetype || "Strategic Opportunity",
-        matchReason: m.matchReason || "Strong mandate-level alignment",
-      }));
-      await sendProposalList(provider, rawPhone, matchCards, ctx);
-      if (latestSession) await setWhatsAppUiState(latestSession.id, { screen: "PROPOSAL_LIST" });
-    } else {
-      await reply(
-        "❌ We couldn't find your proposal list. Try checking your full DealLog on the website!",
-      );
+  // ── Deterministic navigation actions — NO LLM call, structured routing ──
+  if (
+    command.type === "BACK_TO_PROPOSALS" ||
+    command.type === "SHOW_MORE" ||
+    command.type === "VIEW_MATCH"
+  ) {
+    const found = await fetchLatestProposalWithMatchRows(user.id, ctx);
+    if (!found || found.rows.length === 0) {
+      await reply("❌ We couldn't find your counterparty list yet. Try checking your full DealLog on the website.");
+      return;
     }
-    return;
-  }
+    const { latestProp, rows } = found;
+    const rowById = new Map(rows.map((r) => [r.id, r]));
 
-  if (command.type === "VIEW_MATCH") {
-    const matchIdx = command.index;
-    console.log(`[WAPPBIZ CHAT] selected counterparty index=${matchIdx}, finishRequested=false`);
-    const found = await fetchLatestProposalMatches(user.id);
+    if (command.type === "VIEW_MATCH") {
+      // Resolve the STABLE proposal_matches.id: from the button postback if
+      // present, else from the page the user is looking at (never a fresh
+      // "top 3 by score" — that opens the wrong company after a page turn).
+      let target: PmRow | undefined;
+      if (command.matchId) {
+        target = rowById.get(command.matchId);
+      } else if (command.index >= 0 && uiState.pageMatchIds && uiState.pageMatchIds[command.index]) {
+        target = rowById.get(uiState.pageMatchIds[command.index]);
+      } else if (command.index >= 0) {
+        // Legacy fallback: no page state (e.g. first session after deploy).
+        const legacyPage = selectMatchPage(rows, [], MATCH_PAGE_SIZE).page;
+        target = legacyPage[command.index];
+      }
 
-    if (found && found.matches[matchIdx]) {
-      const m = found.matches[matchIdx];
-      const targetProposal = await db.query.proposals.findFirst({
-        where: eq(proposals.id, m.matchedProposalId),
-      });
+      if (!target) {
+        await reply("Sorry, that option is no longer available. Please choose from the current options, or reply *more*.");
+        return;
+      }
 
+      const byId = await loadMatchedProposals([target.matchedProposalId]);
+      const tp = byId.get(target.matchedProposalId);
       const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
       const teaserMsg =
-        `🏢 *Counterparty Details — P${matchIdx + 1}*\n\n` +
-        `📌 *Title:* ${targetProposal?.summaryText || targetProposal?.normalisedText?.slice(0, 60) || m.matchArchetype || "Strategic Opportunity"}\n` +
-        `🎯 *Match Score:* ${formatMatchScore(m.finalScore)}\n` +
-        `💼 *Sector:* ${targetProposal?.sectors?.join(", ") || "General Business"}\n` +
-        `📍 *Location:* ${targetProposal?.geographies?.join(", ") || "India"}\n` +
-        `💰 *Revenue Range:* ${targetProposal?.revenueMinCr ? "₹" + targetProposal.revenueMinCr + "–" + (targetProposal.revenueMaxCr || "") + " Cr" : "Undisclosed"}\n\n` +
-        `*Why this matched:* ${m.matchReason}\n\n` +
-        `💡 *Next Step:* Click below to view full teaser documents and request a direct introduction on your DealLog:\n` +
-        `👉 ${magicLinkUrl}`;
+        `🏢 *Counterparty Details*\n\n` +
+        `📌 *Title:* ${tp?.summaryText || tp?.normalisedText?.slice(0, 60) || target.matchArchetype || "Strategic Opportunity"}\n` +
+        `🎯 *Match Score:* ${formatMatchScore(target.finalScore)}\n` +
+        `💼 *Sector:* ${tp?.sectors?.join(", ") || "General Business"}\n` +
+        `📍 *Location:* ${tp?.geographies?.join(", ") || "India"}\n` +
+        `💰 *Revenue Range:* ${tp?.revenueMinCr ? "₹" + tp.revenueMinCr + "–" + (tp.revenueMaxCr || "") + " Cr" : "Undisclosed"}\n\n` +
+        `*Why this matched:* ${target.matchReason}\n\n` +
+        `💡 *Next Step:* Open your DealLog to view full teaser documents and request a direct introduction:\n👉 ${magicLinkUrl}`;
 
       await replyButtons(teaserMsg, [
-        { id: "BACK_TO_PROPOSALS", title: "⬅️ Back to View Proposals" },
+        { id: "BACK_TO_PROPOSALS", title: "⬅️ Back to Proposals" },
         { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
         { id: "START_OVER", title: "🔄 Start Over" },
       ]);
-      if (latestSession) await setWhatsAppUiState(latestSession.id, { screen: "COUNTERPARTY_DETAIL", index: matchIdx });
+      if (latestSession) {
+        await setWhatsAppUiState(latestSession.id, {
+          ...uiState,
+          screen: "COUNTERPARTY_DETAIL",
+          proposalId: latestProp.id,
+        });
+      }
       return;
     }
+
+    const alreadyShown = uiState.shownMatchedProposalIds ?? [];
+
+    // BACK_TO_PROPOSALS → re-show the exact page the user was on (from state);
+    // do NOT re-add to the shown set. SHOW_MORE → the next unseen page.
+    if (command.type === "BACK_TO_PROPOSALS" && (uiState.pageMatchIds?.length ?? 0) > 0) {
+      const pageRows = uiState.pageMatchIds!
+        .map((id) => rowById.get(id))
+        .filter((r): r is PmRow => !!r);
+      if (pageRows.length > 0) {
+        const remaining = selectMatchPage(rows, alreadyShown, rows.length).page.length;
+        await sendMatchPage(provider, rawPhone, ctx, {
+          sessionId: latestSession?.id,
+          proposalId: latestProp.id,
+          pageRows,
+          cumulativeShownMatchedProposalIds: alreadyShown,
+          page: uiState.page ?? 1,
+          remaining,
+        });
+        return;
+      }
+    }
+
+    const priorShown = command.type === "SHOW_MORE" ? alreadyShown : [];
+    const { page, remaining } = selectMatchPage(rows, priorShown, MATCH_PAGE_SIZE);
+
+    if (page.length === 0) {
+      // No unseen candidates left — never repeat companies, never fabricate.
+      await replyButtons(
+        "No additional verified matches are available based on your current criteria.",
+        [{ id: "BROADEN_CRITERIA", title: "🔎 Broaden Criteria" }],
+      );
+      if (latestSession) {
+        await setWhatsAppUiState(latestSession.id, {
+          ...uiState,
+          screen: "NO_MORE_MATCHES",
+          proposalId: latestProp.id,
+        });
+      }
+      return;
+    }
+
+    await sendMatchPage(provider, rawPhone, ctx, {
+      sessionId: latestSession?.id,
+      proposalId: latestProp.id,
+      pageRows: page,
+      cumulativeShownMatchedProposalIds: [...priorShown, ...page.map((r) => r.matchedProposalId)],
+      page: command.type === "SHOW_MORE" ? (uiState.page ?? 1) + 1 : (uiState.page ?? 1),
+      remaining,
+    });
+    return;
+  }
+
+  if (command.type === "BROADEN_CRITERIA") {
+    const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
     await reply(
-      "❌ We couldn't find the details for that counterparty match. Try checking your full DealLog on the website!",
+      "To broaden your mandate — widen the sector, geography or deal-size range — open your DealLog on the web and edit the mandate filters. New matches surface automatically:\n\n👉 " +
+        magicLinkUrl,
     );
     return;
   }
@@ -349,37 +497,35 @@ export async function processIncomingMessage(
   await reply(result.message);
   console.log("[Wappbiz] Response sent");
 
-  // 6. If matching counterparties were found, format and send them as WhatsApp cards!
+  // 6. If matching counterparties were found, send page 1 of the persisted
+  //    match rows. Reads the same proposal_matches table "show more" pages —
+  //    so the exclusion set stays consistent from the very first page.
   if (result.proposalId) {
-    let matchCards: MatchCardLike[] = result.matchCards || [];
-
-    // If not returned by the pipeline result, try checking DB directly
-    if (matchCards.length === 0) {
-      try {
-        const dbMatches = await db.query.proposalMatches.findMany({
-          where: eq(proposalMatches.proposalId, result.proposalId),
-          orderBy: [desc(proposalMatches.finalScore)],
-          limit: 3,
-        });
-        matchCards = dbMatches.map((m, idx) => ({
-          rank: `P${idx + 1}`,
-          scoreLabel:
-            Number(m.finalScore) >= 80 ? "High Confidence" : "Good Fit",
-          finalScore: Number(m.finalScore),
-          archetype: m.matchArchetype || "Strategic Opportunity",
-          matchReason: m.matchReason || "Strong mandate-level alignment",
-        }));
-      } catch (e) {
-        console.error("Failed to fetch DB matches for WhatsApp:", e);
-      }
+    const tMatch = Date.now();
+    let rows: PmRow[] = [];
+    try {
+      rows = (await db.query.proposalMatches.findMany({
+        where: eq(proposalMatches.proposalId, result.proposalId),
+        orderBy: [desc(proposalMatches.finalScore), asc(proposalMatches.id)],
+        limit: MATCH_ROW_FETCH_LIMIT,
+      })) as PmRow[];
+    } catch (e) {
+      console.error("Failed to fetch DB matches for WhatsApp:", e);
     }
+    waLog(ctx, "MATCH_QUERY", "SUCCESS", { stageMs: Date.now() - tMatch, rows: rows.length });
 
-    if (matchCards.length > 0) {
+    const { page, remaining } = selectMatchPage(rows, [], MATCH_PAGE_SIZE);
+    if (page.length > 0) {
       // Deliberately NOT followed by the "what would you like to do next" menu — that is a
-      // terminal action menu and must only appear when the user explicitly asks to finish
-      // (handled earlier in this function), never automatically after showing matches.
-      await sendProposalList(provider, rawPhone, matchCards, ctx);
-      await setWhatsAppUiState(result.chatId, { screen: "PROPOSAL_LIST" });
+      // terminal action menu and must only appear when the user explicitly asks to finish.
+      await sendMatchPage(provider, rawPhone, ctx, {
+        sessionId: result.chatId,
+        proposalId: result.proposalId,
+        pageRows: page,
+        cumulativeShownMatchedProposalIds: page.map((r) => r.matchedProposalId),
+        page: 1,
+        remaining,
+      });
     }
   }
 }
