@@ -84,9 +84,9 @@ async function resolveWhatsAppChatId(
 
   if (!existing) return null;
 
-  // A completed mandate closes the thread — the next inbound message starts a fresh one.
+  // A completed/captured mandate closes the thread — the next inbound message starts a fresh one.
   const state = (existing.state as Partial<RouterState> | null) || null;
-  if (state?.is_complete) return null;
+  if (state?.is_complete || state?.is_captured) return null;
 
   return existing.id;
 }
@@ -163,6 +163,24 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
           `geo=${storedState.geography ?? '-'} size=${storedState.deal_size ?? '-'} rev=${storedState.revenue ?? '-'} ` +
           `phase=${storedState.phase} complete=${storedState.is_complete} captured=${storedState.is_captured ?? false} turn=${storedState.turn_count}`,
       );
+
+      // ─── WhatsApp: a captured/completed thread does NOT continue ────────────
+      // The web client rotates chatId via its "New chat" control after a mandate
+      // is captured. WhatsApp has no such affordance and chatbot.ts always hands
+      // us the newest session for the phone — so without this, every message
+      // after the first completed deal (a brand-new mandate included) hits
+      // resolveCompletion's is_captured terminal lock and gets the same fixed
+      // "your mandate is active" line back. Treat a completed session like the
+      // web "New chat": start fresh. Explicit nav/RESET commands are already
+      // handled in chatbot.ts before this point, so anything reaching here is a
+      // genuine new conversational turn.
+      if (channel === 'WHATSAPP' && (storedState.is_complete || storedState.is_captured)) {
+        console.log(
+          `[SESSION] WhatsApp: session ${activeChatId} is captured/complete — starting a fresh session for the new mandate.`,
+        );
+        activeChatId = null;
+        storedState = createBlankState();
+      }
     }
   }
 
