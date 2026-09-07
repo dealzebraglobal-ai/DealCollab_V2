@@ -36,8 +36,6 @@ export default function robots(): MetadataRoute.Robots {
         '/eoi-review/',
         '/notifications',
         '/analytics',
-        '/signup',
-        '/verify',
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

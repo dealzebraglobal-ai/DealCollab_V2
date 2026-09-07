@@ -68,8 +68,6 @@ const privatePathPatterns = [
   '/admin',
   '/admin/:path*',
   '/cartography',
-  '/signup',
-  '/verify',
 ];
 
 const nextConfig: NextConfig = {
@@ -128,6 +126,15 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       ...privatePathPatterns.map((source) => ({ source, headers: noIndexHeader })),
+    ];
+  },
+  // /welcome's marketing content moved to / (2026-09-07) — / was previously
+  // the Sign-In screen (now at /login). 308 (permanent) so search engines
+  // transfer any existing signal for /welcome to the new canonical URL
+  // instead of treating it as a dead/duplicate page.
+  async redirects() {
+    return [
+      { source: '/welcome', destination: '/login', permanent: true },
     ];
   },
 };

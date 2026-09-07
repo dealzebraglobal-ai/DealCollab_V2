@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 export const metadata: Metadata = {
   title: 'Terms of Service',
   description: 'The terms and conditions that govern use of the DealCollab platform.',
+  alternates: { canonical: '/terms' },
 };
 
 export default function TermsOfService() {

@@ -116,7 +116,8 @@ export default function DealLogPage() {
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'whatsapp' || tabParam === 'bulk' || tabParam === 'chat') {
-      setActiveTab(tabParam);
+      const timeoutId = setTimeout(() => setActiveTab(tabParam), 0);
+      return () => clearTimeout(timeoutId);
     }
   }, [searchParams]);
 

@@ -58,20 +58,20 @@ export default function ChatArea({ messages, isTyping, onQuestionClick }: ChatAr
         >
           {/* User Avatar Icon (Keep blank for assistant) */}
           {msg.role === 'user' ? (
-            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-1 transition-all overflow-hidden bg-white border border-[#E5E7EB] text-[#1F1F1F]">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-1 transition-all overflow-hidden bg-white border border-[#E5E7EB] text-[#1F1F1F]">
               {profile?.userAvatar ? (
-                <Image src={profile.userAvatar} alt="User" width={36} height={36} className="w-full h-full object-cover" />
+                <Image src={profile.userAvatar} alt="User" width={28} height={28} className="w-full h-full object-cover" />
               ) : (
-                <User size={18} className="text-[#444746]" />
+                <User size={14} className="text-[#444746]" />
               )}
             </div>
           ) : (
             <div className="w-0 shrink-0" />
           )}
           
-          <div className={`flex flex-col gap-2 max-w-[88%] sm:max-w-[80%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+          <div className={`flex flex-col gap-2 max-w-[85%] sm:max-w-[80%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div 
-              className={`px-6 py-4 shadow-sm transition-all ${
+              className={`px-4 py-3 shadow-sm transition-all ${
                 isHomePage
                   ? (msg.role === 'user'
                       ? 'bg-[#F3F4F6] text-[#1F1F1F] rounded-[24px] border border-[#E5E7EB]'
@@ -82,44 +82,44 @@ export default function ChatArea({ messages, isTyping, onQuestionClick }: ChatAr
               }`}
             >
               {msg.file && (
-                <div className={`mb-4 p-3 rounded-2xl flex items-center gap-3 border ${
+                <div className={`mb-3 p-2.5 rounded-2xl flex items-center gap-2 border ${
                   isHomePage 
                     ? 'bg-white border-[#E5E7EB]'
                     : (msg.role === 'user' ? 'bg-[#F5F5F3] border-[rgba(17,17,17,0.04)]' : 'bg-transparent border-[rgba(17,17,17,0.08)]')
                 }`}>
-                  <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center">
-                    <span className="text-lg">📄</span>
+                  <div className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center">
+                    <span className="text-sm">📄</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-bold truncate ${isHomePage ? 'text-[#1F1F1F]' : (msg.role === 'user' ? 'text-[#0F172A]' : 'text-foreground')}`}>
+                    <p className={`text-xs font-bold truncate ${isHomePage ? 'text-[#1F1F1F]' : (msg.role === 'user' ? 'text-[#0F172A]' : 'text-foreground')}`}>
                       {msg.file.name}
                     </p>
-                    <p className={`text-[10px] uppercase tracking-wider font-bold ${isHomePage ? 'text-[#444746]' : (msg.role === 'user' ? 'text-[#64748B]' : 'text-brand-secondary/60')}`}>
+                    <p className={`text-[9px] uppercase tracking-wider font-bold ${isHomePage ? 'text-[#444746]' : (msg.role === 'user' ? 'text-[#64748B]' : 'text-brand-secondary/60')}`}>
                       Document Attachment
                     </p>
                   </div>
                 </div>
               )}
-              <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-normal">
+              <p className="text-[13px] leading-relaxed whitespace-pre-wrap font-normal">
                 {msg.content}
               </p>
             </div>
             
             {msg.role === 'assistant' && msg.type === 'complete' && (
-              <div className={`mt-2 p-4 ${isHomePage ? 'bg-[#DCFCE7] border border-[#86EFAC] text-[#15803D]' : 'bg-brand-card border border-border text-[#2F855A]'} rounded-2xl flex items-center gap-3 text-sm font-medium animate-in zoom-in duration-500 shadow-sm`}>
-                <div className="w-6 h-6 rounded-lg bg-[#16A34A] flex items-center justify-center text-white shrink-0">
-                  <Sparkles size={12} />
+              <div className={`mt-2 p-3 ${isHomePage ? 'bg-[#DCFCE7] border border-[#86EFAC] text-[#15803D]' : 'bg-brand-card border border-border text-[#2F855A]'} rounded-xl flex items-center gap-2 text-xs font-medium animate-in zoom-in duration-500 shadow-sm`}>
+                <div className="w-5 h-5 rounded-md bg-[#16A34A] flex items-center justify-center text-white shrink-0">
+                  <Sparkles size={10} />
                 </div>
                 <span>Deal captured and intelligence extracted successfully.</span>
               </div>
             )}
             {msg.role === 'assistant' && msg.questions && msg.questions.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {msg.questions.map((q, idx) => (
                   <button
                     key={idx}
                     onClick={() => onQuestionClick?.(q)}
-                    className={`text-xs font-medium px-4 py-2 rounded-full transition-all active:scale-95 shadow-sm ${
+                    className={`text-[11px] font-medium px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-sm ${
                       isHomePage
                         ? 'bg-[#F3F4F6] hover:bg-[#FFF7ED] text-[#1F1F1F] border border-[#E5E7EB] hover:border-[#FF6A00]/40 hover:text-[#FF6A00]'
                         : 'bg-white border border-[rgba(17,17,17,0.08)] hover:border-[#FF6A00]/50 hover:bg-[#F5F5F3] text-[#4B5563] hover:text-[#111111]'
@@ -136,9 +136,9 @@ export default function ChatArea({ messages, isTyping, onQuestionClick }: ChatAr
 
       {isTyping && (
         <div className="flex items-center gap-3 w-full animate-in fade-in duration-300 py-1">
-          <div className="flex items-center gap-2.5 px-5 py-3.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-[22px] shadow-sm">
-            <div className="w-2 h-2 rounded-full bg-[#9CA3AF] animate-pulse shrink-0" />
-            <span className="text-[14px] font-normal text-[#747775] transition-all duration-300">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl shadow-sm">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF] animate-pulse shrink-0" />
+            <span className="text-[12px] font-normal text-[#747775] transition-all duration-300">
               {processWords[processStep]}
             </span>
           </div>

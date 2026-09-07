@@ -115,7 +115,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // `sessions` table finds nothing for a Credentials-issued JWT cookie, so
   // useSession() flips to 'unauthenticated' shortly after a successful
   // login — this was the root cause of users landing on /home then
-  // immediately bouncing back to "/" (auth.config.ts's pages.signIn).
+  // immediately bouncing back to the sign-in page (auth.config.ts's
+  // pages.signIn, now /login — was "/" when this comment was written).
   // Google OAuth (auth.config.ts) is unaffected: DrizzleAdapter still
   // manages the users/accounts tables for account linkage under JWT
   // strategy, it just stops writing to the sessions table. The jwt/session

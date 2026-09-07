@@ -318,7 +318,7 @@ const AuthContent = () => {
   );
 }
 
-export default function HomeClient() {
+export default function LoginClient() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">

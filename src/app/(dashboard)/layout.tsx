@@ -23,7 +23,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isMounted && status === 'unauthenticated') {
-      router.replace('/');
+      // / is the public marketing homepage now (moved 2026-09-07) — an
+      // unauthenticated visit to a protected route goes to /login, not /.
+      router.replace('/login');
     }
   }, [isMounted, status, router]);
 

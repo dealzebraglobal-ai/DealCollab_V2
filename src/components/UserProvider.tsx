@@ -244,7 +244,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Sync with Supabase (REAL DATA)
   useEffect(() => {
     if (status === 'authenticated') {
-      setIsProfileLoading(true);
+      setTimeout(() => setIsProfileLoading(true), 0);
       (async () => {
         await fetchSupabaseData();
       })();
@@ -271,7 +271,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     
     trackLogout();
     await signOut({
-      callbackUrl: reason ? `/?error=${reason}` : '/?logout=success',
+      // A deliberate logout goes to / (the public homepage, per spec). An
+      // involuntary bounce (session/link expired — the user was trying to
+      // reach the private app) goes to /login with the reason, since that's
+      // where the sign-in form (and its error banner) now lives.
+      callbackUrl: reason ? `/login?error=${reason}` : '/',
       redirect: true
     });
   }, []);

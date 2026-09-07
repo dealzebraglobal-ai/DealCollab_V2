@@ -340,18 +340,18 @@ export default function Home() {
     <div className="flex-1 flex flex-col h-full relative bg-white overflow-hidden">
       {/* Scrollable Message Area */}
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="chat-container-max px-6 py-10 pb-40">
+        <div className="chat-container-max px-4 py-6 pb-24">
           {loading ? (
             <div className="max-w-3xl mx-auto">
                 <ChatSkeleton />
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 rounded-full bg-[#F3F4F6] flex items-center justify-center mb-6 border border-[#E5E7EB] shadow-sm">
-                <Plus size={32} className="text-[#FF6A00]" />
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-full bg-[#F3F4F6] flex items-center justify-center mb-6 border border-[#E5E7EB] shadow-sm">
+                <Plus size={24} className="text-[#FF6A00]" />
               </div>
-              <h2 className="text-2xl font-semibold text-[#1F1F1F] mb-2 tracking-tight">Start a new conversation</h2>
-              <p className="text-[#444746] text-sm max-w-xs font-normal">Describe your deal, mandate, or project to begin extraction.</p>
+              <h2 className="text-lg font-semibold text-[#1F1F1F] mb-2 tracking-tight">Start a new conversation</h2>
+              <p className="text-[#444746] text-xs max-w-xs font-normal">Describe your deal, mandate, or project to begin extraction.</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -362,7 +362,7 @@ export default function Home() {
                 />
                 {/* Matchmaking Results Panel */}
                 {activeProposalId && (
-                  <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="mt-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <MatchPanel
                       proposalId={activeProposalId}
                       onStartOver={() => {

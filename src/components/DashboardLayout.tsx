@@ -12,7 +12,7 @@ import { useChat } from './ChatProvider';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState<number>(220);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(180);
   const [isResizing, setIsResizing] = useState(false);
   const { tokens } = useUser();
   const { createNewChat } = useChat();
@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.min(Math.max(e.clientX, 170), 450);
+      const newWidth = Math.min(Math.max(e.clientX, 140), 350);
       setSidebarWidth(newWidth);
     };
 
@@ -81,8 +81,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div
             onMouseDown={startResizing}
             onDoubleClick={() => {
-              setSidebarWidth(220);
-              localStorage.setItem('dealcollab_sidebar_width', '220');
+              setSidebarWidth(180);
+              localStorage.setItem('dealcollab_sidebar_width', '180');
             }}
             title="Drag to resize sidebar width / Double-click to reset"
             className={`hidden md:block absolute -right-1 top-0 bottom-0 w-2.5 cursor-col-resize z-[110] transition-colors ${

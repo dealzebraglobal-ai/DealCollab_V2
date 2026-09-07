@@ -114,28 +114,6 @@
   animation-duration: 1000ms;
 }
 
-@media (min-width: 768px) {
-  html {
-    zoom: 0.8;
-    height: 100%;
-  }
-
-  body {
-    min-height: 100%;
-    height: 100%;
-  }
-
-  .h-screen {
-    height: calc(100vh / 0.8) !important;
-    height: calc(100dvh / 0.8) !important;
-  }
-
-  .min-h-screen {
-    min-height: calc(100vh / 0.8) !important;
-    min-height: calc(100dvh / 0.8) !important;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
@@ -195,3 +173,4 @@ body {
     width: 100%;
   }
 }
+
