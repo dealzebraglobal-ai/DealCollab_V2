@@ -1,58 +1,78 @@
 'use client';
 import React from 'react';
+import { Network, TrendingUp, Target, Compass, BarChart3, Globe } from 'lucide-react';
 
 const modules = [
   {
     title: "Network Intelligence",
-    description: "Real-time mapping of institutional relationships and decision nodes across the deal ecosystem."
+    description: "Real-time mapping of institutional relationships and decision nodes across the deal ecosystem.",
+    icon: Network,
+    badge: "Live Graph",
   },
   {
     title: "Deal Flow Prediction",
-    description: "Probabilistic modeling of upcoming capital events before they reach the public market."
+    description: "Probabilistic modeling of upcoming capital events before they reach the public market.",
+    icon: TrendingUp,
+    badge: "Predictive",
   },
   {
     title: "Buyer Intent Intelligence",
-    description: "Behavioral analysis of capital allocators to identify high-conviction acquisition interest."
+    description: "Behavioral analysis of capital allocators to identify high-conviction acquisition interest.",
+    icon: Target,
+    badge: "Intent Engine",
   },
   {
     title: "Undersupplied Demand Zones",
-    description: "Gap analysis identifying sectors where capital demand significantly outstrips active deal supply."
+    description: "Gap analysis identifying sectors where capital demand significantly outstrips active deal supply.",
+    icon: Compass,
+    badge: "Supply Gap",
   },
   {
     title: "Deal Closure Probability",
-    description: "Quantitative assessment of transaction success based on historical and situational variables."
+    description: "Quantitative assessment of transaction success based on historical and situational variables.",
+    icon: BarChart3,
+    badge: "Scoring",
+  },
+  {
+    title: "Cross-Border Capital Flow",
+    description: "Tracking international dry powder movement and multi-jurisdiction acquisition corridors.",
+    icon: Globe,
+    badge: "Global Flow",
   }
 ];
 
 export default function IntelligenceModules() {
   return (
-    <section className="relative z-30 py-32 px-8 max-w-6xl mx-auto">
+    <section className="relative z-10 py-10 max-w-6xl mx-auto w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {modules.map((module, index) => (
-          <div 
-            key={index}
-            className={`group relative p-8 bg-white/[0.03] border border-white/10 rounded-[32px] overflow-hidden transition-all duration-500 hover:bg-white/[0.05] hover:border-white/20 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${
-              index > 2 ? 'lg:col-span-1.5' : ''
-            }`}
-          >
-            {/* Subtle Gradient Glow on Hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-            
-            <div className="relative z-10 space-y-6">
-              <h3 className="text-xl font-bold text-white tracking-tight group-hover:text-white transition-colors">
-                {module.title}
-              </h3>
-              <p className="text-sm text-white/40 leading-relaxed group-hover:text-white/60 transition-colors">
-                {module.description}
-              </p>
-              
-              <div className="pt-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-2 group-hover:translate-y-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Exclusive Intelligence</span>
+        {modules.map((module, index) => {
+          const Icon = module.icon;
+          return (
+            <div 
+              key={index}
+              className="group relative p-6 bg-white border border-[#E5E7EB] hover:border-black rounded-2xl shadow-sm transition-all duration-200 flex flex-col justify-between"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-[#FFF7ED] border border-[#FFEDD5] flex items-center justify-center text-[#FF6A00]">
+                    <Icon size={20} />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF6A00] bg-[#FFF7ED] border border-[#FFEDD5] px-2.5 py-0.5 rounded-full">
+                    {module.badge}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-bold text-[#1F1F1F] tracking-tight">
+                    {module.title}
+                  </h3>
+                  <p className="text-xs text-[#747775] leading-relaxed font-normal">
+                    {module.description}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

@@ -57,9 +57,9 @@ import { formatMatchScore, normalizeMatchScoreNum } from '@/utils/formatters';
 
 function ScoreBadge({ score }: { score: number }) {
   const normScore = normalizeMatchScoreNum(score);
-  const color = normScore >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
-    : normScore >= 60 ? 'text-amber-700 bg-amber-50 border-amber-100'
-      : 'text-gray-600 bg-gray-50 border-gray-100';
+  const color = normScore >= 80 ? 'text-[#15803D] bg-[#DCFCE7] border-[#86EFAC]'
+    : normScore >= 60 ? 'text-[#1F2937] bg-[#F3F4F6] border-[#E5E7EB]'
+      : 'text-gray-600 bg-gray-50 border-gray-200';
 
   const label = normScore >= 80 ? 'Strong' : normScore >= 60 ? 'Good' : 'Moderate';
 
@@ -126,7 +126,7 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
           {loading ? (
             <div className="flex flex-col items-center text-center py-6">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-[#E5E7EB] mb-4 shadow-sm">
-                <Search size={22} className="text-[#F97316] animate-pulse" />
+                <Search size={22} className="text-[#FF6A00] animate-pulse" />
               </div>
               <p className="text-sm text-[#6B7280] font-medium">Analyzing counterparty intelligence...</p>
             </div>
@@ -134,16 +134,16 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
             <>
               {/* Header with summary */}
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-1.5 bg-[#F97316]/10 rounded-lg">
-                  <Sparkles size={16} className="text-[#F97316]" />
+                <div className="p-1.5 bg-[#FFF7ED] border border-[#FFEDD5] rounded-lg">
+                  <Sparkles size={16} className="text-[#FF6A00]" />
                 </div>
-                <h4 className="text-sm font-bold text-[#1F2937]">
+                <h4 className="text-sm font-medium text-black">
                   {matches.length} Aligned Counterpart{matches.length > 1 ? 'ies' : 'y'} Identified
                 </h4>
               </div>
 
               {summary && (
-                <p className="text-xs text-[#6B7280] mb-4 leading-relaxed pl-8">{summary}</p>
+                <p className="text-xs text-black mb-4 leading-relaxed pl-8 font-normal">{summary}</p>
               )}
 
               {/* Match cards */}
@@ -155,17 +155,17 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
                   return (
                     <div
                       key={match.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white border border-[#E5E7EB] rounded-xl hover:border-[#F97316]/30 transition-all group"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white border border-[#E5E7EB] rounded-xl hover:border-black transition-all duration-200 group"
                     >
                       <div className="flex-1 min-w-0">
                         {/* Top line: rank + score */}
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <span className="text-[10px] font-black text-[#F97316] uppercase tracking-widest bg-[#F97316]/10 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-medium text-black uppercase tracking-wider bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-full">
                             {match.label || `P${index + 1}`}
                           </span>
                           <ScoreBadge score={match.finalScore} />
                           {!approved && (
-                            <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold">
+                            <div className="flex items-center gap-1 text-[10px] text-black font-normal">
                               <Shield size={10} />
                               <span>Identity Protected</span>
                             </div>
@@ -174,12 +174,12 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
 
                         {/* Sector + Geography */}
                         <div className="flex items-center gap-3 mb-1">
-                          <div className="flex items-center gap-1 text-xs text-[#1F2937] font-semibold">
-                            <Building2 size={12} className="text-[#6B7280]" />
+                          <div className="flex items-center gap-1 text-xs text-black font-medium">
+                            <Building2 size={12} className="text-black" />
                             <span>{match.counterparty.sector}</span>
                           </div>
                           {match.counterparty.geography && (
-                            <div className="flex items-center gap-1 text-xs text-[#6B7280]">
+                            <div className="flex items-center gap-1 text-xs text-black font-normal">
                               <MapPin size={12} />
                               <span>{match.counterparty.geography}</span>
                             </div>
@@ -187,15 +187,15 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
                         </div>
 
                         {match.counterparty.summary && (
-                          <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded-lg">
-                            <p className="text-[11px] text-gray-700 italic line-clamp-2">
-                              "{match.counterparty.summary}"
+                          <div className="mb-2 p-2.5 bg-gray-50 border border-gray-100 rounded-lg">
+                            <p className="text-xs text-black italic line-clamp-2 font-normal">
+                              &ldquo;{match.counterparty.summary}&rdquo;
                             </p>
                           </div>
                         )}
 
                         {/* Match reason */}
-                        <p className="text-[11px] text-[#6B7280] line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-black line-clamp-2 leading-relaxed font-normal">
                           {match.matchReason}
                         </p>
                       </div>
@@ -213,11 +213,11 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
           ) : (
             <div className="flex flex-col items-center text-center py-4">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-[#E5E7EB] mb-4 shadow-sm">
-                <Search size={22} className="text-[#F97316] animate-pulse" />
+                <Search size={22} className="text-[#FF6A00] animate-pulse" />
               </div>
-              <p className="max-w-md text-sm font-medium text-[#6B7280] leading-relaxed">
+              <p className="max-w-md text-sm font-normal text-[#6B7280] leading-relaxed">
                 The matchmaking engine is analyzing your mandate against the network.
-                <span className="block mt-1 font-bold text-[#1F2937]">
+                <span className="block mt-1 font-medium text-[#1F1F1F]">
                   You will be notified when aligned counterparties are identified.
                 </span>
               </p>

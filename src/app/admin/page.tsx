@@ -270,12 +270,31 @@ function ActivityMiniList({ title, rows, emptyText }: { title: string; rows: Arr
                 <p className="text-xs font-bold text-gray-400">{emptyText}</p>
             ) : (
                 <div className="space-y-2">
-                    {rows.slice(0, 3).map((row, index) => (
-                        <div key={String(row.id || row.search_id || `${title}-${index}`)} className="rounded-xl bg-white p-3 text-xs font-semibold leading-relaxed text-gray-600">
-                            <p className="font-black text-gray-900">{String(row.id || row.search_id || row.title || `Row ${index + 1}`)}</p>
-                            <p className="mt-1 text-gray-500">{shortJson(row.normalised_text || row.status || row.match_reason || row.message || row.name || row.action || row.query_object)}</p>
-                        </div>
-                    ))}
+                    {rows.slice(0, 3).map((row, index) => {
+                        const rowTitle = String(
+                            row.display_title ||
+                            row.title ||
+                            row.name ||
+                            row.user_name ||
+                            (row.id ? `ID: ${String(row.id).slice(0, 8)}...` : `Row ${index + 1}`)
+                        );
+                        const rowSubtitle = shortJson(
+                            row.display_subtitle ||
+                            row.normalised_text ||
+                            row.status ||
+                            row.match_reason ||
+                            row.message ||
+                            row.name ||
+                            row.action ||
+                            row.query_object
+                        );
+                        return (
+                            <div key={String(row.id || row.search_id || `${title}-${index}`)} className="rounded-xl bg-white p-3 text-xs font-semibold leading-relaxed text-gray-600">
+                                <p className="font-black text-gray-900">{rowTitle}</p>
+                                <p className="mt-1 text-gray-500">{rowSubtitle}</p>
+                            </div>
+                        );
+                    })}
                     {rows.length > 3 && <p className="text-[11px] font-bold text-gray-400">+{rows.length - 3} more rows</p>}
                 </div>
             )}

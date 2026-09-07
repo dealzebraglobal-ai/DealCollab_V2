@@ -13,43 +13,45 @@ export default function GuideSidebar() {
   ];
 
   return (
-    <aside className="flex flex-col gap-4">
-      <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Quick actions</h3>
-        <div className="mt-4 flex flex-col gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="md:col-span-2 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-[#747775] mb-4">Quick actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {actions.map((action) => (
             <a
               key={action.label}
               href={action.href}
-              className="group flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-3 transition-all hover:border-orange-100 hover:bg-orange-50/40"
+              className="group flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 transition-all hover:border-black hover:bg-white"
             >
-              <div className="rounded-xl bg-white p-2 text-[#F97316] shadow-sm">
+              <div className="rounded-lg bg-white border border-[#E5E7EB] p-2 text-[#FF6A00] shadow-sm w-fit mb-3">
                 <action.icon size={16} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-black text-gray-900">{action.label}</p>
-                <p className="truncate text-xs font-semibold text-gray-400">{action.description}</p>
+                <p className="text-sm font-medium text-[#1F1F1F]">{action.label}</p>
+                <p className="text-xs font-normal text-[#747775] mt-0.5 line-clamp-2">{action.description}</p>
               </div>
             </a>
           ))}
         </div>
       </div>
 
-      <div className="rounded-3xl border border-orange-100 bg-orange-50 p-5">
-        <div className="flex items-center gap-2 text-[#F97316]">
-          <LifeBuoy size={18} />
-          <h3 className="text-sm font-black">Need help?</h3>
+      <div className="rounded-2xl border border-[#FFEDD5] bg-[#FFF7ED] p-6 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-[#EA580C]">
+            <LifeBuoy size={18} />
+            <h3 className="text-sm font-medium">Need help?</h3>
+          </div>
+          <p className="mt-2 text-xs font-normal leading-relaxed text-[#747775]">
+            Can&apos;t find what you&apos;re looking for? Our team typically replies within a few hours.
+          </p>
         </div>
-        <p className="mt-2 text-xs font-semibold leading-relaxed text-orange-900/70">
-          Can&apos;t find what you&apos;re looking for? Our team typically replies within a few hours.
-        </p>
         <a
           href="mailto:support@dealcollab.in"
-          className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-[#1F2937] px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-[#F97316]"
+          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#1F1F1F] px-4 py-2.5 text-xs font-medium text-white transition-colors hover:bg-black"
         >
           Email support
         </a>
       </div>
-    </aside>
+    </div>
   );
 }

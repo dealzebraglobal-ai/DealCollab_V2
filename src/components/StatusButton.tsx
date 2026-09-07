@@ -27,13 +27,16 @@ export default function StatusButton({ status, isOpen, onClick }: StatusButtonPr
     return (
       <button
         onClick={onClick}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm transition-all duration-200 active:scale-[0.98] hover:scale-[1.02] hover:brightness-105 ${
+        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border shadow-sm transition-all duration-200 active:scale-[0.98] hover:scale-[1.02] ${
           isMatched 
-            ? 'bg-green-50 text-green-600 border-green-100 hover:bg-green-100' 
-            : 'bg-primary-soft text-primary-hover border-primary/20 hover:bg-primary/20'
+            ? 'bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] hover:bg-[#BBF7D0]' 
+            : 'bg-[#F3F4F6] text-[#4B5563] border-[#E5E7EB] hover:bg-[#E5E7EB]'
         }`}
       >
-        <span>{status}</span>
+        <span className="flex items-center gap-1.5">
+          {isMatched && <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />}
+          {status}
+        </span>
         {isOpen !== undefined && (isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
       </button>
     );
@@ -49,39 +52,39 @@ export default function StatusButton({ status, isOpen, onClick }: StatusButtonPr
     case 'Send EOI':
       if (!canSendEOI) {
         label = 'Insufficient Tokens';
-        colorClass = 'bg-primary-soft text-brand-secondary/40 cursor-not-allowed border-border';
+        colorClass = 'bg-[#F3F4F6] text-[#747775] cursor-not-allowed border border-[#E5E7EB]';
         isClickable = false;
         showLock = true;
       } else {
-        colorClass = 'bg-primary text-white hover:bg-primary-hover cursor-pointer shadow-md shadow-primary/30';
+        colorClass = 'bg-[#FF6A00] text-white hover:bg-[#E65C00] cursor-pointer shadow-md shadow-orange-500/20';
       }
       break;
 
     case 'EOI Sent — Awaiting Approval':
       label = 'Awaiting Approval';
-      colorClass = 'bg-primary-soft text-brand-secondary cursor-not-allowed border border-border opacity-70';
+      colorClass = 'bg-[#F3F4F6] text-[#4B5563] cursor-not-allowed border border-[#E5E7EB] opacity-90';
       isClickable = false;
       break;
 
     case 'Approved':
       label = 'Connected';
-      colorClass = 'bg-green-500 text-white hover:bg-green-600 cursor-pointer shadow-[0_0_15px_rgba(34,197,94,0.2)]';
+      colorClass = 'bg-[#16A34A] text-white hover:bg-[#15803D] cursor-pointer shadow-md shadow-green-600/20';
       isClickable = true;
       break;
 
     case 'Declined':
-      colorClass = 'bg-red-50 text-red-500 cursor-not-allowed border border-red-100 opacity-60';
+      colorClass = 'bg-red-50 text-red-600 cursor-not-allowed border border-red-200 opacity-70';
       isClickable = false;
       break;
 
     case 'Expired':
-      colorClass = 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 opacity-50';
+      colorClass = 'bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200 opacity-60';
       isClickable = false;
       break;
 
     case 'EOI Received':
       label = 'Review Proposal';
-      colorClass = 'bg-primary text-white hover:bg-primary-hover cursor-pointer shadow-[0_4px_15px_rgba(255,160,0,0.3)] ring-2 ring-primary/20';
+      colorClass = 'bg-[#FF6A00] text-white hover:bg-[#E65C00] cursor-pointer shadow-md shadow-orange-500/20';
       isClickable = true;
       break;
 
@@ -101,7 +104,7 @@ export default function StatusButton({ status, isOpen, onClick }: StatusButtonPr
             window.location.href = status === 'Approved' ? '/connect' : '#';
           }
         }}
-        className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm whitespace-nowrap min-w-[140px] ${colorClass}`}
+        className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-medium uppercase tracking-wider transition-all active:scale-95 shadow-sm whitespace-nowrap min-w-[140px] ${colorClass}`}
       >
         {showLock && <Lock size={12} />}
         {label}
@@ -110,7 +113,7 @@ export default function StatusButton({ status, isOpen, onClick }: StatusButtonPr
       {status === 'Send EOI' && !canSendEOI && (
         <a 
           href="/profile/billing" 
-          className="text-[10px] font-bold text-primary-hover hover:underline"
+          className="text-[10px] font-medium text-[#FF6A00] hover:underline"
         >
           Buy Tokens →
         </a>

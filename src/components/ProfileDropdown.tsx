@@ -41,18 +41,18 @@ export default function ProfileDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-64 rounded-[24px] bg-white border border-border shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-2 animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] z-50 origin-top-right">
-          <div className="px-5 py-4 mb-2 border-b border-primary-soft">
+        <div className="absolute right-0 mt-3 w-64 rounded-[24px] bg-white border border-[#E5E7EB] shadow-[0_20px_50px_rgba(0,0,0,0.08)] p-2 animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] z-50 origin-top-right">
+          <div className="px-5 py-4 mb-2 border-b border-[#E5E7EB]">
             <div className="flex justify-between items-center mb-1">
-              <p className="text-sm font-black text-foreground tracking-tight">
+              <p className="text-sm font-semibold text-[#1F1F1F] tracking-tight">
                 {profile?.fullName || session?.user?.name || session?.user?.email?.split('@')[0] || 'User'}
               </p>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary rounded-full border border-primary/20 shadow-sm">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#FF6A00] rounded-full shadow-sm">
                 <Coins size={12} className="text-white" />
-                <span className="text-[10px] font-black text-white">{tokens}</span>
+                <span className="text-[10px] font-medium text-white">{tokens}</span>
               </div>
             </div>
-            <p className="text-[11px] text-brand-secondary font-bold tracking-wide">
+            <p className="text-[11px] text-[#747775] font-normal">
               {profile?.email || session?.user?.email || 'No email provided'}
             </p>
           </div>
@@ -61,47 +61,47 @@ export default function ProfileDropdown() {
             <Link 
               href="/profile"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-brand-secondary hover:text-foreground hover:bg-primary-soft transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-[#444746] hover:text-[#1F1F1F] hover:bg-[#F3F4F6] transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary-soft/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
-                <User size={16} className="group-hover:text-primary-hover transition-colors" />
+              <div className="w-8 h-8 rounded-lg bg-[#F3F4F6] flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                <User size={16} className="text-[#747775] group-hover:text-[#FF6A00] transition-colors" />
               </div>
-              <span className="font-bold">Profile Settings</span>
+              <span className="font-medium">Profile Settings</span>
             </Link>
             <Link 
               href="/profile/tokens"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-brand-secondary hover:text-foreground hover:bg-primary-soft transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-[#444746] hover:text-[#1F1F1F] hover:bg-[#F3F4F6] transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary-soft/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
-                <Coins size={16} className="group-hover:text-primary-hover transition-colors" />
+              <div className="w-8 h-8 rounded-lg bg-[#F3F4F6] flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                <Coins size={16} className="text-[#747775] group-hover:text-[#FF6A00] transition-colors" />
               </div>
-              <span className="font-bold">Token Usage</span>
+              <span className="font-medium">Token Usage</span>
             </Link>
             <Link 
               href="/profile/billing"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-brand-secondary hover:text-foreground hover:bg-primary-soft transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-[#444746] hover:text-[#1F1F1F] hover:bg-[#F3F4F6] transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary-soft/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
-                <CreditCard size={16} className="group-hover:text-primary-hover transition-colors" />
+              <div className="w-8 h-8 rounded-lg bg-[#F3F4F6] flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                <CreditCard size={16} className="text-[#747775] group-hover:text-[#FF6A00] transition-colors" />
               </div>
-              <span className="font-bold">Billing</span>
+              <span className="font-medium">Billing</span>
             </Link>
             <button 
               onClick={() => {
                 setIsOpen(false);
                 setIsSupportOpen(true);
               }}
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-brand-secondary hover:text-foreground hover:bg-primary-soft transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group cursor-pointer"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl text-[#444746] hover:text-[#1F1F1F] hover:bg-[#F3F4F6] transition-all duration-200 text-sm w-full text-left active:scale-[0.97] group cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary-soft/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
-                <LifeBuoy size={16} className="group-hover:text-primary-hover transition-colors" />
+              <div className="w-8 h-8 rounded-lg bg-[#F3F4F6] flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                <LifeBuoy size={16} className="text-[#747775] group-hover:text-[#FF6A00] transition-colors" />
               </div>
-              <span className="font-bold">Help & Support</span>
+              <span className="font-medium">Help & Support</span>
             </button>
             
-            <div className="my-2 border-t border-primary-soft mx-2" />
+            <div className="my-2 border-t border-[#E5E7EB] mx-2" />
             
             <button 
               onClick={() => logout()}
@@ -110,7 +110,7 @@ export default function ProfileDropdown() {
               <div className="w-8 h-8 rounded-lg bg-red-50/50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
                 <LogOut size={16} className="group-hover:text-red-600 transition-colors" />
               </div>
-              <span className="font-bold">Logout</span>
+              <span className="font-medium">Logout</span>
             </button>
           </div>
         </div>

@@ -337,9 +337,9 @@ export default function Home() {
   console.log(`[home render] activeChatId=${activeChatId} activeProposalId=${activeProposalId} msgs=${messages.length}`);
 
   return (
-    <div className="flex-1 flex flex-col h-full relative bg-transparent overflow-hidden">
+    <div className="flex-1 flex flex-col h-full relative bg-white overflow-hidden">
       {/* Scrollable Message Area */}
-      <div className="flex-1 overflow-y-auto bg-transparent">
+      <div className="flex-1 overflow-y-auto bg-white">
         <div className="chat-container-max px-6 py-10 pb-40">
           {loading ? (
             <div className="max-w-3xl mx-auto">
@@ -347,11 +347,11 @@ export default function Home() {
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-brand-sidebar flex items-center justify-center mb-6 border border-border">
-                <Plus size={32} className="text-primary-hover" />
+              <div className="w-16 h-16 rounded-full bg-[#F3F4F6] flex items-center justify-center mb-6 border border-[#E5E7EB] shadow-sm">
+                <Plus size={32} className="text-[#FF6A00]" />
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2 tracking-tight">Start a new conversation</h2>
-              <p className="text-brand-secondary text-sm max-w-xs">Describe your deal, mandate, or project to begin extraction.</p>
+              <h2 className="text-2xl font-semibold text-[#1F1F1F] mb-2 tracking-tight">Start a new conversation</h2>
+              <p className="text-[#444746] text-sm max-w-xs font-normal">Describe your deal, mandate, or project to begin extraction.</p>
             </div>
           ) : (
             <div className="space-y-6">

@@ -11,23 +11,19 @@ export default function IntelligenceStrip() {
   ];
 
   return (
-    <div className="relative z-30 w-full overflow-hidden py-8">
-      <div className="max-w-6xl mx-auto px-8">
-        <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-x-12 gap-y-4">
-          {signals.map((signal, index) => (
-            <React.Fragment key={index}>
-              <div className="flex items-center gap-3">
-                <span className="w-1 h-1 bg-white/20 rounded-full shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 whitespace-nowrap">
-                  {signal}
-                </span>
-              </div>
-              {index < signals.length - 1 && (
-                <div className="hidden md:block h-4 w-[1px] bg-white/5" />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
+    <div className="relative z-10 w-full py-4">
+      <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5 bg-[#F9FAFB] border border-[#E5E7EB] hover:border-black rounded-2xl py-3.5 px-4 sm:px-6 shadow-sm transition-all duration-200">
+        {signals.map((signal, index) => (
+          <div
+            key={index}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E5E7EB] shadow-xs hover:border-black transition-all duration-200"
+          >
+            <span className="w-1.5 h-1.5 bg-[#16A34A] rounded-full shrink-0 animate-pulse" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#1F1F1F] whitespace-nowrap">
+              {signal}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

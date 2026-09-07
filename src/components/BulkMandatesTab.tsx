@@ -45,7 +45,7 @@ export default function BulkMandatesTab({ deals, onUploadClick, onViewMatch, onM
       <div className="flex justify-end">
         <button
           onClick={onUploadClick}
-          className="flex items-center gap-2 bg-white border border-[rgba(17,17,17,0.1)] text-[#1F2937] px-4 py-2 rounded-xl text-xs font-bold hover:border-[#F97316]/40 hover:text-[#F97316] transition-all active:scale-[0.98]"
+          className="flex items-center gap-2 bg-white border border-[#E5E7EB] text-[#1F2937] px-4 py-2 rounded-xl text-xs font-bold hover:border-[#FF6A00]/40 hover:text-[#FF6A00] transition-all active:scale-[0.98]"
         >
           <UploadCloud size={14} />
           Upload Bulk Data

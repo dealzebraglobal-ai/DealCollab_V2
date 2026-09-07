@@ -46,55 +46,42 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
   const isIncoming = item.isIncoming;
 
   return (
-    <div className={`flex flex-col border transition-all duration-300 rounded-2xl shadow-sm ${isExpanded
-        ? 'border-[rgba(17,17,17,0.12)] bg-white ring-1 ring-[rgba(17,17,17,0.04)] shadow-[0_8px_30px_rgb(0,0,0,0.06)]'
-        : isIncoming
-          ? 'bg-white border-[#FF6A00]/30 ring-1 ring-[#FF6A00]/10 shadow-[0_4px_20px_rgb(0,0,0,0.04)]'
-          : 'bg-[#F5F5F3] border-[rgba(17,17,17,0.08)] hover:bg-white hover:border-[rgba(17,17,17,0.12)] hover:shadow-[0_4px_15px_rgb(0,0,0,0.03)]'
+    <div className={`flex flex-col border border-[#E5E7EB] hover:border-black transition-all duration-200 rounded-2xl shadow-sm ${isExpanded
+        ? 'bg-white ring-1 ring-black/5 shadow-[0_8px_30px_rgb(0,0,0,0.06)]'
+        : 'bg-white'
       }`}>
-      <div className="grid grid-cols-1 sm:grid-cols-12 items-stretch gap-4 p-4">
-        {/* YOUR DEAL */}
-        <div className="sm:col-span-12 md:col-span-5 flex flex-col">
-          <div className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest mb-2 px-1 flex items-center gap-2 w-full">
-            {isIncoming ? 'Your Offer' : 'Your Deal'}
-            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider ${isIncoming ? 'bg-[#F97316]/10 text-[#F97316]' : 'bg-blue-50 text-blue-600'
-              }`}>
+      <div className="grid grid-cols-1 md:grid-cols-12 items-stretch gap-4 p-5">
+        {/* YOUR DEAL (Col 5) */}
+        <div className="sm:col-span-12 md:col-span-5 flex flex-col justify-between">
+          <div className="text-[13px] font-medium text-[#747775] uppercase tracking-wider mb-2.5 px-1 flex items-center justify-center gap-2 flex-wrap text-center">
+            <span>{isIncoming ? 'Your Offer' : 'Your Deal'}</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wider ${
+              isIncoming ? 'bg-[#FFF7ED] text-[#EA580C] border border-[#FFEDD5]' : 'bg-[#F3F4F6] text-[#444746] border border-[#E5E7EB]'
+            }`}>
               {isIncoming ? 'INCOMING' : 'SENT'}
             </span>
             {item.createdAt && (() => {
               const ts = formatDealTimestamp(item.createdAt);
               return (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] text-gray-500 font-semibold normal-case ml-1 bg-gray-100/70 border border-gray-200/50 px-2 py-0.5 rounded-md" title={ts.exact}>
-                    {ts.exact} • <strong className="text-gray-700">{ts.relative}</strong>
-                  </span>
-                  {ts.isNearDeadline && (
-                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                      Approaching 3-day window ({ts.hoursRemaining}h left)
-                    </span>
-                  )}
-                  {ts.isExpired && (
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded">
-                      Window Closed
-                    </span>
-                  )}
-                </div>
+                <span className="text-[11px] text-[#747775] font-normal normal-case bg-[#F3F4F6] border border-[#E5E7EB] px-2.5 py-0.5 rounded-full" title={ts.exact}>
+                  {ts.exact} • <strong className="text-[#1F1F1F] font-medium">{ts.relative}</strong>
+                </span>
               );
             })()}
           </div>
           <DealCard title={item.deal} description={item.dealDesc} />
         </div>
 
-        {/* SELECTED MATCH */}
-        <div className="sm:col-span-12 md:col-span-4 flex flex-col">
-          <div className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest mb-2 px-1">
-            {isIncoming ? (item.counterpartyRole || 'Counterparty') : 'AI match'}
+        {/* SELECTED MATCH / COUNTERPARTY (Col 5 - IDENTICAL SIZE TO YOUR DEAL) */}
+        <div className="sm:col-span-12 md:col-span-5 flex flex-col justify-between">
+          <div className="text-[13px] font-medium text-[#747775] uppercase tracking-wider mb-2.5 px-1 text-center">
+            {isIncoming ? (item.counterpartyRole || 'Counterparty') : 'AI Match'}
           </div>
           <MatchCard entity={item.match} description={item.matchDesc} />
         </div>
 
-        {/* STATUS BUTTON */}
-        <div className="sm:col-span-12 md:col-span-3 flex flex-col justify-center items-center md:items-end md:pt-6 gap-2">
+        {/* STATUS BUTTON & REMOVE MATCH (Col 2 - CENTERED) */}
+        <div className="sm:col-span-12 md:col-span-2 flex flex-col justify-center items-center text-center gap-2 self-center w-full">
           <StatusButton
             status={item.status}
             isOpen={isExpanded}
@@ -106,7 +93,7 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
                 e.stopPropagation();
                 onRemove();
               }}
-              className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition-all uppercase tracking-wider mt-1"
+              className="text-[11px] font-normal text-[#747775] hover:text-red-600 transition-all uppercase tracking-wider mt-1 text-center"
             >
               Remove Match
             </button>
@@ -116,12 +103,12 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
 
       {/* Inline action error (e.g. insufficient tokens on approve) */}
       {error && (
-        <div className="mt-3 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-100">
-          <p className="text-xs font-bold text-red-600">{error.message}</p>
+        <div className="mx-5 mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-100">
+          <p className="text-xs font-medium text-red-600">{error.message}</p>
           {error.canBuy && (
             <Link
               href="/profile/billing"
-              className="shrink-0 text-[11px] font-black text-[#F97316] uppercase tracking-widest hover:underline whitespace-nowrap"
+              className="shrink-0 text-[11px] font-medium text-[#EA580C] uppercase tracking-wider hover:underline whitespace-nowrap"
             >
               Buy Tokens →
             </Link>

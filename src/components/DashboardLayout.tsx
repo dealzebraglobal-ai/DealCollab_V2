@@ -12,14 +12,52 @@ import { useChat } from './ChatProvider';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(220);
+  const [isResizing, setIsResizing] = useState(false);
   const { tokens } = useUser();
   const { createNewChat } = useChat();
   const pathname = usePathname();
   
   const isStandalonePage = pathname?.includes('/eoi-review');
 
+  React.useEffect(() => {
+    const saved = localStorage.getItem('dealcollab_sidebar_width');
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= 160 && parsed <= 450) {
+        setSidebarWidth(parsed);
+      }
+    }
+  }, []);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  React.useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(Math.max(e.clientX, 170), 450);
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem('dealcollab_sidebar_width', String(sidebarWidth));
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, sidebarWidth]);
+
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-transparent font-sans antialiased text-foreground overflow-y-auto md:overflow-hidden">
+    <div className={`flex flex-col md:flex-row h-screen bg-white text-gray-900 font-sans antialiased overflow-y-auto md:overflow-hidden ${isResizing ? 'cursor-col-resize select-none' : ''}`}>
       
       {/* Mobile Backdrop Overlay */}
       {isMobileSidebarOpen && (
@@ -29,22 +67,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
  
-      {/* Sidebar - Desktop (Fixed/Collapsed) & Mobile (Slide-in) */}
+      {/* Sidebar - Desktop (Resizable/Fixed) & Mobile (Slide-in) */}
       {!isStandalonePage && (
         <div 
+          style={{ width: isMobileSidebarOpen ? undefined : `${sidebarWidth}px` }}
           className={`
-            fixed md:relative z-[100] h-full bg-brand-sidebar transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
-            ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-            ${isSidebarCollapsed ? 'md:w-[80px]' : 'md:w-[260px]'}
-            w-[280px] md:w-auto shrink-0 border-r border-border
+            fixed md:relative z-[100] h-full bg-white border-r border-[#E5E7EB] transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
+            ${isMobileSidebarOpen ? 'translate-x-0 w-[250px]' : '-translate-x-full md:translate-x-0'}
+            shrink-0 select-none
           `}
         >
+          {/* Draggable resize scroll bar / handle on the right border */}
+          <div
+            onMouseDown={startResizing}
+            onDoubleClick={() => {
+              setSidebarWidth(220);
+              localStorage.setItem('dealcollab_sidebar_width', '220');
+            }}
+            title="Drag to resize sidebar width / Double-click to reset"
+            className={`hidden md:block absolute -right-1 top-0 bottom-0 w-2.5 cursor-col-resize z-[110] transition-colors ${
+              isResizing ? 'bg-black/60' : 'hover:bg-black/30'
+            }`}
+          />
+
           {/* Mobile Close Button */}
           <button 
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="md:hidden absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-primary/10 active:scale-95 transition-all z-[110]"
+            className="md:hidden absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-xl text-gray-700 hover:bg-gray-100 active:scale-95 transition-all z-[110]"
           >
-            <X size={20} className="text-brand-secondary" />
+            <X size={20} />
           </button>
  
           <Sidebar 
@@ -54,7 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
       
-      <div className="flex-1 flex flex-col relative h-full bg-transparent">
+      <div className="flex-1 flex flex-col relative h-full bg-white">
         
         {/* Mobile Navbar */}
         {!isStandalonePage && (
@@ -70,10 +121,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link 
               href="/profile/tokens"
               data-onboarding-target="tokens"
-              className="flex items-center gap-2 px-4 py-2 bg-brand-sidebar border border-border rounded-full transition-all hover:bg-[#222222] group shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-[#F3F4F6] border border-[#E5E7EB] text-[#1F1F1F] hover:bg-[#EAEAEA] shadow-sm rounded-full transition-all group"
             >
-              <Coins size={14} className="text-primary-hover" />
-              <span className="text-xs font-bold text-[#F5F5F3]">
+              <Coins size={14} className="text-[#FF6A00]" />
+              <span className="text-xs font-medium text-[#1F1F1F]">
                 {typeof tokens === 'number' ? tokens : '...'} Tokens
               </span>
             </Link>
@@ -82,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
         
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col w-full h-full relative overflow-y-auto bg-transparent">
+        <main className="flex-1 flex flex-col w-full h-full relative overflow-y-auto bg-white">
           {children}
         </main>
       </div>

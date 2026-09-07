@@ -159,19 +159,68 @@ async function getDetailRows(supabase: NonNullable<ReturnType<typeof createServe
                 .or('profile_completed_once.eq.true,profile_completion.gte.80')
                 .order('created_at', { ascending: false })
                 .limit(1000);
-        case 'active-proposals':
-            return supabase
+        case 'active-proposals': {
+            const res = await supabase
                 .from('proposals')
-                .select('id,user_id,normalised_text,intent,sectors,geographies,deal_size_min_cr,deal_size_max_cr,quality_score,quality_tier,status,fraud_flags,embedding_status,created_at')
+                .select('id,user_id,normalised_text,intent,sectors,geographies,deal_size_min_cr,deal_size_max_cr,quality_score,quality_tier,status,fraud_flags,embedding_status,created_at,user:users!user_id(name,email,phone,firm_name)')
                 .eq('status', 'ACTIVE')
                 .order('created_at', { ascending: false })
                 .limit(1000);
-        case 'matches':
-            return supabase
+            if (res.error) return res;
+            const mapped = (res.data || []).map((row: any) => ({
+                uploader_name: row.user?.name || row.user?.email || 'Unknown',
+                uploader_email: row.user?.email || '',
+                uploader_firm: row.user?.firm_name || '',
+                uploader_phone: row.user?.phone || '',
+                normalised_text: row.normalised_text,
+                intent: row.intent,
+                sectors: row.sectors,
+                geographies: row.geographies,
+                deal_size_min_cr: row.deal_size_min_cr,
+                deal_size_max_cr: row.deal_size_max_cr,
+                quality_score: row.quality_score,
+                quality_tier: row.quality_tier,
+                status: row.status,
+                embedding_status: row.embedding_status,
+                fraud_flags: row.fraud_flags,
+                created_at: row.created_at,
+                id: row.id,
+                user_id: row.user_id,
+            }));
+            return { data: mapped, error: null };
+        }
+        case 'matches': {
+            const res = await supabase
                 .from('proposal_matches')
-                .select('id,proposal_id,matched_proposal_id,similarity_score,intent_score,industry_score,financial_score,niche_score,geography_boost,final_score,confidence_score,match_reason,match_archetype,status,created_at')
+                .select('id,proposal_id,matched_proposal_id,similarity_score,intent_score,industry_score,financial_score,niche_score,geography_boost,final_score,confidence_score,match_reason,match_archetype,status,created_at,proposal:proposals!proposal_id(id,user_id,normalised_text,intent,sectors,user:users!user_id(name,email,phone,firm_name)),matched_proposal:proposals!matched_proposal_id(id,user_id,normalised_text,intent,sectors,user:users!user_id(name,email,phone,firm_name))')
                 .order('created_at', { ascending: false })
                 .limit(1000);
+            if (res.error) return res;
+            const mapped = (res.data || []).map((row: any) => ({
+                uploader_name: row.proposal?.user?.name || row.proposal?.user?.email || 'Unknown',
+                uploader_firm: row.proposal?.user?.firm_name || '',
+                counterparty_name: row.matched_proposal?.user?.name || row.matched_proposal?.user?.email || 'Unknown',
+                counterparty_firm: row.matched_proposal?.user?.firm_name || '',
+                final_score: row.final_score,
+                similarity_score: row.similarity_score,
+                match_reason: row.match_reason,
+                match_archetype: row.match_archetype,
+                status: row.status,
+                proposal_text: row.proposal?.normalised_text || '',
+                counterparty_proposal_text: row.matched_proposal?.normalised_text || '',
+                proposal_id: row.proposal_id,
+                matched_proposal_id: row.matched_proposal_id,
+                intent_score: row.intent_score,
+                industry_score: row.industry_score,
+                financial_score: row.financial_score,
+                niche_score: row.niche_score,
+                geography_boost: row.geography_boost,
+                confidence_score: row.confidence_score,
+                created_at: row.created_at,
+                id: row.id,
+            }));
+            return { data: mapped, error: null };
+        }
         case 'pending-eois':
             return supabase
                 .from('eois')
@@ -193,13 +242,36 @@ async function getDetailRows(supabase: NonNullable<ReturnType<typeof createServe
                 .select(getSavedSearchSelect())
                 .order('created_at', { ascending: false })
                 .limit(1000);
-        case 'embedding-pending':
-            return supabase
+        case 'embedding-pending': {
+            const res = await supabase
                 .from('proposals')
-                .select('id,user_id,normalised_text,intent,sectors,geographies,deal_size_min_cr,deal_size_max_cr,quality_score,quality_tier,status,fraud_flags,embedding_status,created_at')
+                .select('id,user_id,normalised_text,intent,sectors,geographies,deal_size_min_cr,deal_size_max_cr,quality_score,quality_tier,status,fraud_flags,embedding_status,created_at,user:users!user_id(name,email,phone,firm_name)')
                 .eq('embedding_status', 'PENDING')
                 .order('created_at', { ascending: false })
                 .limit(1000);
+            if (res.error) return res;
+            const mapped = (res.data || []).map((row: any) => ({
+                uploader_name: row.user?.name || row.user?.email || 'Unknown',
+                uploader_email: row.user?.email || '',
+                uploader_firm: row.user?.firm_name || '',
+                uploader_phone: row.user?.phone || '',
+                normalised_text: row.normalised_text,
+                intent: row.intent,
+                sectors: row.sectors,
+                geographies: row.geographies,
+                deal_size_min_cr: row.deal_size_min_cr,
+                deal_size_max_cr: row.deal_size_max_cr,
+                quality_score: row.quality_score,
+                quality_tier: row.quality_tier,
+                status: row.status,
+                embedding_status: row.embedding_status,
+                fraud_flags: row.fraud_flags,
+                created_at: row.created_at,
+                id: row.id,
+                user_id: row.user_id,
+            }));
+            return { data: mapped, error: null };
+        }
         case 'tokens-present':
             return supabase
                 .from('users')
@@ -304,13 +376,13 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
             .limit(500),
         supabase
             .from('eois')
-            .select('id,deal_id,match_id,sender_id,receiver_id,status,created_at,receiver:users!receiver_id(name,email,phone,firm_name,role),deal:proposals!deal_id(normalised_text,intent,sectors,geographies)')
+            .select('id,deal_id,match_id,sender_id,receiver_id,status,created_at,sender:users!sender_id(name,email,phone,firm_name,role),receiver:users!receiver_id(name,email,phone,firm_name,role),deal:proposals!deal_id(normalised_text,intent,sectors,geographies)')
             .in('sender_id', userIds)
             .order('created_at', { ascending: false })
             .limit(500),
         supabase
             .from('eois')
-            .select('id,deal_id,match_id,sender_id,receiver_id,status,created_at,sender:users!sender_id(name,email,phone,firm_name,role),deal:proposals!deal_id(normalised_text,intent,sectors,geographies)')
+            .select('id,deal_id,match_id,sender_id,receiver_id,status,created_at,sender:users!sender_id(name,email,phone,firm_name,role),receiver:users!receiver_id(name,email,phone,firm_name,role),deal:proposals!deal_id(normalised_text,intent,sectors,geographies)')
             .in('receiver_id', userIds)
             .order('created_at', { ascending: false })
             .limit(500),
@@ -360,7 +432,7 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
     const matchesRes = proposalIds.length
         ? await supabase
             .from('proposal_matches')
-            .select('id,proposal_id,matched_proposal_id,similarity_score,intent_score,industry_score,financial_score,niche_score,geography_boost,final_score,confidence_score,match_reason,match_archetype,status,created_at')
+            .select('id,proposal_id,matched_proposal_id,similarity_score,intent_score,industry_score,financial_score,niche_score,geography_boost,final_score,confidence_score,match_reason,match_archetype,status,created_at,proposal:proposals!proposal_id(id,user_id,normalised_text,user:users!user_id(name,email,phone,firm_name)),matched_proposal:proposals!matched_proposal_id(id,user_id,normalised_text,user:users!user_id(name,email,phone,firm_name))')
             .or(`proposal_id.in.(${proposalIds.join(',')}),matched_proposal_id.in.(${proposalIds.join(',')})`)
             .order('created_at', { ascending: false })
             .limit(500)
@@ -378,12 +450,68 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
     const matches = matchesRes.error ? [] : matchesRes.data || [];
 
     const results = users.map((user) => {
-        const userProposals = proposals.filter((proposal) => proposal.user_id === user.id);
+        const userProposals = proposals
+            .filter((proposal) => proposal.user_id === user.id)
+            .map((proposal) => ({
+                ...proposal,
+                display_title: summarizeProposal(proposal),
+                display_subtitle: `${proposal.intent || 'No intent'} • ${(proposal.sectors || []).join(', ') || 'No sector'}`,
+            }));
         const userProposalIds = new Set(userProposals.map((proposal) => proposal.id));
-        const userMatches = matches.filter((match) => userProposalIds.has(match.proposal_id) || (!!match.matched_proposal_id && userProposalIds.has(match.matched_proposal_id)));
-        const userSentEois = sentEois.filter((eoi) => eoi.sender_id === user.id);
-        const userReceivedEois = receivedEois.filter((eoi) => eoi.receiver_id === user.id);
-        const userSavedSearches = savedSearches.filter((savedSearch) => savedSearch.user_id === user.id);
+
+        const userMatches = (matches as any[])
+            .filter((match) => userProposalIds.has(match.proposal_id) || (!!match.matched_proposal_id && userProposalIds.has(match.matched_proposal_id)))
+            .map((match) => {
+                const isSource = userProposalIds.has(match.proposal_id);
+                const otherProposal = isSource ? match.matched_proposal : match.proposal;
+                const otherUser = otherProposal?.user;
+                const otherName = otherUser?.name || otherUser?.email || 'Counterparty';
+                const otherFirm = otherUser?.firm_name ? ` (${otherUser.firm_name})` : '';
+                const score = Math.round(Number(match.final_score || 0));
+                return {
+                    ...match,
+                    display_title: `Match: ${otherName}${otherFirm} (${score}%)`,
+                    display_subtitle: match.match_reason || otherProposal?.normalised_text || 'Matched proposal',
+                    counterparty_name: otherName,
+                };
+            });
+
+        const userSentEois = sentEois
+            .filter((eoi: any) => eoi.sender_id === user.id)
+            .map((eoi: any) => {
+                const receiverName = eoi.receiver?.name || eoi.receiver?.email || 'Unknown receiver';
+                const firmPart = eoi.receiver?.firm_name ? ` (${eoi.receiver.firm_name})` : '';
+                const dealText = summarizeProposal(eoi.deal);
+                return {
+                    ...eoi,
+                    display_title: `To: ${receiverName}${firmPart}`,
+                    display_subtitle: `${dealText} • Status: ${eoi.status}`,
+                    counterparty_name: receiverName,
+                };
+            });
+
+        const userReceivedEois = receivedEois
+            .filter((eoi: any) => eoi.receiver_id === user.id)
+            .map((eoi: any) => {
+                const senderName = eoi.sender?.name || eoi.sender?.email || 'Unknown sender';
+                const firmPart = eoi.sender?.firm_name ? ` (${eoi.sender.firm_name})` : '';
+                const dealText = summarizeProposal(eoi.deal);
+                return {
+                    ...eoi,
+                    display_title: `From: ${senderName}${firmPart}`,
+                    display_subtitle: `${dealText} • Status: ${eoi.status}`,
+                    counterparty_name: senderName,
+                };
+            });
+
+        const userSavedSearches = savedSearches
+            .filter((savedSearch) => savedSearch.user_id === user.id)
+            .map((savedSearch) => ({
+                ...savedSearch,
+                display_title: summarizeSavedSearch(savedSearch as any),
+                display_subtitle: `Status: ${savedSearch.status} • Exp: ${savedSearch.expires_at ? new Date(savedSearch.expires_at).toLocaleDateString() : 'None'}`,
+            }));
+
         const userTokenTransactions = tokenTransactions.filter((transaction) => transaction.user_id === user.id);
         const userNotifications = notifications.filter((notification) => notification.user_id === user.id);
         const userDocuments = documents.filter((document) => document.user_id === user.id);
@@ -396,8 +524,8 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
                 matchCount: userMatches.length,
                 sentEoiCount: userSentEois.length,
                 receivedEoiCount: userReceivedEois.length,
-                pendingSentEoiCount: userSentEois.filter((eoi) => eoi.status === 'sent').length,
-                approvedSentEoiCount: userSentEois.filter((eoi) => eoi.status === 'approved').length,
+                pendingSentEoiCount: userSentEois.filter((eoi: any) => eoi.status === 'sent').length,
+                approvedSentEoiCount: userSentEois.filter((eoi: any) => eoi.status === 'approved').length,
                 savedSearchCount: userSavedSearches.length,
                 documentCount: userDocuments.length,
                 chatSessionCount: userChatSessions.length,

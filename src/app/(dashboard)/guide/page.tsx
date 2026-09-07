@@ -39,33 +39,24 @@ export default function GuideIndexPage() {
             <GuideSearch value={query} onChange={setQuery} resultCount={filteredDocs.length} />
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[1fr_300px]">
-            <div className="flex flex-col gap-10">
-              {query ? (
-                filteredDocs.length === 0 ? (
-                  <div className="flex flex-col items-center gap-3 rounded-3xl border border-gray-100 bg-gray-50 py-16 text-center">
-                    <SearchX size={28} className="text-gray-300" />
-                    <p className="text-sm font-bold text-gray-500">No guide articles match &ldquo;{query}&rdquo;.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {filteredDocs.map((doc) => (
-                      <GuideCard key={doc.slug} doc={doc} categoryLabel={categoryLabel(doc.category)} />
-                    ))}
-                  </div>
-                )
-              ) : (
-                GUIDE_CATEGORIES.map((category) => (
-                  <GuideCategory
-                    key={category.id}
-                    category={category}
-                    docs={GUIDE_DOCS.filter((doc) => doc.category === category.id)}
-                  />
-                ))
-              )}
-            </div>
+          <div className="mt-8 flex flex-col gap-10">
+            {filteredDocs.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] py-16 text-center">
+                <SearchX size={28} className="text-gray-400" />
+                <p className="text-sm font-medium text-[#747775]">No guide articles match &ldquo;{query}&rdquo;.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {filteredDocs.map((doc) => (
+                  <GuideCard key={doc.slug} doc={doc} categoryLabel={categoryLabel(doc.category)} />
+                ))}
+              </div>
+            )}
 
-            <GuideSidebar />
+            {/* Platform Trust & Quick Help Footer Section */}
+            <div className="mt-6 pt-8 border-t border-[#E5E7EB]">
+              <GuideSidebar />
+            </div>
           </div>
 
           <div className="h-10 shrink-0" />

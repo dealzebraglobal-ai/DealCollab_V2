@@ -85,6 +85,16 @@ function isBulkSource(source?: string | null): boolean {
   return source.toUpperCase().includes('BULK');
 }
 
+function formatSectorLabel(sector?: string | null): string {
+  if (!sector) return 'Unknown Sector';
+  return sector
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 export default function DealLogPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -110,17 +120,20 @@ export default function DealLogPage() {
     }
   }, [searchParams]);
 
-  const deals: Deal[] = (Array.isArray(rawDeals) ? rawDeals : []).map((dbDeal: DBDeal) => ({
-    id: dbDeal.id,
-    deal: `${dbDeal.intent || 'Deal'}: ${dbDeal.sectors?.[0] || 'Unknown Sector'}`,
-    sector: dbDeal.sectors?.[0] || 'Unknown',
-    region: dbDeal.geographies?.[0] || 'Global',
-    summary: dbDeal.summary_text || dbDeal.raw_text || 'Deal summary unavailable',
-    status: dbDeal.matches && dbDeal.matches.length > 0 ? "Matched" : "Searching Match",
-    source: dbDeal.source,
-    intent: dbDeal.intent,
-    createdAt: dbDeal.created_at,
-    matches: dbDeal.matches.map((m: DBMatch, i: number) => ({
+  const deals: Deal[] = (Array.isArray(rawDeals) ? rawDeals : []).map((dbDeal: DBDeal) => {
+    const intentName = dbDeal.intent ? (INTENT_LABELS[dbDeal.intent] || dbDeal.intent) : 'Deal';
+    const sectorName = formatSectorLabel(dbDeal.sectors?.[0]);
+    return {
+      id: dbDeal.id,
+      deal: `${intentName}: ${sectorName}`,
+      sector: sectorName,
+      region: dbDeal.geographies?.[0] || 'Global',
+      summary: dbDeal.summary_text || dbDeal.raw_text || 'Deal summary unavailable',
+      status: dbDeal.matches && dbDeal.matches.length > 0 ? "Matched" : "Searching Match",
+      source: dbDeal.source,
+      intent: dbDeal.intent,
+      createdAt: dbDeal.created_at,
+      matches: dbDeal.matches.map((m: DBMatch, i: number) => ({
       id: m.id,
       rank: i + 1,
       label: `P${i + 1}`,
@@ -147,7 +160,8 @@ export default function DealLogPage() {
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
     }))
-  }));
+  };
+});
 
   // Chat, WhatsApp, and Bulk Uploaded Mandates are three independent sources —
   // split by normalized source, never merged.
@@ -206,36 +220,36 @@ export default function DealLogPage() {
         {/* Top Bar Section */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-[#1F2937] tracking-tight">Deal Log</h1>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Live</span>
+            <h1 className="text-2xl sm:text-3xl font-bold text-black tracking-tight">Deal Log</h1>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#F3F4F6] border border-[#E5E7EB] rounded-full">
+              <div className="w-1.5 h-1.5 bg-[#16A34A] rounded-full animate-pulse" />
+              <span className="text-[10px] font-medium text-[#16A34A] uppercase tracking-wider">Live</span>
             </div>
             {refreshing && (
               <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full animate-in fade-in slide-in-from-left-2 transition-all">
-                <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Syncing Log...</span>
+                <div className="w-3 h-3 border-2 border-gray-300 border-t-[#FF6A00] rounded-full animate-spin" />
+                <span className="text-[10px] font-medium text-black uppercase tracking-wider">Syncing Log...</span>
               </div>
             )}
           </div>
-          <p className="text-[#6B7280] text-sm font-medium">Real-time status of your active proposals</p>
+          <p className="text-black text-sm font-normal">Real-time status of your active proposals</p>
         </div>
 
         {/* Mandate Source Tabs — distinctly styled with icons, badge counts, and clear active states */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-[#F3F4F6] p-1.5 border border-gray-200/80 rounded-2xl w-fit max-w-full mb-8 shadow-inner">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-[#F3F4F6] p-1.5 border border-[#E5E7EB] rounded-2xl w-fit max-w-full mb-8 shadow-inner">
           <button
             type="button"
             onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${
               activeTab === 'chat'
-                ? 'bg-white text-[#F97316] shadow-sm ring-1 ring-black/5 font-extrabold'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                ? 'bg-white text-black shadow-sm ring-1 ring-black/5 font-medium'
+                : 'text-black hover:bg-white/50'
             }`}
           >
-            <MessageSquare size={16} className={activeTab === 'chat' ? 'text-[#F97316]' : 'text-gray-400'} />
+            <MessageSquare size={16} className={activeTab === 'chat' ? 'text-[#FF6A00]' : 'text-black'} />
             <span>Chat Mandates</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-              activeTab === 'chat' ? 'bg-orange-100/80 text-[#F97316]' : 'bg-gray-200 text-gray-600'
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              activeTab === 'chat' ? 'bg-[#F3F4F6] text-black border border-[#E5E7EB]' : 'bg-gray-200 text-black'
             }`}>
               {webDeals.length}
             </span>
@@ -244,16 +258,16 @@ export default function DealLogPage() {
           <button
             type="button"
             onClick={() => setActiveTab('whatsapp')}
-            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${
               activeTab === 'whatsapp'
-                ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-black/5 font-extrabold'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                ? 'bg-white text-black shadow-sm ring-1 ring-black/5 font-medium'
+                : 'text-black hover:bg-white/50'
             }`}
           >
-            <MessageCircle size={16} className={activeTab === 'whatsapp' ? 'text-emerald-500' : 'text-gray-400'} />
+            <MessageCircle size={16} className={activeTab === 'whatsapp' ? 'text-[#FF6A00]' : 'text-black'} />
             <span>WhatsApp Mandates</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-              activeTab === 'whatsapp' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              activeTab === 'whatsapp' ? 'bg-[#F3F4F6] text-black border border-[#E5E7EB]' : 'bg-gray-200 text-black'
             }`}>
               {whatsappDeals.length}
             </span>
@@ -262,33 +276,33 @@ export default function DealLogPage() {
           <button
             type="button"
             onClick={() => setActiveTab('bulk')}
-            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${
               activeTab === 'bulk'
-                ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5 font-extrabold'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                ? 'bg-white text-black shadow-sm ring-1 ring-black/5 font-medium'
+                : 'text-black hover:bg-white/50'
             }`}
           >
-            <UploadCloud size={16} className={activeTab === 'bulk' ? 'text-blue-500' : 'text-gray-400'} />
+            <UploadCloud size={16} className={activeTab === 'bulk' ? 'text-[#FF6A00]' : 'text-black'} />
             <span>Bulk Uploaded Mandates</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-              activeTab === 'bulk' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              activeTab === 'bulk' ? 'bg-[#F3F4F6] text-black border border-[#E5E7EB]' : 'bg-gray-200 text-black'
             }`}>
               {bulkDeals.length}
             </span>
           </button>
         </div>
 
-        {/* Global Toolbar — Search + Filters (unchanged logic, applies to Chat Mandates) */}
+        {/* Global Toolbar — Search + Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-10">
           {/* Search Bar */}
           <div data-onboarding-target="search" className="relative group w-full sm:w-64">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#F97316] transition-colors" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-black group-focus-within:text-[#FF6A00] transition-colors" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by sector, keyword..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2 text-sm focus:bg-white focus:border-[#F97316] focus:ring-1 focus:ring-[#F97316]/20 transition-all outline-none"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2 text-sm font-normal text-black placeholder:text-gray-500 focus:bg-white focus:border-[#FF6A00]/40 focus:ring-1 focus:ring-[#FF6A00]/20 transition-all outline-none"
             />
           </div>
 
@@ -298,9 +312,9 @@ export default function DealLogPage() {
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === status
-                    ? 'bg-white text-[#F97316] shadow-sm ring-1 ring-[#000000]/5'
-                    : 'text-gray-500 hover:text-gray-700'
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${statusFilter === status
+                    ? 'bg-white text-black shadow-sm ring-1 ring-black/5'
+                    : 'text-black hover:bg-white/50'
                   }`}
               >
                 {status === 'Matched' ? 'View Matches' : status === 'All' ? 'All' : 'Searching'}
@@ -321,7 +335,7 @@ export default function DealLogPage() {
         </div>
 
         {/* Content Area */}
-        <div className="max-w-5xl w-full">
+        <div className="max-w-6xl w-full">
           {activeTab === 'bulk' ? (
             <BulkMandatesTab
               deals={bulkMandates}

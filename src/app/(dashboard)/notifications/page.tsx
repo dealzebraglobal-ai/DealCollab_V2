@@ -64,25 +64,25 @@ export default function NotificationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
         <div>
           <div className="flex items-center gap-3 mb-1">
-             <h1 className="text-3xl font-bold text-[#1F2937] tracking-tight">Notifications</h1>
-             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Live</span>
+             <h1 className="text-2xl sm:text-3xl font-bold text-[#1F2937] tracking-tight">Notifications</h1>
+             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#F3F4F6] border border-[#E5E7EB] rounded-full">
+                <div className="w-1.5 h-1.5 bg-[#16A34A] rounded-full animate-pulse" />
+                <span className="text-[10px] font-medium text-[#16A34A] uppercase tracking-wider">Live</span>
              </div>
              {refreshing && (
                 <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full animate-in fade-in slide-in-from-left-2 transition-all">
-                   <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
-                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Syncing...</span>
+                   <div className="w-3 h-3 border-2 border-gray-300 border-t-[#FF6A00] rounded-full animate-spin" />
+                   <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Syncing...</span>
                 </div>
              )}
           </div>
-          <p className="text-[#6B7280] text-sm font-medium">Showing 90-day activity history</p>
+          <p className="text-[#6B7280] text-sm font-normal">Showing 90-day activity history</p>
         </div>
 
         {unreadCount > 0 && (
           <button 
             onClick={markAllAsRead}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-[#F97316] hover:bg-[#F97316]/5 rounded-xl transition-all border border-[#F97316]/20"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-[#EA580C] bg-white hover:bg-[#FFF7ED] rounded-xl transition-all border border-[#E5E7EB] hover:border-[#FF6A00]/40 shadow-sm active:scale-95"
           >
             Mark all as read
           </button>
@@ -90,7 +90,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-4xl w-full">
+      <div className="max-w-5xl w-full">
         {initialLoading ? (
           <NotificationSkeleton />
         ) : error ? (
@@ -111,14 +111,14 @@ export default function NotificationsPage() {
             {/* Infinite Scroll Indicator */}
             <div className="mt-8 py-8 border-t border-gray-100 flex flex-col items-center">
                {loadingMore ? (
-                 <div className="flex items-center gap-2 text-xs font-bold text-[#6B7280]">
-                    <div className="w-4 h-4 border-2 border-[#F97316] border-t-transparent rounded-full animate-spin" />
+                 <div className="flex items-center gap-2 text-xs font-medium text-[#6B7280]">
+                    <div className="w-4 h-4 border-2 border-[#FF6A00] border-t-transparent rounded-full animate-spin" />
                     Retrieving older history...
                  </div>
                ) : (
                  <button 
                    onClick={handleLoadMore}
-                   className="text-xs font-black uppercase tracking-widest text-[#9CA3AF] hover:text-[#F97316] transition-colors"
+                   className="text-xs font-medium text-[#9CA3AF] hover:text-[#FF6A00] transition-colors"
                  >
                     Load more activity
                  </button>

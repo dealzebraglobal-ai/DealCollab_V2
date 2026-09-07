@@ -168,22 +168,20 @@ export default function DealDashboardPage() {
         <div className="flex justify-between items-center mb-10">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold text-[#1F2937] tracking-tight">Deal Dashboard</h1>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Live</span>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#1F2937] tracking-tight">Deal Dashboard</h1>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#F3F4F6] border border-[#E5E7EB] rounded-full">
+                <div className="w-1.5 h-1.5 bg-[#16A34A] rounded-full animate-pulse" />
+                <span className="text-[10px] font-medium text-[#16A34A] uppercase tracking-wider">Live</span>
               </div>
               {refreshing && (
                 <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full animate-in fade-in slide-in-from-left-2 transition-all">
-                  <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Updating...</span>
+                  <div className="w-3 h-3 border-2 border-gray-300 border-t-[#FF6A00] rounded-full animate-spin" />
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Updating...</span>
                 </div>
               )}
             </div>
-            <p className="text-gray-500 text-sm font-medium">Intelligent matchmaking and engagement tracking</p>
+            <p className="text-[#6B7280] text-sm font-normal">Intelligent matchmaking and engagement tracking</p>
           </div>
-
-
         </div>
 
         {/* Main Content Area */}
@@ -202,8 +200,8 @@ export default function DealDashboardPage() {
           ) : (
             <div className="space-y-6">
               <div className="flex items-center gap-2 px-1">
-                <div className="w-2 h-2 bg-[#F97316] rounded-full animate-pulse" />
-                <h2 className="text-xs font-black uppercase tracking-widest text-[#1F2937]">
+                <div className="w-2 h-2 bg-[#FF6A00] rounded-full animate-pulse" />
+                <h2 className="text-xs font-medium uppercase tracking-wider text-[#1F2937]">
                   Active Deals ({data.length}) · {incomingEOIs.length} incoming
                 </h2>
               </div>
@@ -225,7 +223,7 @@ export default function DealDashboardPage() {
               <div className="mt-12 flex justify-center pb-20">
                 <Link
                   href="/deal-log"
-                  className="w-full py-4 flex items-center justify-center bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 text-sm font-bold hover:bg-gray-100 hover:text-[#1F2937] transition-all duration-300"
+                  className="w-full py-4 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-2xl text-[#6B7280] text-sm font-medium hover:bg-[#F9FAFB] hover:border-black transition-all duration-200"
                 >
                   View More Active Deals
                 </Link>

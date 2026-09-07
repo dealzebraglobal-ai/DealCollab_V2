@@ -1,6 +1,6 @@
-'use client';
 import React, { useState, useRef } from 'react';
 import { Plus, Send } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 interface InputBarProps {
   onSendMessage: (text: string, file?: File | null) => void;
@@ -11,6 +11,8 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pathname = usePathname();
+  const isHomePage = pathname === '/home';
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -47,11 +49,7 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
     const file = e.target.files?.[0];
     if (file) {
       setPendingFile(file);
-      // DO NOT append filename to inputValue
-      // The file preview badge above the input already shows the attachment
-      // Appending [Attached: name] to the message breaks the intelligence engine
     }
-    // Reset file input so same file can be reselected if needed
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -59,7 +57,7 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
 
   return (
     <div className="w-full bg-transparent pb-8 pt-2 px-4 md:px-6">
-      <div className="max-w-3xl mx-auto relative group">
+      <div className="max-w-[660px] mx-auto relative group">
         <input 
           type="file"
           ref={fileInputRef}
@@ -71,15 +69,19 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
         <form 
           onSubmit={handleSubmit}
           data-onboarding-target="search"
-          className="flex flex-col bg-[rgba(255,255,255,0.72)] backdrop-blur-xl border border-[rgba(17,17,17,0.08)] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all focus-within:ring-1 focus-within:ring-[#FF6A00]/30 focus-within:border-[#FF6A00]/50 overflow-hidden"
+          className={`flex flex-col transition-all overflow-hidden ${
+            isHomePage
+              ? 'bg-[#F3F4F6] hover:bg-[#EAEAEA] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#FF6A00]/30 focus-within:border-[#FF6A00]/40 border border-transparent rounded-full px-2 py-1 shadow-sm'
+              : 'bg-[rgba(255,255,255,0.72)] backdrop-blur-xl border border-[rgba(17,17,17,0.08)] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] focus-within:ring-1 focus-within:ring-[#FF6A00]/30 focus-within:border-[#FF6A00]/50'
+          }`}
         >
           {/* File Attachment Preview Badge */}
           {pendingFile && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-[#F5F5F3] border-b border-[rgba(17,17,17,0.08)] animate-in slide-in-from-top-2">
-              <div className="w-6 h-6 rounded bg-white shadow-sm flex items-center justify-center">
-                <Plus size={14} className="text-[#111111] rotate-45" />
+            <div className={`flex items-center gap-2 px-4 py-2 ${isHomePage ? 'bg-white rounded-full mx-2 my-1 border border-[#E5E7EB]' : 'bg-[#F5F5F3] border-b border-[rgba(17,17,17,0.08)]'} animate-in slide-in-from-top-2`}>
+              <div className="w-6 h-6 rounded-full bg-[#FFF7ED] shadow-sm flex items-center justify-center">
+                <Plus size={14} className="text-[#FF6A00] rotate-45" />
               </div>
-              <span className="text-xs font-semibold text-[#111111] truncate max-w-[200px]">
+              <span className={`text-xs font-medium truncate max-w-[200px] ${isHomePage ? 'text-[#1F1F1F]' : 'text-[#111111]'}`}>
                 {pendingFile.name}
               </span>
               <button 
@@ -87,7 +89,7 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
                 onClick={() => setPendingFile(null)}
                 className="ml-auto p-1 hover:bg-black/5 rounded-full transition-colors"
               >
-                <Plus size={14} className="text-[#4B5563] rotate-45" />
+                <Plus size={14} className="text-[#747775] rotate-45" />
               </button>
             </div>
           )}
@@ -96,13 +98,17 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
             <button 
               type="button"
               onClick={handlePlusClick}
-              className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-[#4B5563] hover:text-[#111111] transition-colors z-10"
+              className={`flex-shrink-0 w-11 h-11 flex items-center justify-center transition-colors z-10 rounded-full ${
+                isHomePage
+                  ? 'text-[#444746] hover:text-[#1F1F1F] hover:bg-black/5'
+                  : 'text-[#4B5563] hover:text-[#111111]'
+              }`}
               title="Attach Document"
             >
-              <Plus size={22} className={pendingFile ? "text-[#FF6A00]" : ""} />
+              <Plus size={20} className={pendingFile ? "text-[#FF6A00]" : ""} />
             </button>
    
-            <div className="flex-1 flex items-start pt-3 relative">
+            <div className="flex-1 flex items-center relative">
               <textarea 
                 ref={textareaRef}
                 value={inputValue || ""}
@@ -112,23 +118,31 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
                 rows={1}
                 autoFocus
                 enterKeyHint="send"
-                className="flex-1 bg-transparent border-none outline-none text-[#111111] font-medium text-[16px] py-1 px-0 pr-4 placeholder:text-[#4B5563]/60 resize-none min-h-[24px] max-h-[200px] scrollbar-hide relative z-20"
+                className={`flex-1 bg-transparent border-none outline-none font-normal text-[15px] py-2 px-1 pr-3 resize-none min-h-[24px] max-h-[200px] scrollbar-hide relative z-20 ${
+                  isHomePage
+                    ? 'text-[#1F1F1F] placeholder:text-[#747775]'
+                    : 'text-[#111111] placeholder:text-[#4B5563]/60'
+                }`}
                 style={{ height: 'auto' }}
               />
               
               <button 
                 type="submit"
                 disabled={!inputValue.trim() && !pendingFile}
-                className="mr-3 mt-[-2px] w-9 h-9 rounded-xl bg-[#111111] hover:bg-[#FF6A00] text-white flex items-center justify-center transition-all disabled:opacity-20 disabled:grayscale active:scale-95 shadow-[0_2px_10px_rgb(0,0,0,0.1)] shrink-0 z-10"
+                className={`mr-2 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-25 active:scale-95 shadow-sm shrink-0 z-10 ${
+                  isHomePage
+                    ? 'bg-[#FF6A00] hover:bg-[#E65C00] text-white shadow-orange-500/20'
+                    : 'bg-[#111111] hover:bg-[#FF6A00] text-white'
+                }`}
               >
-                <Send size={16} className="ml-0.5" />
+                <Send size={15} className="ml-0.5" />
               </button>
             </div>
           </div>
         </form>
         
-        <p className="text-center text-[10px] text-[#4B5563] mt-4 font-bold uppercase tracking-[0.1em] opacity-60">
-          DealCollab AI can make mistakes. Verify important deal and counterparty information before taking action.
+        <p className={`text-center text-[11px] mt-3 font-normal ${isHomePage ? 'text-[#747775]' : 'text-[#4B5563] uppercase tracking-[0.1em] opacity-60'}`}>
+          DealCollab AI can make mistakes. Verify important deal and counterparty information.
         </p>
       </div>
     </div>

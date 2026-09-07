@@ -38,7 +38,7 @@ export default function BulkMandateMatches({
           <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-6 shadow-sm">
             <div className="flex flex-col items-center text-center py-4">
               <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-sm border border-gray-100 mb-4">
-                <UploadCloud size={28} className="text-[#F97316]" />
+                <UploadCloud size={28} className="text-[#FF6A00]" />
               </div>
               <h4 className="text-sm font-black text-[#1F2937] mb-1">No Matches Found Yet</h4>
               {mandateSummary && (
@@ -49,7 +49,7 @@ export default function BulkMandateMatches({
               <button
                 onClick={onSearchForMatches}
                 disabled={searching}
-                className="flex items-center gap-2 bg-[#F97316] text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-[#EA580C] transition-all active:scale-95 shadow-md shadow-[#F97316]/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 bg-[#FF6A00] text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-[#E65C00] transition-all active:scale-95 shadow-md shadow-orange-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {searching ? (
                   <>

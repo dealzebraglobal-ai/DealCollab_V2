@@ -37,7 +37,7 @@ export default function ActionButtons({ onView, onDelete, label, variant = 'matc
           e.stopPropagation();
           onView?.();
         }}
-        className="px-3 py-1.5 text-xs font-bold text--white bg-[#F97316] hover:bg-[#EA580C] border border-[#F97316] rounded-lg shadow-sm transition-all active:scale-[0.97]"
+        className="px-3.5 py-1.5 text-xs font-medium text-white bg-[#FF6A00] hover:bg-[#E65C00] rounded-full shadow-sm transition-all active:scale-[0.97]"
       >
         View {label}
       </button>

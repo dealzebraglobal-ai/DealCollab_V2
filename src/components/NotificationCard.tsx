@@ -1,5 +1,5 @@
 'use client';
-import { Sparkles, Bell, RefreshCw, Zap, CheckCircle2, XCircle, Coins, AlertCircle, ArrowRight } from 'lucide-react';
+import { Bell, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export type NotificationType =
@@ -29,21 +29,6 @@ interface NotificationCardProps {
   notification: Notification;
   onMarkAsRead: (id: number | string) => void;
 }
-
-const typeIcons: Record<NotificationType, React.ReactNode> = {
-  match: <Sparkles size={18} className="text-primary-hover" />,
-  new_counterparty: <Sparkles size={18} className="text-primary-hover" />,
-  eoi_approval_blocked: <AlertCircle size={18} className="text-amber-500" />,
-  eoi_received: <Bell size={18} className="text-blue-500" />,
-  eoi_approved: <CheckCircle2 size={18} className="text-green-500" />,
-  eoi_declined: <XCircle size={18} className="text-red-500" />,
-  tokens_credited: <Coins size={18} className="text-primary-hover" />,
-  tokens_low: <AlertCircle size={18} className="text-amber-500" />,
-  status: <RefreshCw size={18} className="text-blue-500" />,
-  new_deal: <Zap size={18} className="text-green-500" />,
-  success: <CheckCircle2 size={18} className="text-green-600" />,
-  error: <AlertCircle size={18} className="text-red-500" />,
-};
 
 // Fallback routes used when a notification has no specific deep-link target.
 const typeRoutes: Record<NotificationType, string> = {
@@ -78,23 +63,20 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
   return (
     <div
       onClick={navigate}
-      className={`relative flex items-start gap-4 p-5 rounded-xl border transition-all cursor-pointer group shadow-sm ${notification.isRead
-          ? 'bg-primary-soft/30 border-border hover:bg-primary-soft/50'
-          : 'bg-white border-primary/20 border-l-4 border-l-primary hover:shadow-md'
-        }`}
+      className="relative flex items-start gap-4 p-5 rounded-2xl bg-white border border-[#E5E7EB] hover:border-black transition-all duration-200 cursor-pointer shadow-sm group"
     >
-      <div className={`p-2.5 rounded-lg shrink-0 ${notification.isRead ? 'bg-white border border-border' : 'bg-primary/10'}`}>
-        {typeIcons[notification.type] || <Bell size={18} className="text-brand-secondary" />}
+      <div className="p-2.5 rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] shrink-0">
+        <Bell size={18} className={notification.isRead ? "text-[#747775]" : "text-[#FF6A00]"} />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm leading-snug mb-1.5 ${notification.isRead ? 'text-brand-secondary' : 'text-foreground font-bold'}`}>
+        <p className="text-[15px] leading-relaxed mb-2 font-normal text-[#1F1F1F]">
           {notification.message}
         </p>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-brand-secondary/60 font-bold uppercase tracking-wider">{notification.time}</span>
+          <span className="text-xs text-[#747775] font-normal">{notification.time}</span>
           {!notification.isRead && (
-            <span className="w-1.5 h-1.5 bg-primary rounded-full" />
+            <span className="w-1.5 h-1.5 bg-[#FF6A00] rounded-full" />
           )}
         </div>
 
@@ -105,10 +87,10 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
               onMarkAsRead(notification.id);
               router.push(matchHref);
             }}
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F97316] text-white text-[11px] font-black uppercase tracking-widest hover:bg-[#EA580C] transition-all"
+            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-[#EA580C] border border-[#E5E7EB] hover:border-[#FF6A00]/40 hover:bg-[#FFF7ED] text-xs font-medium transition-all shadow-sm active:scale-95"
           >
             View Match
-            <ArrowRight size={12} />
+            <ArrowRight size={13} />
           </button>
         )}
 
@@ -119,10 +101,10 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
               onMarkAsRead(notification.id);
               router.push('/profile/billing');
             }}
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F97316] text-white text-[11px] font-black uppercase tracking-widest hover:bg-[#EA580C] transition-all"
+            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-[#EA580C] border border-[#E5E7EB] hover:border-[#FF6A00]/40 hover:bg-[#FFF7ED] text-xs font-medium transition-all shadow-sm active:scale-95"
           >
             Buy Tokens
-            <ArrowRight size={12} />
+            <ArrowRight size={13} />
           </button>
         )}
       </div>
