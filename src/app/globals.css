@@ -116,7 +116,7 @@
 
 @media (min-width: 768px) {
   html {
-    zoom: 0.75;
+    zoom: 0.8;
     height: 100%;
   }
 
@@ -126,11 +126,13 @@
   }
 
   .h-screen {
-    height: calc(100vh / 0.75) !important;
+    height: calc(100vh / 0.8) !important;
+    height: calc(100dvh / 0.8) !important;
   }
 
   .min-h-screen {
-    min-height: calc(100vh / 0.75) !important;
+    min-height: calc(100vh / 0.8) !important;
+    min-height: calc(100dvh / 0.8) !important;
   }
 }
 
