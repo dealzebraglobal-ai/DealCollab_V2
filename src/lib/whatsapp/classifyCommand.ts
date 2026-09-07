@@ -5,17 +5,44 @@
  * tested directly — same rationale as resolveCompletion.ts's extraction:
  * these decisions used to live inline in processIncomingMessage (chatbot.ts)
  * where they could only be exercised through a real DB + AI call.
+ *
+ * DESIGN RULE (regression guard, 2026-09-02):
+ * Only ALREADY-STRUCTURED input routes deterministically:
+ *   - button postbacks we emit: `VIEW_MATCH:<id>`, `SHOW_MORE`,
+ *     `BROADEN_CRITERIA`, `BACK_TO_PROPOSALS`, `OPEN_WEBSITE`, `START_OVER`
+ *   - `VIEW_P2` / `P2` shorthands
+ *   - the long-standing keyword commands (open website / done / start over)
+ *   - a BARE digit, and only meaningfully when a match screen is active
+ * Natural-language phrases like "show me more" / "broaden the search" are
+ * honoured ONLY while a match list / detail / no-more screen is on display.
+ * During mandate collection (screen === null) every ordinary sentence —
+ * including ones that happen to start with "expand", "more", "next" — MUST
+ * fall through to CHAT so the AI conversation handles it. A prior version
+ * matched `/^(broaden|widen|expand)…/` unconditionally and hijacked
+ * "Expand my company into a different sector" as a command.
  */
 
-export type WhatsAppUiScreen = "PROPOSAL_LIST" | "COUNTERPARTY_DETAIL" | null;
+export type { WhatsAppUiScreen } from "./matchNav";
+import type { WhatsAppUiScreen } from "./matchNav";
+import { parseViewMatchToken } from "./matchNav";
 
 export type WhatsAppCommand =
   | { type: "OPEN_WEBSITE" }
   | { type: "FINISH" }
-  | { type: "VIEW_MATCH"; index: number } // 0-based (P1 = 0, P2 = 1, P3 = 2)
+  // `index` is the page-local 0-based position (P1 = 0…); `matchId` is the
+  // stable proposal_matches.id from a button postback. When `matchId` is
+  // present it is authoritative — `index` is only the numbered-text fallback.
+  | { type: "VIEW_MATCH"; index: number; matchId?: string }
   | { type: "BACK_TO_PROPOSALS" }
+  | { type: "SHOW_MORE" }
+  | { type: "BROADEN_CRITERIA" }
   | { type: "RESET" }
   | { type: "CHAT" };
+
+/** Screens on which a numbered / short natural-language navigation reply is meaningful. */
+function isMatchNavScreen(screen: WhatsAppUiScreen): boolean {
+  return screen === "PROPOSAL_LIST" || screen === "COUNTERPARTY_DETAIL" || screen === "NO_MORE_MATCHES";
+}
 
 /**
  * `screen` is the WhatsApp-only UI context the conversation is currently in
@@ -25,22 +52,29 @@ export type WhatsAppCommand =
  *
  *   PROPOSAL_LIST:        1/2/3 → View P1/P2/P3
  *   COUNTERPARTY_DETAIL:  1 → Back to proposals, 2 → Open Website, 3 → Start Over
+ *   NO_MORE_MATCHES:      1 → Broaden criteria
  *
  * An explicit "P2" / "view p2" / "VIEW_P2" (button postback, or a user
  * typing a specific proposal directly) always means VIEW_MATCH regardless of
  * screen — only a BARE digit is context-dependent.
- *
- * FINISH is checked before the screen-dependent digit handling intentionally,
- * but note it is NOT the default outcome of a completed mandate — it only
- * matches an explicit wrap-up phrase. Everything else (a completed mandate +
- * an ordinary follow-up message) falls through to CHAT, where the shared
- * pipeline's own is_captured terminal lock (resolveCompletion.ts) handles
- * "conversation continues after the mandate is done" without resetting
- * anything in the WhatsApp adapter.
  */
 export function classifyWhatsAppCommand(text: string, screen: WhatsAppUiScreen = null): WhatsAppCommand {
   const trimmed = text.trim();
 
+  // ── Structured button postbacks (only a button WE sent produces these) ──
+  const viewToken = parseViewMatchToken(trimmed);
+  if (viewToken) {
+    return { type: "VIEW_MATCH", index: -1, matchId: viewToken.matchId };
+  }
+  // Exact IDs, as emitted (uppercase + underscore) — screen-independent so a
+  // stale/failed whatsapp_ui_state write can't strand a tapped button.
+  if (/^SHOW_MORE$/.test(trimmed)) return { type: "SHOW_MORE" };
+  if (/^BROADEN_CRITERIA$/.test(trimmed)) return { type: "BROADEN_CRITERIA" };
+  if (/^BACK_TO_PROPOSALS$/i.test(trimmed)) return { type: "BACK_TO_PROPOSALS" };
+  if (/^START_OVER$/i.test(trimmed)) return { type: "RESET" };
+  if (/^OPEN_WEBSITE$/i.test(trimmed)) return { type: "OPEN_WEBSITE" };
+
+  // ── Long-standing keyword commands (unchanged pre-regression behaviour) ──
   if (/^(open_?website|website|login|web|portal)\b/i.test(trimmed)) {
     return { type: "OPEN_WEBSITE" };
   }
@@ -55,6 +89,21 @@ export function classifyWhatsAppCommand(text: string, screen: WhatsAppUiScreen =
 
   if (/^back[_\s]?to[_\s]?proposals$/i.test(trimmed)) {
     return { type: "BACK_TO_PROPOSALS" };
+  }
+
+  // ── Natural-language navigation — ONLY while a match screen is displayed.
+  //    During mandate collection these must reach the AI. ──
+  if (isMatchNavScreen(screen)) {
+    if (
+      /^(show\s+more|show\s+me\s+more|more\s+matches|more\s+companies|more\s+options|any\s+other\s+options|other\s+options|next\s+matches)\b/i.test(
+        trimmed,
+      )
+    ) {
+      return { type: "SHOW_MORE" };
+    }
+    if (/^(broaden|widen)\s+(the\s+)?(criteria|search|mandate)\b/i.test(trimmed)) {
+      return { type: "BROADEN_CRITERIA" };
+    }
   }
 
   // Explicit proposal reference (button postback like "VIEW_P2", or a user
@@ -72,6 +121,9 @@ export function classifyWhatsAppCommand(text: string, screen: WhatsAppUiScreen =
       if (n === 1) return { type: "BACK_TO_PROPOSALS" };
       if (n === 2) return { type: "OPEN_WEBSITE" };
       return { type: "RESET" }; // n === 3
+    }
+    if (screen === "NO_MORE_MATCHES") {
+      return n === 1 ? { type: "BROADEN_CRITERIA" } : { type: "CHAT" };
     }
     // PROPOSAL_LIST screen (or no tracked screen — the pre-existing default)
     return { type: "VIEW_MATCH", index: n - 1 };
