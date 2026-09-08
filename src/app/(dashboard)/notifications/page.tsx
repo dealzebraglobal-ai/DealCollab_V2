@@ -76,7 +76,7 @@ export default function NotificationsPage() {
                 </div>
              )}
           </div>
-          <p className="text-[#6B7280] text-sm font-normal">Showing 90-day activity history</p>
+          <p className="text-black text-sm font-normal">Showing 90-day activity history</p>
         </div>
 
         {unreadCount > 0 && (

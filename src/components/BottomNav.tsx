@@ -22,24 +22,21 @@ export default function BottomNav() {
       {navItems.map((item) => {
         const isActive = pathname === item.href || (item.href === '/deal-log' && pathname?.startsWith('/deal-log/'));
         return (
-          <Link 
+          <Link
             key={item.href}
             href={item.href}
-            className={`relative flex flex-col items-center gap-1 min-w-[64px] transition-all duration-500 ease-out active:scale-90 ${
-              isActive ? 'text-[#FF6A00]' : 'text-gray-400'
-            }`}
+            className={`relative flex flex-col items-center gap-1 min-w-[64px] transition-all duration-500 ease-out active:scale-90 ${isActive ? 'text-[#FF6A00]' : 'text-gray-400'
+              }`}
           >
-            <div className={`p-1.5 rounded-xl transition-all duration-500 ease-out ${
-              isActive ? 'bg-[#FFF7ED] scale-125' : 'bg-transparent group-hover:bg-gray-50'
-            }`}>
+            <div className={`p-1.5 rounded-xl transition-all duration-500 ease-out ${isActive ? 'bg-[#FFF7ED] scale-125' : 'bg-transparent group-hover:bg-gray-50'
+              }`}>
               <item.icon size={20} className={`transition-all duration-500 ${isActive ? 'stroke-[2.5px] text-[#FF6A00]' : 'stroke-2 hover:scale-110'}`} />
             </div>
-            <span className={`text-[10px] font-medium tracking-normal transition-all duration-500 ${
-              isActive ? 'opacity-100 translate-y-0 scale-100 text-[#FF6A00]' : 'opacity-0 -translate-y-1 scale-90'
-            }`}>
+            <span className={`text-[10px] font-medium tracking-normal transition-all duration-500 ${isActive ? 'opacity-100 translate-y-0 scale-100 text-[#FF6A00]' : 'opacity-0 -translate-y-1 scale-90'
+              }`}>
               {item.name}
             </span>
-            
+
             {item.badge && item.badge > 0 && (
               <span className="absolute top-0 right-3 bg-[#FF6A00] text-white text-[8px] font-medium w-4 h-4 flex items-center justify-center rounded-full border-2 border-white animate-in zoom-in spin-in-90 duration-500">
                 {item.badge}

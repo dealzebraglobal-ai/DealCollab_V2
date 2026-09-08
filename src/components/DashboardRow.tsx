@@ -27,10 +27,9 @@ interface DashboardRowProps {
   onEOIClick?: () => void;
   onApprove?: () => void;
   onDecline?: () => void;
-  onRemove?: () => void;
 }
 
-export default function DashboardRow({ item, error, onEOIClick, onApprove, onDecline, onRemove }: DashboardRowProps) {
+export default function DashboardRow({ item, error, onEOIClick, onApprove, onDecline }: DashboardRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleStatusClick = () => {
@@ -53,7 +52,7 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
       <div className="grid grid-cols-1 md:grid-cols-12 items-stretch gap-4 p-5">
         {/* YOUR DEAL (Col 5) */}
         <div className="sm:col-span-12 md:col-span-5 flex flex-col justify-between">
-          <div className="text-[13px] font-medium text-[#747775] uppercase tracking-wider mb-2.5 px-1 flex items-center justify-center gap-2 flex-wrap text-center">
+          <div className="text-[13px] font-semibold text-black uppercase tracking-wider mb-2.5 px-1 flex items-center justify-center gap-2 flex-wrap text-center">
             <span>{isIncoming ? 'Your Offer' : 'Your Deal'}</span>
             <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wider ${
               isIncoming ? 'bg-[#FFF7ED] text-[#EA580C] border border-[#FFEDD5]' : 'bg-[#F3F4F6] text-[#444746] border border-[#E5E7EB]'
@@ -64,7 +63,7 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
               const ts = formatDealTimestamp(item.createdAt);
               return (
                 <span className="text-[11px] text-[#747775] font-normal normal-case bg-[#F3F4F6] border border-[#E5E7EB] px-2.5 py-0.5 rounded-full" title={ts.exact}>
-                  {ts.exact} • <strong className="text-[#1F1F1F] font-medium">{ts.relative}</strong>
+                  {ts.exact} • <strong className="text-black font-medium">{ts.relative}</strong>
                 </span>
               );
             })()}
@@ -74,30 +73,19 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
 
         {/* SELECTED MATCH / COUNTERPARTY (Col 5 - IDENTICAL SIZE TO YOUR DEAL) */}
         <div className="sm:col-span-12 md:col-span-5 flex flex-col justify-between">
-          <div className="text-[13px] font-medium text-[#747775] uppercase tracking-wider mb-2.5 px-1 text-center">
+          <div className="text-[13px] font-semibold text-black uppercase tracking-wider mb-2.5 px-1 text-center">
             {isIncoming ? (item.counterpartyRole || 'Counterparty') : 'AI Match'}
           </div>
           <MatchCard entity={item.match} description={item.matchDesc} />
         </div>
 
-        {/* STATUS BUTTON & REMOVE MATCH (Col 2 - CENTERED) */}
-        <div className="sm:col-span-12 md:col-span-2 flex flex-col justify-center items-center text-center gap-2 self-center w-full">
+        {/* STATUS BUTTON (Col 2 - CENTERED) */}
+        <div className="sm:col-span-12 md:col-span-2 flex flex-col justify-center items-center text-center self-center w-full">
           <StatusButton
             status={item.status}
             isOpen={isExpanded}
             onClick={handleStatusClick}
           />
-          {onRemove && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              className="text-[11px] font-normal text-[#747775] hover:text-red-600 transition-all uppercase tracking-wider mt-1 text-center"
-            >
-              Remove Match
-            </button>
-          )}
         </div>
       </div>
 

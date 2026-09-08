@@ -34,12 +34,12 @@ describe('OnboardingTutorial Business Logic & Acceptance Criteria', () => {
     expect(step3.description).toBe('Deal Log is where you can see your deals, conversations, and matched opportunities.');
   });
 
-  it('Step 4: Deal Dashboard step targets "deal-dashboard" with exact description', () => {
+  it('Step 4: EOI Activities step targets "deal-dashboard" with exact description', () => {
     const step4 = ONBOARDING_STEPS[3];
     expect(step4.targetKey).toBe('deal-dashboard');
-    expect(step4.title).toBe('Deal Dashboard');
+    expect(step4.title).toBe('EOI Activities');
     expect(step4.badge).toBe('4 of 4');
-    expect(step4.description).toBe('Deal Dashboard helps you track and manage your overall deal activity.');
+    expect(step4.description).toBe('EOI Activities helps you track your EOI interactions, mutual interest, and connected parties.');
   });
 
   describe('Eligibility & Profile-Completion Precedence Rules', () => {

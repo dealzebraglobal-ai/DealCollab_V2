@@ -165,44 +165,55 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
     // LIST view — P1/P2/P3 cards
     if (view === 'list') {
         return (
-            <div className="space-y-3">
+            <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">Aligned counterparties</h3>
-
+                    <h3 className="text-sm font-bold text-[#1F1F1F]">Aligned counterparties</h3>
                 </div>
-                {data.matches.map((m) => {
-                    const isVerified = m.label === 'VERIFIED_MATCH';
-                    const labelText = isVerified ? 'Verified Match' : 'High Confidence';
-                    const labelClass = isVerified
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-amber-100 text-amber-800';
-                    return (
-                        <div key={m.matchId} className="border rounded-lg p-3 hover:border-amber-400 transition">
-                            <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-1 flex-wrap">
-                                    <span className="text-xs font-bold text-amber-600">{m.rank}</span>
-                                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${labelClass}`}>{labelText}</span>
-                                    {m.isConnected && (
-                                        <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">Connected</span>
-                                    )}
+                <div className="space-y-3">
+                    {data.matches.map((m) => {
+                        const isVerified = m.label === 'VERIFIED_MATCH';
+                        const labelText = isVerified ? 'Verified Match' : 'High Confidence';
+                        const labelClass = isVerified
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-amber-100 text-amber-800';
+                        return (
+                            <div key={m.matchId} className="border border-[#E5E7EB] hover:border-black rounded-xl p-4 bg-white shadow-sm transition-all duration-200">
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-xs font-bold text-[#FF6A00]">{m.rank}</span>
+                                        <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold ${labelClass}`}>{labelText}</span>
+                                        {m.isConnected && (
+                                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] font-semibold border border-[#86EFAC]">Connected</span>
+                                        )}
+                                    </div>
+                                    <span className="text-xs font-semibold text-[#747775] shrink-0">Score {m.finalScore.toFixed(0)}%</span>
                                 </div>
-                                <span className="text-xs text-gray-400 shrink-0">Score {m.finalScore.toFixed(0)}%</span>
+                                <p className="text-sm font-semibold text-[#1F1F1F] mb-1">{m.summary}</p>
+                                <p className="text-xs text-[#4B5563] mb-2 leading-relaxed">{m.reason}</p>
+                                {m.teaser && <p className="text-xs text-[#747775] italic line-clamp-2 bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB] mb-2">&quot;{m.teaser}&quot;</p>}
+                                <button
+                                    onClick={() => { setSelected(m); setView(m.isConnected ? 'connected' : 'detail'); }}
+                                    className="mt-1 text-xs font-semibold text-[#FF6A00] hover:text-[#EA580C] hover:underline flex items-center gap-1"
+                                >
+                                    View {m.rank} →
+                                </button>
                             </div>
-                            <p className="text-sm font-medium mb-1">{m.summary}</p>
-                            <p className="text-xs text-gray-600 mb-2">{m.reason}</p>
-                            {m.teaser && <p className="text-xs text-gray-500 italic line-clamp-2">{m.teaser}</p>}
-                            <button
-                                onClick={() => { setSelected(m); setView(m.isConnected ? 'connected' : 'detail'); }}
-                                className="mt-2 text-xs font-medium text-amber-700 hover:underline"
-                            >
-                                View {m.rank} →
-                            </button>
-                        </div>
-                    );
-                })}
-                <button onClick={onStartOver} className="text-xs text-gray-500 underline">
-                    Start over with a new mandate
-                </button>
+                        );
+                    })}
+                </div>
+
+                {/* Explanation text below P1, P2, P3 cards */}
+                <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] text-xs leading-relaxed text-[#4B5563]">
+                    <p className="font-normal text-[#1F1F1F]">
+                        These are your current matches. DealCollab will continue searching for relevant counterparties as new opportunities enter the network. You’ll be notified whenever a new match is found.
+                    </p>
+                </div>
+
+                <div className="pt-1">
+                    <button onClick={onStartOver} className="text-xs text-[#747775] hover:text-black font-medium underline">
+                        Start over with a new mandate
+                    </button>
+                </div>
             </div>
         );
     }

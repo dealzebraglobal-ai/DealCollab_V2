@@ -2,11 +2,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  FileText, 
-  Bell, 
-  Plus, 
-  MessageSquare, 
+import {
+  FileText,
+  Bell,
+  Plus,
+  MessageSquare,
   Trash2,
   User,
   LayoutDashboard,
@@ -35,7 +35,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
   const menuItems = [
     { name: 'New Conversation', icon: Plus, href: '/home', isNewChat: true },
     { name: 'Deal Log', icon: FileText, href: '/deal-log', targetId: 'deal-log' },
-    { name: 'Deal Dashboard', icon: LayoutDashboard, href: '/deal-dashboard', targetId: 'deal-dashboard' },
+    { name: 'EOI Activities', icon: LayoutDashboard, href: '/deal-dashboard', targetId: 'deal-dashboard' },
     { name: 'Intelligence', icon: BrainIcon, href: '/deal-intelligence' },
     { name: 'Notifications', icon: Bell, href: '/notifications', badge: unreadCount },
     { name: 'Guide & Trust', icon: BookOpen, href: '/guide' },
@@ -103,16 +103,14 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                 <button
                   key={item.name}
                   onClick={handleNewChat}
-                  className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${
-                    isActive ? activeClass : inactiveClass
-                  }`}
+                  className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${isActive ? activeClass : inactiveClass
+                    }`}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon size={18} className={`shrink-0 transition-all duration-200 ${
-                      isActive
+                    <item.icon size={18} className={`shrink-0 transition-all duration-200 ${isActive
                         ? 'text-[#FF6A00]'
                         : 'text-[#444746] group-hover:text-black'
-                    }`} />
+                      }`} />
                     {!isCollapsed && <span className="text-[13.5px] font-semibold tracking-tight">{item.name}</span>}
                   </div>
                 </button>
@@ -125,16 +123,14 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                 href={item.href}
                 data-onboarding-target={item.targetId}
                 onClick={() => onItemClick?.()}
-                className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${
-                  isActive ? activeClass : inactiveClass
-                }`}
+                className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${isActive ? activeClass : inactiveClass
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon size={18} className={`shrink-0 transition-all duration-200 ${
-                    isActive
+                  <item.icon size={18} className={`shrink-0 transition-all duration-200 ${isActive
                       ? 'text-[#FF6A00]'
                       : 'text-[#444746] group-hover:text-black'
-                  }`} />
+                    }`} />
                   {!isCollapsed && <span className="text-[13.5px] font-semibold tracking-tight">{item.name}</span>}
                 </div>
                 {!isCollapsed && item.badge !== undefined && item.badge > 0 && (
@@ -159,7 +155,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
               )}
             </div>
           )}
-          
+
           {sessions.length === 0 && !isCollapsed && (
             <p className="px-3 text-xs text-[#747775] italic font-medium">No past conversations</p>
           )}
@@ -167,21 +163,20 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
           {sessions.map((session) => {
             const isChatActive = pathname === '/home' && activeChatId === session.id;
             return (
-              <div 
+              <div
                 key={session.id}
                 onClick={() => handleChatClick(session.id)}
-                className={`group flex items-center justify-between px-3.5 py-2 cursor-pointer transition-all duration-200 ${
-                  isChatActive 
+                className={`group flex items-center justify-between px-3.5 py-2 cursor-pointer transition-all duration-200 ${isChatActive
                     ? 'bg-[#FFF7ED] border border-[#FF6A00]/40 hover:border-black text-[#EA580C] font-semibold rounded-full shadow-sm'
                     : 'text-[#1F1F1F] hover:bg-[#F3F4F6] hover:text-black border border-transparent hover:border-black font-semibold rounded-full'
-                } ${isCollapsed ? 'justify-center' : ''}`}
+                  } ${isCollapsed ? 'justify-center' : ''}`}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <MessageSquare size={16} className={`shrink-0 ${isChatActive ? 'text-[#FF6A00]' : 'text-[#747775] group-hover:text-black'}`} />
                   {!isCollapsed && <span className="text-xs font-semibold truncate">{session.title || 'Untitled Chat'}</span>}
                 </div>
                 {!isCollapsed && (
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteChat(session.id);
@@ -199,32 +194,32 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
       </div>
 
       <div className="mt-auto px-3 py-2.5 border-t border-[#E5E7EB]">
-         <Link 
-           href="/profile"
-           className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5 px-1.5'} py-2 rounded-full hover:bg-[#F3F4F6] transition-all group`}
-         >
-           <div className="w-8 h-8 rounded-full bg-transparent border border-[#E5E7EB] flex items-center justify-center shrink-0 overflow-hidden shadow-sm relative">
-             {profile?.userAvatar ? (
-               <Image src={profile.userAvatar} alt="Avatar" width={32} height={32} className="w-full h-full object-cover" />
-             ) : (
-               <User size={16} className="text-[#444746]" />
-             )}
-           </div>
-           {!isCollapsed && (
-             <div className="flex flex-col min-w-0">
-               <p className="text-xs font-bold text-[#1F1F1F] truncate">
-                 {profile?.fullName || session?.user?.name || 'User'}
-               </p>
-               <p className="text-[11px] text-[#444746] truncate font-medium">
-                 {profile?.email || session?.user?.email || ''}
-               </p>
-             </div>
-           )}
-         </Link>
-         
-         <p className="text-[10px] text-[#747775] font-normal text-center uppercase tracking-wider mt-2.5 opacity-80">
-            {isCollapsed ? 'DC' : 'DealCollab v2.0'}
-         </p>
+        <Link
+          href="/profile"
+          className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5 px-1.5'} py-2 rounded-full hover:bg-[#F3F4F6] transition-all group`}
+        >
+          <div className="w-8 h-8 rounded-full bg-transparent border border-[#E5E7EB] flex items-center justify-center shrink-0 overflow-hidden shadow-sm relative">
+            {profile?.userAvatar ? (
+              <Image src={profile.userAvatar} alt="Avatar" width={32} height={32} className="w-full h-full object-cover" />
+            ) : (
+              <User size={16} className="text-[#444746]" />
+            )}
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col min-w-0">
+              <p className="text-xs font-bold text-[#1F1F1F] truncate">
+                {profile?.fullName || session?.user?.name || 'User'}
+              </p>
+              <p className="text-[11px] text-[#444746] truncate font-medium">
+                {profile?.email || session?.user?.email || ''}
+              </p>
+            </div>
+          )}
+        </Link>
+
+        <p className="text-[10px] text-[#747775] font-normal text-center uppercase tracking-wider mt-2.5 opacity-80">
+          {isCollapsed ? 'DC' : 'DealCollab v2.0'}
+        </p>
       </div>
     </aside>
   );

@@ -15,7 +15,7 @@ export default function GuideSidebar() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       <div className="md:col-span-2 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-        <h3 className="text-xs font-medium uppercase tracking-wider text-[#747775] mb-4">Quick actions</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-black mb-4">Quick actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {actions.map((action) => (
             <a
@@ -27,7 +27,7 @@ export default function GuideSidebar() {
                 <action.icon size={16} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-[#1F1F1F]">{action.label}</p>
+                <p className="text-sm font-bold text-[#1F1F1F]">{action.label}</p>
                 <p className="text-xs font-normal text-[#747775] mt-0.5 line-clamp-2">{action.description}</p>
               </div>
             </a>
@@ -39,9 +39,9 @@ export default function GuideSidebar() {
         <div>
           <div className="flex items-center gap-2 text-[#EA580C]">
             <LifeBuoy size={18} />
-            <h3 className="text-sm font-medium">Need help?</h3>
+            <h3 className="text-sm font-bold">Need help?</h3>
           </div>
-          <p className="mt-2 text-xs font-normal leading-relaxed text-[#747775]">
+          <p className="mt-2 text-xs font-normal leading-relaxed text-[#4B5563]">
             Can&apos;t find what you&apos;re looking for? Our team typically replies within a few hours.
           </p>
         </div>

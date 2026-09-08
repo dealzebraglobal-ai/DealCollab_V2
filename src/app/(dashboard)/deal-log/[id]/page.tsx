@@ -178,12 +178,12 @@ export default function MatchDetailPage() {
 
          {/* TWO COLUMN CONTENT CONTAINER */}
          <div className="p-6 sm:p-10 max-w-7xl mx-auto w-full pb-20">
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-               
+
                {/* LEFT COLUMN: Profile Details */}
                <div className="lg:col-span-8 space-y-5">
-                  
+
                   {/* PRIVACY SHIELD WARNING */}
                   <div className="bg-[#F9FAFB] border border-[#E5E7EB] p-3.5 rounded-xl flex items-center gap-3 text-[#444746]">
                      <ShieldCheck size={18} className="text-[#FF6A00] shrink-0" />
@@ -317,10 +317,10 @@ export default function MatchDetailPage() {
 
                {/* RIGHT COLUMN: Merged Score, Reason & Send EOI Block */}
                <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
-                  
+
                   {/* UNIFIED ACTION CARD */}
                   <div className="bg-white rounded-2xl border border-[#E5E7EB] hover:border-black shadow-sm p-6 space-y-5 transition-all duration-200">
-                     
+
                      {/* Match Score */}
                      <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#FFF7ED] border border-[#FFEDD5] rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
@@ -357,11 +357,10 @@ export default function MatchDetailPage() {
                         {eoi ? (
                            <button
                               disabled
-                              className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider cursor-not-allowed flex items-center justify-center ${
-                                 eoi.status === 'approved' 
-                                    ? 'bg-[#16A34A] text-white shadow-sm' 
+                              className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider cursor-not-allowed flex items-center justify-center ${eoi.status === 'approved'
+                                    ? 'bg-[#16A34A] text-white shadow-sm'
                                     : 'bg-[#F3F4F6] text-[#747775] border border-[#E5E7EB]'
-                              }`}
+                                 }`}
                            >
                               {eoi.status === 'sent' && (eoi.isSender ? 'EOI Sent (Awaiting Approval)' : 'EOI Received')}
                               {eoi.status === 'approved' && 'Connected'}

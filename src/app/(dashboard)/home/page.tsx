@@ -3,7 +3,6 @@ import React, { useEffect, useRef } from 'react';
 import ChatArea, { Message } from "@/components/ChatArea";
 import InputBar from "@/components/InputBar";
 import { ChatSkeleton } from '@/components/Skeleton';
-import { Plus } from 'lucide-react';
 import { useChat } from '@/components/ChatProvider';
 import { useRouter } from 'next/navigation';
 import { MatchPanel } from '@/components/MatchPanel';
@@ -347,11 +346,8 @@ export default function Home() {
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 rounded-full bg-[#F3F4F6] flex items-center justify-center mb-6 border border-[#E5E7EB] shadow-sm">
-                <Plus size={32} className="text-[#FF6A00]" />
-              </div>
               <h2 className="text-2xl font-semibold text-[#1F1F1F] mb-2 tracking-tight">Start a new conversation</h2>
-              <p className="text-[#444746] text-sm max-w-xs font-normal">Describe your deal, mandate, or project to begin extraction.</p>
+              <p className="text-[#444746] text-sm max-w-sm font-normal">Describe your deal. Let intelligence keep searching</p>
             </div>
           ) : (
             <div className="space-y-6">

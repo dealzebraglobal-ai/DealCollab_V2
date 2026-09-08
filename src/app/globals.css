@@ -114,6 +114,23 @@
   animation-duration: 1000ms;
 }
 
+@keyframes border-blink {
+  0%, 100% {
+    border-color: #E5E7EB;
+  }
+  50% {
+    border-color: #111111;
+  }
+}
+
+.animate-border-blink {
+  animation: border-blink 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-pulse-fast {
+  animation: pulse 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 @media (min-width: 768px) {
   html {
     zoom: 0.8;

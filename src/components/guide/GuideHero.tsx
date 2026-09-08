@@ -14,8 +14,8 @@ export default function GuideHero({ title, description }: GuideHeroProps) {
           <BookOpen size={24} />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1F1F1F]">{title}</h1>
-          <p className="mt-1.5 max-w-2xl text-sm font-normal leading-relaxed text-[#747775]">{description}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-black">{title}</h1>
+          <p className="mt-1.5 max-w-2xl text-sm font-normal leading-relaxed text-black">{description}</p>
         </div>
       </div>
     </div>

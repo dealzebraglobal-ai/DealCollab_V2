@@ -63,10 +63,19 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
   return (
     <div
       onClick={navigate}
-      className="relative flex items-start gap-4 p-5 rounded-2xl bg-white border border-[#E5E7EB] hover:border-black transition-all duration-200 cursor-pointer shadow-sm group"
+      className={`relative flex items-start gap-4 p-5 rounded-2xl bg-white border transition-all duration-200 cursor-pointer shadow-sm group ${notification.isRead
+          ? 'border-[#E5E7EB] hover:border-black'
+          : 'animate-border-blink hover:border-black'
+        }`}
     >
-      <div className="p-2.5 rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] shrink-0">
-        <Bell size={18} className={notification.isRead ? "text-[#747775]" : "text-[#FF6A00]"} />
+      <div className={`p-2.5 rounded-xl border shrink-0 transition-all ${notification.isRead
+          ? 'bg-[#F3F4F6] border-[#E5E7EB]'
+          : 'bg-[#FFF7ED] border-[#FFEDD5]'
+        }`}>
+        <Bell
+          size={18}
+          className={notification.isRead ? "text-[#747775]" : "text-[#FF6A00] animate-pulse-fast"}
+        />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -76,7 +85,7 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
         <div className="flex items-center gap-2">
           <span className="text-xs text-[#747775] font-normal">{notification.time}</span>
           {!notification.isRead && (
-            <span className="w-1.5 h-1.5 bg-[#FF6A00] rounded-full" />
+            <span className="w-1.5 h-1.5 bg-[#FF6A00] rounded-full animate-pulse-fast" />
           )}
         </div>
 

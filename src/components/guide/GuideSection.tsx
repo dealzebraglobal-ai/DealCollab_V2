@@ -12,10 +12,10 @@ export default function GuideSection({ title, description, icon, children }: Gui
   return (
     <section>
       <div className="mb-4 flex items-center gap-3">
-        {icon && <div className="rounded-xl bg-gray-50 p-2 text-gray-500">{icon}</div>}
+        {icon && <div className="rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] p-2 text-[#FF6A00]">{icon}</div>}
         <div>
-          <h2 className="text-lg font-black text-gray-950">{title}</h2>
-          {description && <p className="text-xs font-semibold text-gray-400">{description}</p>}
+          <h2 className="text-lg font-bold text-[#1F1F1F]">{title}</h2>
+          {description && <p className="text-xs font-normal text-[#747775]">{description}</p>}
         </div>
       </div>
       {children}

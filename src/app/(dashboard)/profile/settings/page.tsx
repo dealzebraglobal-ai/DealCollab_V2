@@ -77,7 +77,13 @@ export default function ProfileSettingsPage() {
             </div>
 
             <ProfileStepper 
-               onComplete={() => setShowSuccess(true)} 
+               onComplete={(shouldShow) => {
+                  if (shouldShow) {
+                     setShowSuccess(true);
+                  } else {
+                     router.push('/profile');
+                  }
+               }} 
                initialData={profileData} 
             />
          </div>

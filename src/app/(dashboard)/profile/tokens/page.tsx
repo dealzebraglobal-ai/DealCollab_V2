@@ -128,11 +128,10 @@ export default function TokenUsagePage() {
                       </td>
 
                       <td className="px-8 py-5">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          tx.type === 'debit' 
-                            ? 'bg-red-50 text-red-600 border border-red-100' 
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${tx.type === 'debit'
+                            ? 'bg-red-50 text-red-600 border border-red-100'
                             : 'bg-green-50 text-green-600 border border-green-100'
-                        }`}>
+                          }`}>
                           {tx.type}
                         </span>
                       </td>
@@ -141,9 +140,8 @@ export default function TokenUsagePage() {
                         {tx.action}
                       </td>
 
-                      <td className={`px-8 py-5 text-right font-black tabular-nums ${
-                        tx.amount > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <td className={`px-8 py-5 text-right font-black tabular-nums ${tx.amount > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
                       </td>
 

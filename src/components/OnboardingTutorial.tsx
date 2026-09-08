@@ -44,9 +44,9 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'deal-dashboard',
     targetKey: 'deal-dashboard',
-    title: 'Deal Dashboard',
+    title: 'EOI Activities',
     badge: '4 of 4',
-    description: 'Deal Dashboard helps you track and manage your overall deal activity.',
+    description: 'EOI Activities helps you track your EOI interactions, mutual interest, and connected parties.',
     preferredPlacement: 'right',
     icon: LayoutDashboard,
   },

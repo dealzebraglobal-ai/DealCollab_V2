@@ -272,15 +272,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
       
       if (!response.ok) throw new Error(result.errors?.[0]?.message || 'Submission failed');
 
-      // CRITICAL: Refresh global profile state to show new avatar
-      await refreshProfile();
-      
-      console.log('[ProfileStepper] Submission successful. Profile refreshed.', {
-        profile_image_saved: finalProfileImage,
-        response: result
-      });
-
-      // Update local state and rewards
+      // Update local state and rewards immediately
       updateReadiness('identity', 20);
       updateReadiness('geography', 15);
       updateReadiness('expertise', 15);
@@ -288,9 +280,27 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
       updateReadiness('collaboration', 15);
       updateReadiness('additional', 20);
 
-      if (result.rewarded) addTokens(100);
+      const isRewardedOrSuccess = !!(
+        result.rewarded || 
+        result.shouldShowSuccess || 
+        result.isComplete || 
+        result.progress === 100
+      );
+      if (result.rewarded) {
+        addTokens(100);
+      }
+
+      // CRITICAL: Trigger onComplete/success screen FIRST before backgrounding profile refresh
+      onComplete(isRewardedOrSuccess);
+
+      // Refresh global profile state and set onboarding in background
+      await refreshProfile();
       setOnboarding('profileCompleted', true);
-      onComplete(result.shouldShowSuccess);
+
+      console.log('[ProfileStepper] Submission successful. Profile refreshed.', {
+        profile_image_saved: finalProfileImage,
+        response: result
+      });
     } catch (error: unknown) {
       console.error("FULL ERROR:", error);
       console.error("STRINGIFIED:", JSON.stringify(error, null, 2));

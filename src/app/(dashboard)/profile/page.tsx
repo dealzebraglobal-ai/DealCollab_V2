@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/components/UserProvider';
 import { Sparkles, Loader2 } from 'lucide-react';
@@ -15,14 +15,33 @@ export default function ProfilePage() {
    const [isEditing, setIsEditing] = useState(false);
    const [showSuccess, setShowSuccess] = useState(false);
 
-   const handleComplete = (shouldShowSuccess?: boolean) => {
+   const handleComplete = useCallback((shouldShowSuccess?: boolean) => {
       // Force exit from editing/setup mode
       setIsEditing(false);
-      
+
       if (shouldShowSuccess) {
          setShowSuccess(true);
       }
-   };
+   }, []);
+
+   const handleDashboardClick = useCallback(() => {
+      if (returnUrl) {
+         router.push(returnUrl);
+      } else {
+         router.push('/deal-dashboard');
+      }
+      setShowSuccess(false);
+      setIsEditing(false);
+   }, [returnUrl, router]);
+
+   if (showSuccess) {
+      return (
+         <ProfileSuccessScreen
+            returnUrl={returnUrl}
+            onDashboardClick={handleDashboardClick}
+         />
+      );
+   }
 
    if (!profile) {
       return (
@@ -35,31 +54,14 @@ export default function ProfilePage() {
       );
    }
 
-   if (showSuccess) {
-      return (
-         <ProfileSuccessScreen 
-            returnUrl={returnUrl}
-            onDashboardClick={() => {
-               if (returnUrl) {
-                  router.push(returnUrl);
-               } else {
-                  router.push('/deal-dashboard');
-               }
-               setShowSuccess(false);
-               setIsEditing(false);
-            }} 
-         />
-      );
-   }
-
    // If onboarding not completed and not currently editing, show onboarding
    if (!onboarding.profileCompleted && !isEditing) {
       return (
          <div className="flex-1 flex flex-col w-full bg-[#F9FAFB] relative min-h-screen">
             <HeroSection />
             <div className="w-full bg-gray-50/50">
-               <ProfileStepper 
-                  onComplete={handleComplete} 
+               <ProfileStepper
+                  onComplete={handleComplete}
                   initialData={profile}
                />
             </div>
@@ -73,25 +75,25 @@ export default function ProfilePage() {
             <div className="w-full py-12">
                <div className="max-w-5xl mx-auto px-6 mb-8 flex justify-between items-center">
                   <h2 className="text-2xl font-black text-foreground tracking-tight">Update Your Profile</h2>
-                  <button 
+                  <button
                      onClick={() => setIsEditing(false)}
                      className="text-sm font-bold text-brand-secondary hover:text-brand-accent transition-colors"
                   >
                      Cancel Changes
                   </button>
                </div>
-               <ProfileStepper 
-                  onComplete={handleComplete} 
-                  initialData={profile} 
+               <ProfileStepper
+                  onComplete={handleComplete}
+                  initialData={profile}
                />
             </div>
          ) : (
             <>
                <HeroSection />
                <div className="w-full bg-gray-50/50 py-8 space-y-8">
-                  <ProfileView 
-                     data={profile} 
-                     onEdit={() => setIsEditing(true)} 
+                  <ProfileView
+                     data={profile}
+                     onEdit={() => setIsEditing(true)}
                   />
                </div>
             </>

@@ -38,6 +38,7 @@ export default async function GuideDocPage({ params }: { params: Promise<{ slug:
     <div className="relative flex-1 flex flex-col w-full bg-white h-full">
       <GuideHeader
         items={[
+          { label: 'Home', href: '/home' },
           { label: 'Guide & Trust', href: '/guide' },
           ...(category ? [{ label: category.label }] : []),
           { label: doc.title },
@@ -54,23 +55,23 @@ export default async function GuideDocPage({ params }: { params: Promise<{ slug:
           </Link>
 
           <div className="mt-4 flex items-start gap-4">
-            <div className="rounded-2xl bg-orange-50 p-3 text-[#F97316] shrink-0">
+            <div className="rounded-2xl bg-[#FFF7ED] border border-[#FFEDD5] p-3 text-[#FF6A00] shrink-0">
               <Icon size={22} />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">{doc.title}</h1>
-              <div className="mt-2 flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-gray-400">
+              <h1 className="text-2xl font-bold tracking-tight text-[#1F1F1F] sm:text-3xl">{doc.title}</h1>
+              <div className="mt-2 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-[#747775]">
                 {category && (
-                  <span className="rounded-full border border-gray-100 bg-gray-50 px-2.5 py-1 text-gray-500">{category.label}</span>
+                  <span className="rounded-full border border-[#E5E7EB] bg-[#F3F4F6] px-2.5 py-1 text-[#1F1F1F] font-medium">{category.label}</span>
                 )}
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 font-medium">
                   <Clock3 size={12} /> {doc.readingTimeMinutes} min read
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={guideMarkdownComponents}>
               {markdown}
             </ReactMarkdown>
@@ -79,13 +80,13 @@ export default async function GuideDocPage({ params }: { params: Promise<{ slug:
           {next && (
             <Link
               href={`/guide/${next.slug}`}
-              className="group mt-6 flex items-center justify-between rounded-3xl border border-gray-100 bg-gray-50 p-5 transition-all hover:border-orange-100 hover:bg-orange-50/40"
+              className="group mt-6 flex items-center justify-between rounded-2xl border border-[#E5E7EB] hover:border-black bg-white p-5 transition-all duration-200 shadow-sm"
             >
               <div>
-                <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">Next</p>
-                <p className="mt-1 text-sm font-black text-gray-950">{next.title}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Next</p>
+                <p className="mt-1 text-sm font-bold text-[#1F1F1F]">{next.title}</p>
               </div>
-              <ArrowRight size={18} className="text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-[#F97316]" />
+              <ArrowRight size={18} className="text-[#747775] transition-all group-hover:translate-x-0.5 group-hover:text-black" />
             </Link>
           )}
 
