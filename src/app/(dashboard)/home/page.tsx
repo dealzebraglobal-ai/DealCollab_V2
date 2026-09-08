@@ -5,6 +5,7 @@ import InputBar from "@/components/InputBar";
 import { ChatSkeleton } from '@/components/Skeleton';
 import { useChat } from '@/components/ChatProvider';
 import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { MatchPanel } from '@/components/MatchPanel';
 import { validateParseDocumentRequest, type ParseDocumentRequest } from '@/lib/parseDocumentContract';
 
