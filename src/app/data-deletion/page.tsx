@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 export const metadata: Metadata = {
   title: 'Data Deletion',
   description: 'How to request deletion of your DealCollab account and data.',
+  alternates: { canonical: '/data-deletion' },
 };
 
 export default function DataDeletion() {

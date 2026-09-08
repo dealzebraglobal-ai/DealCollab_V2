@@ -28,7 +28,7 @@ const getIntentLabel = (intent: string) => {
    }
 };
 
-const formatSize = (min: any, max: any) => {
+const formatSize = (min: string | number | null, max: string | number | null) => {
    if (!min && !max) return 'Undisclosed';
    const minVal = min ? Number(min) : null;
    const maxVal = max ? Number(max) : null;
@@ -140,8 +140,8 @@ export default function MatchDetailPage() {
 
          mutate();
          setShowSuccessModal(true);
-      } catch (err: any) {
-         setSendError(err?.message || 'Something went wrong while sending EOI.');
+      } catch (err: unknown) {
+         setSendError(err instanceof Error ? err.message : 'Something went wrong while sending EOI.');
       } finally {
          setIsSending(false);
       }

@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'How DealCollab collects, uses, and protects your information.',
+  alternates: { canonical: '/privacy' },
 };
 
 export default function PrivacyPolicy() {

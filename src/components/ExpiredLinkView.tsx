@@ -24,8 +24,8 @@ export default function ExpiredLinkView() {
         </div>
 
         <div className="pt-4">
-           <Link 
-            href="/"
+           <Link
+            href="/login"
             className="group w-full flex items-center justify-center gap-2 py-4 bg-[#1F2937] hover:bg-[#F97316] text-white rounded-2xl font-bold text-sm transition-all shadow-lg hover:shadow-[#F97316]/20 active:scale-[0.98]"
            >
              Sign in to DealCollab

@@ -20,7 +20,38 @@ export async function generateMetadata({
   const { slug } = await params;
   const entry = getGuideDoc(slug);
   if (!entry) return {};
-  return { title: entry.doc.title, description: entry.doc.description };
+  const url = `/guide/${slug}`;
+  // Previously each article inherited the root layout's site-wide
+  // Organization-level og:title/og:description ("DealCollab AI" / the
+  // generic site description) instead of its own — verified in production
+  // HTML. Setting openGraph/twitter explicitly here (using the same real
+  // title/description already used for <title>/meta description, not new
+  // copy) fixes social previews for individual articles without touching
+  // any article content.
+  return {
+    title: entry.doc.title,
+    description: entry.doc.description,
+    // Overrides the guide layout's default '/guide' canonical — each guide
+    // article is its own indexable page, not a duplicate of the index.
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'article',
+      url,
+      title: entry.doc.title,
+      description: entry.doc.description,
+      // Next.js does not deep-merge nested metadata objects — setting our
+      // own openGraph object replaces the root layout's entirely, so the
+      // shared site image is repeated explicitly here rather than silently
+      // lost. No per-article image exists to use instead.
+      images: [{ url: '/earth-poster.png', width: 1200, height: 630, alt: entry.doc.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: entry.doc.title,
+      description: entry.doc.description,
+      images: ['/earth-poster.png'],
+    },
+  };
 }
 
 export default async function GuideDocPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -75,6 +106,20 @@ export default async function GuideDocPage({ params }: { params: Promise<{ slug:
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={guideMarkdownComponents}>
               {markdown}
             </ReactMarkdown>
+          </div>
+
+          {/* CTA — added at the template level (not article content) so every
+              guide article points to the actual signup flow, regardless of
+              which article a search visitor lands on first. */}
+          <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border border-orange-100 bg-orange-50/60 p-6 text-center sm:p-8">
+            <p className="text-sm font-bold text-gray-800">Ready to submit a mandate?</p>
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-2xl bg-[#1F2937] px-6 py-3 text-sm font-black text-white transition-colors hover:bg-[#F97316]"
+            >
+              Join DealCollab
+              <ArrowRight size={16} />
+            </Link>
           </div>
 
           {next && (

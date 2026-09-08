@@ -56,8 +56,8 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
   };
 
   return (
-    <div className="w-full bg-transparent pb-8 pt-2 px-4 md:px-6">
-      <div className="max-w-[660px] mx-auto relative group">
+    <div className="w-full bg-transparent pb-6 pt-1 px-4 md:px-6">
+      <div className="max-w-[600px] mx-auto relative group">
         <input 
           type="file"
           ref={fileInputRef}
@@ -77,9 +77,9 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
         >
           {/* File Attachment Preview Badge */}
           {pendingFile && (
-            <div className={`flex items-center gap-2 px-4 py-2 ${isHomePage ? 'bg-white rounded-full mx-2 my-1 border border-[#E5E7EB]' : 'bg-[#F5F5F3] border-b border-[rgba(17,17,17,0.08)]'} animate-in slide-in-from-top-2`}>
-              <div className="w-6 h-6 rounded-full bg-[#FFF7ED] shadow-sm flex items-center justify-center">
-                <Plus size={14} className="text-[#FF6A00] rotate-45" />
+            <div className={`flex items-center gap-2 px-3 py-1.5 ${isHomePage ? 'bg-white rounded-full mx-2 my-1 border border-[#E5E7EB]' : 'bg-[#F5F5F3] border-b border-[rgba(17,17,17,0.08)]'} animate-in slide-in-from-top-2`}>
+              <div className="w-5 h-5 rounded-full bg-[#FFF7ED] shadow-sm flex items-center justify-center">
+                <Plus size={12} className="text-[#FF6A00] rotate-45" />
               </div>
               <span className={`text-xs font-medium truncate max-w-[200px] ${isHomePage ? 'text-[#1F1F1F]' : 'text-[#111111]'}`}>
                 {pendingFile.name}
@@ -89,7 +89,7 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
                 onClick={() => setPendingFile(null)}
                 className="ml-auto p-1 hover:bg-black/5 rounded-full transition-colors"
               >
-                <Plus size={14} className="text-[#747775] rotate-45" />
+                <Plus size={12} className="text-[#747775] rotate-45" />
               </button>
             </div>
           )}
@@ -98,14 +98,14 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
             <button 
               type="button"
               onClick={handlePlusClick}
-              className={`flex-shrink-0 w-11 h-11 flex items-center justify-center transition-colors z-10 rounded-full ${
+              className={`flex-shrink-0 w-8 h-8 flex items-center justify-center transition-colors z-10 rounded-full ${
                 isHomePage
                   ? 'text-[#444746] hover:text-[#1F1F1F] hover:bg-black/5'
                   : 'text-[#4B5563] hover:text-[#111111]'
               }`}
               title="Attach Document"
             >
-              <Plus size={20} className={pendingFile ? "text-[#FF6A00]" : ""} />
+              <Plus size={16} className={pendingFile ? "text-[#FF6A00]" : ""} />
             </button>
    
             <div className="flex-1 flex items-center relative">
@@ -118,7 +118,7 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
                 rows={1}
                 autoFocus
                 enterKeyHint="send"
-                className={`flex-1 bg-transparent border-none outline-none font-normal text-[15px] py-2 px-1 pr-3 resize-none min-h-[24px] max-h-[200px] scrollbar-hide relative z-20 ${
+                className={`flex-1 bg-transparent border-none outline-none font-normal text-[13px] py-1.5 px-1 pr-3 resize-none min-h-[20px] max-h-[200px] scrollbar-hide relative z-20 ${
                   isHomePage
                     ? 'text-[#1F1F1F] placeholder:text-[#747775]'
                     : 'text-[#111111] placeholder:text-[#4B5563]/60'
@@ -129,19 +129,19 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
               <button 
                 type="submit"
                 disabled={!inputValue.trim() && !pendingFile}
-                className={`mr-2 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-25 active:scale-95 shadow-sm shrink-0 z-10 ${
+                className={`mr-2 w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-25 active:scale-95 shadow-sm shrink-0 z-10 ${
                   isHomePage
                     ? 'bg-[#FF6A00] hover:bg-[#E65C00] text-white shadow-orange-500/20'
                     : 'bg-[#111111] hover:bg-[#FF6A00] text-white'
                 }`}
               >
-                <Send size={15} className="ml-0.5" />
+                <Send size={13} className="ml-0.5" />
               </button>
             </div>
           </div>
         </form>
         
-        <p className={`text-center text-[11px] mt-3 font-normal ${isHomePage ? 'text-[#747775]' : 'text-[#4B5563] uppercase tracking-[0.1em] opacity-60'}`}>
+        <p className={`text-center text-[10px] mt-2 font-normal ${isHomePage ? 'text-[#747775]' : 'text-[#4B5563] uppercase tracking-[0.1em] opacity-60'}`}>
           DealCollab AI can make mistakes. Verify important deal and counterparty information.
         </p>
       </div>

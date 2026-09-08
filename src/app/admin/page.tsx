@@ -480,7 +480,7 @@ export default function AdminPage() {
                                 )}
                             </div>
                         )}
-                        <Link href="/" className="mt-6 inline-flex rounded-2xl bg-[#1F2937] px-5 py-3 text-sm font-black text-white transition-colors hover:bg-[#F97316]">Back to login</Link>
+                        <Link href="/login" className="mt-6 inline-flex rounded-2xl bg-[#1F2937] px-5 py-3 text-sm font-black text-white transition-colors hover:bg-[#F97316]">Back to login</Link>
                     </div>
                 </div>
             </main>

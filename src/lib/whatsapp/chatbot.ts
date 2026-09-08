@@ -17,6 +17,7 @@ import {
 } from "./matchNav";
 import { formatMatchScore } from "@/utils/formatters";
 import { newWaCtx, waLog, describePgError, type WaCtx } from "./webhookDiagnostics";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 const MATCH_PAGE_SIZE = 3;
 const MATCH_ROW_FETCH_LIMIT = 12;
@@ -195,6 +196,23 @@ export async function processIncomingMessage(
   const formattedPhone = cleanedPhone.startsWith("+")
     ? cleanedPhone
     : `+${cleanedPhone}`;
+
+  // Abuse/cost guard: caps how many inbound messages a single WhatsApp number
+  // can drive through the AI + DB pipeline per window. Deliberately generous
+  // (a real user firing several rapid consecutive messages — the exact
+  // scenario runChatTurn's OCC retry exists for — must never be throttled)
+  // — this exists only to bound the damage from a leaked WAPPBIZ_API_KEY/
+  // WHATSAPP_APP_SECRET or a misbehaving retry loop driving unbounded Groq/
+  // OpenAI spend and DB writes. Silently drops the reply on top of the limit
+  // (no WhatsApp send) rather than answering at all, since a throttle message
+  // sent to genuinely malicious/looped traffic would itself become part of
+  // the flood.
+  const throttle = checkRateLimit(`whatsapp-in:${formattedPhone}`, 30, 30_000);
+  if (!throttle.allowed) {
+    waLog(ctx, "WEBHOOK_RECEIVED", "REJECTED", { reason: "RATE_LIMITED" });
+    console.warn(`[WHATSAPP] Rate limit exceeded for …${formattedPhone.slice(-4)} — dropping message.`);
+    return;
+  }
 
   // 1. Find or Create User
   waLog(ctx, "USER_LOOKUP", "START");

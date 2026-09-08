@@ -42,6 +42,12 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: ["/earth-poster.png"],
   },
+  // Google Search Console HTML meta-tag verification. Only emitted when the
+  // env var is actually set — never fabricate a token; unset means Search
+  // Console ownership must be verified another way (DNS TXT, GA, etc.).
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+    : {}),
 };
 
 import { NotificationProvider } from '@/components/NotificationProvider';
@@ -51,22 +57,6 @@ import { AuthProvider } from '@/components/auth/AuthProvider';
 import { ExtensionNoiseReducer } from '@/components/ExtensionNoiseReducer';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 
-// Public, non-sensitive JSON-LD only — organization/site identity, nothing
-// about deals, proposals, or any authenticated data.
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: SITE_NAME,
-  url: SITE_URL,
-  logo: `${SITE_URL}/earth-poster.png`,
-};
-
-const websiteJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: SITE_NAME,
-  url: SITE_URL,
-};
 
 export default function RootLayout({
   children,
@@ -80,14 +70,6 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-screen w-full m-0 p-0 bg-white" suppressHydrationWarning>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
         <GoogleAnalytics />
         <ExtensionNoiseReducer />
         <AuthProvider>

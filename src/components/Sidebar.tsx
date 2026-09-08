@@ -35,7 +35,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
   const menuItems = [
     { name: 'New Conversation', icon: Plus, href: '/home', isNewChat: true },
     { name: 'Deal Log', icon: FileText, href: '/deal-log', targetId: 'deal-log' },
-    { name: 'EOI Activities', icon: LayoutDashboard, href: '/deal-dashboard', targetId: 'deal-dashboard' },
+    { name: 'EOI Activities', icon: LayoutDashboard, href: '/eoi-activities', targetId: 'deal-dashboard' },
     { name: 'Intelligence', icon: BrainIcon, href: '/deal-intelligence' },
     { name: 'Notifications', icon: Bell, href: '/notifications', badge: unreadCount },
     { name: 'Guide & Trust', icon: BookOpen, href: '/guide' },
@@ -89,8 +89,8 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                 ? pathname === '/guide' || pathname?.startsWith('/guide/')
                 : item.href === '/deal-log'
                   ? pathname === '/deal-log' || pathname?.startsWith('/deal-log/')
-                  : item.href === '/deal-dashboard'
-                    ? pathname === '/deal-dashboard' || pathname?.startsWith('/deal-dashboard/')
+                  : item.href === '/eoi-activities'
+                    ? pathname === '/eoi-activities' || pathname?.startsWith('/eoi-activities/') || pathname === '/deal-dashboard' || pathname?.startsWith('/deal-dashboard/')
                     : item.isNewChat
                       ? pathname === '/home' && !activeChatId
                       : pathname === item.href;
@@ -103,14 +103,14 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                 <button
                   key={item.name}
                   onClick={handleNewChat}
-                  className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${isActive ? activeClass : inactiveClass
-                    }`}
+                  className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${
+                    isActive ? activeClass : inactiveClass
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon size={18} className={`shrink-0 transition-all duration-200 ${isActive
-                        ? 'text-[#FF6A00]'
-                        : 'text-[#444746] group-hover:text-black'
-                      }`} />
+                    <item.icon size={18} className={`shrink-0 transition-all duration-200 ${
+                      isActive ? 'text-[#FF6A00]' : 'text-[#444746] group-hover:text-black'
+                    }`} />
                     {!isCollapsed && <span className="text-[13.5px] font-semibold tracking-tight">{item.name}</span>}
                   </div>
                 </button>
@@ -123,18 +123,18 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                 href={item.href}
                 data-onboarding-target={item.targetId}
                 onClick={() => onItemClick?.()}
-                className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${isActive ? activeClass : inactiveClass
-                  }`}
+                className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${
+                  isActive ? activeClass : inactiveClass
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon size={18} className={`shrink-0 transition-all duration-200 ${isActive
-                      ? 'text-[#FF6A00]'
-                      : 'text-[#444746] group-hover:text-black'
-                    }`} />
+                  <item.icon size={18} className={`shrink-0 transition-all duration-200 ${
+                    isActive ? 'text-[#FF6A00]' : 'text-[#444746] group-hover:text-black'
+                  }`} />
                   {!isCollapsed && <span className="text-[13.5px] font-semibold tracking-tight">{item.name}</span>}
                 </div>
                 {!isCollapsed && item.badge !== undefined && item.badge > 0 && (
-                  <span className={`${isActive ? 'bg-[#FF6A00] text-white shadow-sm' : 'bg-[#F3F4F6] text-[#1F1F1F] border border-[#E5E7EB]'} text-[10px] font-bold px-2 py-0.5 rounded-full`}>
+                  <span className={`${isActive ? 'bg-[#FF6A00] text-white shadow-sm' : 'bg-[#F3F4F6] text-[#1F1F1F] border border-[#E5E7EB]'} text-[9px] font-bold px-1.5 py-0 rounded-full`}>
                     {item.badge}
                   </span>
                 )}
@@ -144,12 +144,12 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
         </nav>
 
         {/* Conversation History (Always Visible & Accessible across app) */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-1 sidebar-scroll border-t border-[#E5E7EB] pt-4">
+        <div className="flex-1 overflow-y-auto px-2 space-y-1 sidebar-scroll border-t border-[#E5E7EB] pt-4">
           {!isCollapsed && (
-            <div className="flex items-center justify-between px-3 mb-2">
-              <h3 className="text-[11px] font-bold text-[#1F1F1F] uppercase tracking-wider">Conversations</h3>
+            <div className="flex items-center justify-between px-2 mb-2">
+              <h3 className="text-[10px] font-bold text-[#1F1F1F] uppercase tracking-wider">Conversations</h3>
               {sessions.length > 0 && (
-                <span className="text-[10px] font-bold text-[#1F1F1F] bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-full">
+                <span className="text-[9px] font-bold text-[#1F1F1F] bg-[#F3F4F6] border border-[#E5E7EB] px-1.5 py-0 rounded-full">
                   {sessions.length}
                 </span>
               )}
@@ -166,14 +166,15 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
               <div
                 key={session.id}
                 onClick={() => handleChatClick(session.id)}
-                className={`group flex items-center justify-between px-3.5 py-2 cursor-pointer transition-all duration-200 ${isChatActive
+                className={`group flex items-center justify-between px-3.5 py-2 cursor-pointer transition-all duration-200 ${
+                  isChatActive
                     ? 'bg-[#FFF7ED] border border-[#FF6A00]/40 hover:border-black text-[#EA580C] font-semibold rounded-full shadow-sm'
                     : 'text-[#1F1F1F] hover:bg-[#F3F4F6] hover:text-black border border-transparent hover:border-black font-semibold rounded-full'
-                  } ${isCollapsed ? 'justify-center' : ''}`}
+                } ${isCollapsed ? 'justify-center' : ''}`}
               >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <MessageSquare size={16} className={`shrink-0 ${isChatActive ? 'text-[#FF6A00]' : 'text-[#747775] group-hover:text-black'}`} />
-                  {!isCollapsed && <span className="text-xs font-semibold truncate">{session.title || 'Untitled Chat'}</span>}
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <MessageSquare size={14} className={`shrink-0 ${isChatActive ? 'text-[#FF6A00]' : 'text-[#747775] group-hover:text-black'}`} />
+                  {!isCollapsed && <span className="text-[11px] font-semibold truncate">{session.title || 'Untitled Chat'}</span>}
                 </div>
                 {!isCollapsed && (
                   <button
@@ -184,7 +185,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                     className="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-red-50 hover:text-red-600 text-[#747775] transition-all active:scale-90"
                     title="Delete chat"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={12} />
                   </button>
                 )}
               </div>

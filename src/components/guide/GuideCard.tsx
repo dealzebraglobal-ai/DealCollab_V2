@@ -2,7 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, Clock3 } from 'lucide-react';
 import type { GuideDoc } from '@/lib/guideData';
-import { guideIcon } from './guideIcons';
+import { GUIDE_ICONS } from './guideIcons';
+import { BookOpen } from 'lucide-react';
 
 interface GuideCardProps {
   doc: GuideDoc;
@@ -10,7 +11,7 @@ interface GuideCardProps {
 }
 
 export default function GuideCard({ doc, categoryLabel }: GuideCardProps) {
-  const Icon = guideIcon(doc.icon);
+  const Icon = GUIDE_ICONS[doc.icon] || BookOpen;
 
   return (
     <Link

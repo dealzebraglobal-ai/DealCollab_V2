@@ -185,6 +185,11 @@ export default function OnboardingTutorial() {
     };
   }, [isVisible, currentStepIndex, updatePosition]);
 
+  const handleSkip = async () => {
+    setIsVisible(false);
+    await completeOnboardingTutorial();
+  };
+
   // Keyboard accessibility (Escape to skip, Enter/Space for controls)
   useEffect(() => {
     if (!isVisible) return;
@@ -217,11 +222,6 @@ export default function OnboardingTutorial() {
   };
 
   const handleFinish = async () => {
-    setIsVisible(false);
-    await completeOnboardingTutorial();
-  };
-
-  const handleSkip = async () => {
     setIsVisible(false);
     await completeOnboardingTutorial();
   };

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { GuideCategoryMeta, GuideDoc } from '@/lib/guideData';
-import { guideIcon } from './guideIcons';
+import { GUIDE_ICONS } from './guideIcons';
+import { BookOpen } from 'lucide-react';
 import GuideSection from './GuideSection';
 import GuideCard from './GuideCard';
 
@@ -11,7 +12,7 @@ interface GuideCategoryProps {
 
 export default function GuideCategory({ category, docs }: GuideCategoryProps) {
   if (docs.length === 0) return null;
-  const Icon = guideIcon(category.icon);
+  const Icon = GUIDE_ICONS[category.icon] || BookOpen;
 
   return (
     <GuideSection title={category.label} description={category.description} icon={<Icon size={16} />}>
