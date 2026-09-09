@@ -58,7 +58,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
   };
 
   return (
-    <aside className="w-full h-full bg-white border-r border-[#E5E7EB] flex flex-col py-6 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
+    <aside className="w-full h-full bg-white border-r border-[#E5E7EB] flex flex-col py-6 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] font-['Segoe_UI_Variable','Segoe_UI',-apple-system,BlinkMacSystemFont,sans-serif] text-[#0F2747]">
       {/* Top Section: Logo */}
       <div className="mb-6 px-4">
         <Link href="/home" onClick={handleNewChat} className={`group flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5'} overflow-hidden`}>
@@ -73,7 +73,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
             />
           </div>
           {!isCollapsed && (
-            <span className="text-[#1F1F1F] font-bold text-base tracking-tight whitespace-nowrap transition-colors">
+            <span className="text-[#0F2747] font-normal text-[17px] leading-[24px] tracking-[-0.01em] whitespace-nowrap transition-colors">
               DealCollab <span className="text-[#FF6A00]">AI</span>
             </span>
           )}
@@ -95,8 +95,8 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                       ? pathname === '/home' && !activeChatId
                       : pathname === item.href;
 
-            const activeClass = 'text-[#EA580C] bg-[#FFF7ED] font-semibold border border-[#FF6A00]/40 hover:border-black shadow-sm rounded-full';
-            const inactiveClass = 'text-[#1F1F1F] hover:text-black hover:bg-[#F3F4F6] border border-transparent hover:border-black font-semibold rounded-full';
+            const activeClass = 'text-[#0F2747] bg-[#FFF7ED] font-normal border border-[#FF6A00]/40 hover:border-[#0F2747] shadow-sm rounded-full';
+            const inactiveClass = 'text-[#0F2747] hover:text-[#0F2747] hover:bg-[#F3F4F6] border border-transparent hover:border-[#0F2747] font-normal rounded-full';
 
             if (item.isNewChat) {
               return (
@@ -109,9 +109,9 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                 >
                   <div className="flex items-center gap-3">
                     <item.icon size={18} className={`shrink-0 transition-all duration-200 ${
-                      isActive ? 'text-[#FF6A00]' : 'text-[#444746] group-hover:text-black'
+                      isActive ? 'text-[#FF6A00]' : 'text-[#0F2747] group-hover:text-[#0F2747]'
                     }`} />
-                    {!isCollapsed && <span className="text-[13.5px] font-semibold tracking-tight">{item.name}</span>}
+                    {!isCollapsed && <span className="text-[16px] font-normal leading-[22px] tracking-[-0.01em] text-[#0F2747]">{item.name}</span>}
                   </div>
                 </button>
               );
@@ -129,12 +129,12 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
               >
                 <div className="flex items-center gap-3">
                   <item.icon size={18} className={`shrink-0 transition-all duration-200 ${
-                    isActive ? 'text-[#FF6A00]' : 'text-[#444746] group-hover:text-black'
+                    isActive ? 'text-[#FF6A00]' : 'text-[#0F2747] group-hover:text-[#0F2747]'
                   }`} />
-                  {!isCollapsed && <span className="text-[13.5px] font-semibold tracking-tight">{item.name}</span>}
+                  {!isCollapsed && <span className="text-[16px] font-normal leading-[22px] tracking-[-0.01em] text-[#0F2747]">{item.name}</span>}
                 </div>
                 {!isCollapsed && item.badge !== undefined && item.badge > 0 && (
-                  <span className={`${isActive ? 'bg-[#FF6A00] text-white shadow-sm' : 'bg-[#F3F4F6] text-[#1F1F1F] border border-[#E5E7EB]'} text-[9px] font-bold px-1.5 py-0 rounded-full`}>
+                  <span className={`${isActive ? 'bg-[#FF6A00] text-white shadow-sm' : 'bg-[#F3F4F6] text-[#0F2747] border border-[#E5E7EB]'} text-[11px] font-normal px-2 py-0.5 rounded-full`}>
                     {item.badge}
                   </span>
                 )}
@@ -146,10 +146,10 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
         {/* Conversation History (Always Visible & Accessible across app) */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1 sidebar-scroll border-t border-[#E5E7EB] pt-4">
           {!isCollapsed && (
-            <div className="flex items-center justify-between px-2 mb-2">
-              <h3 className="text-[10px] font-bold text-[#1F1F1F] uppercase tracking-wider">Conversations</h3>
+            <div className="flex items-center justify-between px-3 mb-2">
+              <h3 className="text-[14px] font-normal leading-[20px] text-[#0F2747] tracking-[-0.01em]">Conversations</h3>
               {sessions.length > 0 && (
-                <span className="text-[9px] font-bold text-[#1F1F1F] bg-[#F3F4F6] border border-[#E5E7EB] px-1.5 py-0 rounded-full">
+                <span className="text-[11px] font-normal text-[#0F2747] bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-full">
                   {sessions.length}
                 </span>
               )}
@@ -157,7 +157,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
           )}
 
           {sessions.length === 0 && !isCollapsed && (
-            <p className="px-3 text-xs text-[#747775] italic font-medium">No past conversations</p>
+            <p className="px-3 text-[13px] leading-[18px] text-[#0F2747]/70 italic font-normal">No past conversations</p>
           )}
 
           {sessions.map((session) => {
@@ -166,15 +166,15 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
               <div
                 key={session.id}
                 onClick={() => handleChatClick(session.id)}
-                className={`group flex items-center justify-between px-3.5 py-2 cursor-pointer transition-all duration-200 ${
+                className={`group flex items-center justify-between px-3.5 py-1.5 cursor-pointer transition-all duration-200 ${
                   isChatActive
-                    ? 'bg-[#FFF7ED] border border-[#FF6A00]/40 hover:border-black text-[#EA580C] font-semibold rounded-full shadow-sm'
-                    : 'text-[#1F1F1F] hover:bg-[#F3F4F6] hover:text-black border border-transparent hover:border-black font-semibold rounded-full'
+                    ? 'bg-[#FFF7ED] border border-[#FF6A00]/40 hover:border-[#0F2747] text-[#0F2747] font-normal rounded-full shadow-sm'
+                    : 'text-[#0F2747] hover:bg-[#F3F4F6] hover:text-[#0F2747] border border-transparent hover:border-[#0F2747] font-normal rounded-full'
                 } ${isCollapsed ? 'justify-center' : ''}`}
               >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <MessageSquare size={14} className={`shrink-0 ${isChatActive ? 'text-[#FF6A00]' : 'text-[#747775] group-hover:text-black'}`} />
-                  {!isCollapsed && <span className="text-[11px] font-semibold truncate">{session.title || 'Untitled Chat'}</span>}
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <MessageSquare size={15} className={`shrink-0 ${isChatActive ? 'text-[#FF6A00]' : 'text-[#0F2747]/70 group-hover:text-[#0F2747]'}`} />
+                  {!isCollapsed && <span className="text-[14.5px] font-normal leading-[20px] tracking-[-0.01em] text-[#0F2747] truncate">{session.title || 'Untitled Chat'}</span>}
                 </div>
                 {!isCollapsed && (
                   <button
@@ -182,10 +182,10 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
                       e.stopPropagation();
                       deleteChat(session.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-red-50 hover:text-red-600 text-[#747775] transition-all active:scale-90"
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-red-50 hover:text-red-600 text-[#0F2747]/70 transition-all active:scale-90"
                     title="Delete chat"
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={13} />
                   </button>
                 )}
               </div>
@@ -203,22 +203,22 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
             {profile?.userAvatar ? (
               <Image src={profile.userAvatar} alt="Avatar" width={32} height={32} className="w-full h-full object-cover" />
             ) : (
-              <User size={16} className="text-[#444746]" />
+              <User size={16} className="text-[#0F2747]" />
             )}
           </div>
           {!isCollapsed && (
             <div className="flex flex-col min-w-0">
-              <p className="text-xs font-bold text-[#1F1F1F] truncate">
+              <p className="text-[15px] font-normal leading-[20px] tracking-[-0.01em] text-[#0F2747] truncate">
                 {profile?.fullName || session?.user?.name || 'User'}
               </p>
-              <p className="text-[11px] text-[#444746] truncate font-medium">
+              <p className="text-[12px] font-normal leading-[16px] text-[#0F2747]/80 truncate">
                 {profile?.email || session?.user?.email || ''}
               </p>
             </div>
           )}
         </Link>
 
-        <p className="text-[10px] text-[#747775] font-normal text-center uppercase tracking-wider mt-2.5 opacity-80">
+        <p className="text-[11px] font-normal leading-[16px] tracking-[-0.01em] text-[#0F2747]/70 text-center uppercase mt-2 opacity-80">
           {isCollapsed ? 'DC' : 'DealCollab v2.0'}
         </p>
       </div>

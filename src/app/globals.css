@@ -184,7 +184,7 @@ body {
 
 .sidebar-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #1F1F1F transparent;
+  scrollbar-color: #0F2747 transparent;
 }
 
 .sidebar-scroll::-webkit-scrollbar {
@@ -196,12 +196,12 @@ body {
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb {
-  background-color: #1F1F1F;
+  background-color: #0F2747;
   border-radius: 4px;
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #000000;
+  background-color: #081527;
 }
 
 @layer utilities {

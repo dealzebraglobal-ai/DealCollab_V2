@@ -12,7 +12,7 @@ import { useChat } from './ChatProvider';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState<number>(180);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(220);
   const [isResizing, setIsResizing] = useState(false);
   const { tokens } = useUser();
   const { createNewChat } = useChat();
@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.min(Math.max(e.clientX, 140), 350);
+      const newWidth = Math.min(Math.max(e.clientX, 160), 450);
       setSidebarWidth(newWidth);
     };
 
@@ -73,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           style={{ width: isMobileSidebarOpen ? undefined : `${sidebarWidth}px` }}
           className={`
             fixed md:relative z-[100] h-full bg-white border-r border-[#E5E7EB] transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
-            ${isMobileSidebarOpen ? 'translate-x-0 w-[250px]' : '-translate-x-full md:translate-x-0'}
+            ${isMobileSidebarOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'}
             shrink-0 select-none
           `}
         >
@@ -81,8 +81,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div
             onMouseDown={startResizing}
             onDoubleClick={() => {
-              setSidebarWidth(180);
-              localStorage.setItem('dealcollab_sidebar_width', '180');
+              setSidebarWidth(220);
+              localStorage.setItem('dealcollab_sidebar_width', '220');
             }}
             title="Drag to resize sidebar width / Double-click to reset"
             className={`hidden md:block absolute -right-1 top-0 bottom-0 w-2.5 cursor-col-resize z-[110] transition-colors ${
