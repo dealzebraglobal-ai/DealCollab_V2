@@ -6,7 +6,7 @@ import DashboardRow, { DashboardDeal } from '@/components/DashboardRow';
 import { DashboardStatus } from '@/components/StatusButton';
 import { DashboardSkeleton, EmptyState, ErrorState } from '@/components/Skeleton';
 import SendEOIModal from '@/components/SendEOIModal';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -22,6 +22,10 @@ interface EOIResponse {
   receiver?: { name?: string; role?: string; firm_name?: string };
 }
 
+type TabType = 'all' | 'received' | 'sent' | 'connected';
+
+const PAGE_SIZE = 5;
+
 export default function DealDashboardPage() {
   const { data: inboundData, error: inboundError, mutate: mutateInbound, isValidating: inboundVal } = useSWR('/api/eois?type=inbound', fetcher, { refreshInterval: 15000 });
   const { data: outboundData, error: outboundError, mutate: mutateOutbound, isValidating: outboundVal } = useSWR('/api/eois?type=outbound', fetcher, { refreshInterval: 15000 });
@@ -29,6 +33,9 @@ export default function DealDashboardPage() {
   const loading = !inboundData && !inboundError;
   const refreshing = (inboundVal && !!inboundData) || (outboundVal && !!outboundData);
   const error = inboundError || outboundError;
+
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const [eoiModal, setEoiModal] = useState<{ isOpen: boolean, deal: DashboardDeal | null }>({
     isOpen: false,
@@ -43,17 +50,12 @@ export default function DealDashboardPage() {
     if (eoi.status === 'approved') mappedStatus = 'Approved';
     if (eoi.status === 'declined') mappedStatus = 'Declined';
 
-    // YOUR OFFER = the viewer's OWN proposal (directional, from the endpoint). The old code
-    // used eoi.deal, which is the COUNTERPARTY's proposal — that was the "shows wrong deal" bug.
     const own = eoi.yourProposal;
     const dealTitle = own?.title || eoi.deal?.title || 'Active Deal';
     const dealDesc = own
       ? `Sector: ${own.sector || 'N/A'} · Size: ${own.size || 'N/A'}`
       : `Sector: ${eoi.deal?.sector || 'N/A'}, Size: ${eoi.deal?.size || 'N/A'}`;
 
-    // Counterparty column: blind name + role. No firm_name (identity) — use the role label.
-    // Counterparty column: blind safe descriptor (intent · sector · industry · size). The
-    // short role label ("Proposed Target" etc.) is rendered separately by DashboardRow.
     const matchDesc = eoi.counterpartyTitle || eoi.counterpartyRole || (isIncoming ? 'Counterparty' : 'AI Match');
 
     return {
@@ -67,7 +69,7 @@ export default function DealDashboardPage() {
       counterpartyRole: eoi.counterpartyRole,
       createdAt: eoi.created_at,
       raw: eoi
-    }
+    };
   };
 
   const incomingEOIs: DashboardDeal[] = (inboundData || []).map((e: EOIResponse) => formatEoi(e, true));
@@ -75,6 +77,30 @@ export default function DealDashboardPage() {
   const data = [...incomingEOIs, ...myProposals].sort(
     (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
   );
+
+  // Tab counts
+  const allCount = data.length;
+  const receivedCount = incomingEOIs.filter(e => e.status !== 'Approved').length;
+  const sentCount = myProposals.filter(e => e.status !== 'Approved').length;
+  const connectedCount = data.filter(e => e.status === 'Approved').length;
+
+  // Filtered dataset according to active tab
+  const filteredData = data.filter(item => {
+    if (activeTab === 'received') return item.isIncoming && item.status !== 'Approved';
+    if (activeTab === 'sent') return !item.isIncoming && item.status !== 'Approved';
+    if (activeTab === 'connected') return item.status === 'Approved';
+    return true;
+  });
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const paginatedData = filteredData.slice(startIndex, startIndex + PAGE_SIZE);
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
 
   const [rowErrors, setRowErrors] = useState<Record<string, { message: string; canBuy: boolean }>>({});
 
@@ -89,7 +115,6 @@ export default function DealDashboardPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (body.errorCode === 'SENDER_INSUFFICIENT') {
-          // The SENDER is short — buying tokens won't help the receiver. Show message only.
           setRowErrors(prev => ({
             ...prev, [key]: {
               message: body.message || "Cannot approve because the sender has insufficient tokens. We've notified them.",
@@ -147,26 +172,28 @@ export default function DealDashboardPage() {
   };
 
   return (
-    <div className="relative flex-1 flex flex-col w-full bg-white h-full">
+    <div className="relative flex-1 flex flex-col w-full bg-[#FAFAFA] min-h-full">
       <div className="flex-1 flex flex-col w-full p-6 sm:p-10 transition-all duration-700 relative overflow-y-auto">
 
         {/* Top Bar Section */}
-        <div className="flex justify-between items-center mb-10">
+        <div className="flex justify-between items-center mb-8 max-w-6xl mx-auto w-full">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl sm:text-3xl font-bold text-[#1F2937] tracking-tight">EOI Activities</h1>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#F3F4F6] border border-[#E5E7EB] rounded-full">
-                <div className="w-1.5 h-1.5 bg-[#16A34A] rounded-full animate-pulse" />
-                <span className="text-[10px] font-medium text-[#16A34A] uppercase tracking-wider">Live</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#E5E7EB] rounded-full shadow-2xs">
+                <div className="w-2 h-2 bg-[#16A34A] rounded-full animate-pulse" />
+                <span className="text-[10px] font-bold text-[#16A34A] uppercase tracking-wider">LIVE</span>
               </div>
               {refreshing && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full animate-in fade-in slide-in-from-left-2 transition-all">
-                  <div className="w-3 h-3 border-2 border-gray-300 border-t-[#FF6A00] rounded-full animate-spin" />
-                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Updating...</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#E5E7EB] rounded-full animate-in fade-in slide-in-from-left-2 transition-all">
+                  <div className="w-2.5 h-2.5 border-2 border-gray-300 border-t-[#FF6A00] rounded-full animate-spin" />
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">UPDATING...</span>
                 </div>
               )}
             </div>
-            <p className="text-black text-sm font-normal">Track your EOI interactions, mutual interest, and connected parties</p>
+            <p className="text-gray-500 text-sm font-normal">
+              Track your EOI interactions, mutual interest, and connected parties seamlessly.
+            </p>
           </div>
         </div>
 
@@ -185,36 +212,132 @@ export default function DealDashboardPage() {
             />
           ) : (
             <div className="space-y-6">
-              <div className="flex items-center gap-2 px-1">
-                <div className="w-2 h-2 bg-[#FF6A00] rounded-full animate-pulse" />
-                <h2 className="text-xs font-medium uppercase tracking-wider text-[#1F2937]">
-                  Active Deals ({data.length}) · {incomingEOIs.length} incoming
-                </h2>
-              </div>
-              <div className="flex flex-col gap-6">
-                {data.map(item => (
-                  <DashboardRow
-                    key={item.id}
-                    item={item}
-                    error={rowErrors[String(item.id)]}
-                    onEOIClick={() => handleEOIRequest(item)}
-                    onApprove={() => handleApproveEOI(item.id)}
-                    onDecline={() => handleDeclineEOI(item.id)}
-                  />
-                ))}
+              {/* Summary Counter & Filter Tabs Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-200">
+                {/* Left Active Deals Summary */}
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 bg-[#FF6A00] rounded-full animate-pulse" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#1F2937]">
+                    ACTIVE DEALS ({allCount}) <span className="text-gray-400">·</span> <span className="text-[#FF6A00]">{receivedCount} RECEIVED</span>
+                  </h2>
+                </div>
+
+                {/* Right Filter Tabs */}
+                <div className="flex items-center gap-1 bg-[#F3F4F6] p-1 rounded-xl border border-[#E5E7EB] self-start sm:self-auto text-xs">
+                  <button
+                    onClick={() => handleTabChange('all')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                      activeTab === 'all'
+                        ? 'bg-white text-[#1F2937] shadow-2xs font-bold'
+                        : 'text-gray-600 hover:text-[#1F2937]'
+                    }`}
+                  >
+                    All ({allCount})
+                  </button>
+
+                  <button
+                    onClick={() => handleTabChange('received')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                      activeTab === 'received'
+                        ? 'bg-white text-[#1F2937] shadow-2xs font-bold'
+                        : 'text-gray-600 hover:text-[#1F2937]'
+                    }`}
+                  >
+                    Received ({receivedCount})
+                  </button>
+
+                  <button
+                    onClick={() => handleTabChange('sent')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                      activeTab === 'sent'
+                        ? 'bg-white text-[#1F2937] shadow-2xs font-bold'
+                        : 'text-gray-600 hover:text-[#1F2937]'
+                    }`}
+                  >
+                    Sent ({sentCount})
+                  </button>
+
+                  <button
+                    onClick={() => handleTabChange('connected')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                      activeTab === 'connected'
+                        ? 'bg-white text-[#1F2937] shadow-2xs font-bold'
+                        : 'text-gray-600 hover:text-[#1F2937]'
+                    }`}
+                  >
+                    Connected ({connectedCount})
+                  </button>
+                </div>
               </div>
 
-              {/* View More Button */}
-              <div className="mt-12 flex justify-center pb-20">
-                <Link
-                  href="/deal-log"
-                  className="w-full py-4 flex items-center justify-center bg-white border border-[#E5E7EB] rounded-2xl text-[#6B7280] text-sm font-medium hover:bg-[#F9FAFB] hover:border-black transition-all duration-200"
-                >
-                  View More Active Deals
-                </Link>
-              </div>
+              {/* Activity Cards List */}
+              {paginatedData.length === 0 ? (
+                <div className="py-16 text-center bg-white rounded-2xl border border-[#E5E7EB]">
+                  <p className="text-sm font-medium text-gray-500">No active deals found in this category.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {paginatedData.map(item => (
+                    <DashboardRow
+                      key={item.id}
+                      item={item}
+                      error={rowErrors[String(item.id)]}
+                      onEOIClick={() => handleEOIRequest(item)}
+                      onApprove={() => handleApproveEOI(item.id)}
+                      onDecline={() => handleDeclineEOI(item.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {filteredData.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 pb-12 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 font-normal">
+                    Showing <strong className="font-semibold text-gray-700">{filteredData.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + PAGE_SIZE, filteredData.length)}</strong> of <strong className="font-semibold text-gray-700">{filteredData.length}</strong> active deals
+                  </p>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-white border border-[#E5E7EB] rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-all"
+                    >
+                      Previous
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all ${
+                          currentPage === page
+                            ? 'bg-[#FF6A00] text-white shadow-sm'
+                            : 'bg-white border border-[#E5E7EB] text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-white border border-[#E5E7EB] rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-all"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
+        </div>
+
+        {/* Enterprise Security Footer Notice */}
+        <div className="mt-auto py-8 text-center text-[11px] text-gray-400 font-normal flex items-center justify-center gap-1.5">
+          <Shield size={13} className="text-gray-400 shrink-0" />
+          <span>Protected by Enterprise Deal Encryption · All institutional counterparties vetted via standard KYC/AML protocol</span>
         </div>
 
         <SendEOIModal

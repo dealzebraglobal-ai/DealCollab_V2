@@ -24,7 +24,7 @@ export default function GuideHeader({ items, showBack = true }: GuideHeaderProps
   const router = useRouter();
 
   return (
-    <div className="w-full bg-white/90 border-b border-[#E5E7EB] py-4 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-40 shadow-xs backdrop-blur-md">
+    <div className="w-full bg-white/90 border-b border-[#E5E7EB] py-4 px-6 sm:px-10 md:pr-56 flex items-center justify-between sticky top-0 z-40 shadow-xs backdrop-blur-md">
       <div className="flex items-center gap-3 min-w-0">
         {showBack && (
           <button

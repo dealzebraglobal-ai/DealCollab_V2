@@ -60,6 +60,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         isRead: n.is_read === true || n.is_read === 'true',
         // carry match_id through so NEW_COUNTERPARTY cards can deep-link to /matches/[matchId]
         matchId: (n.match_id as string | null) ?? null,
+        proposalId: (n.proposal_id as string | null) ?? null,
+        metadata: (n.metadata as Record<string, unknown> | null) ?? null,
       }));
       // Delay state update to avoid synchronous cascading render warnings in React 19
       Promise.resolve().then(() => setLocalNotifs(mapped));

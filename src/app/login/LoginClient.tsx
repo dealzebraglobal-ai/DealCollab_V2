@@ -321,9 +321,9 @@ const AuthContent = () => {
 export default function LoginClient() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Securing Connection</p>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 border-2 border-[#FF6A00] border-t-transparent rounded-full animate-spin" />
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Securing Connection</p>
       </div>
     }>
       <AuthContent />

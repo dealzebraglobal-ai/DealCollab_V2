@@ -4,7 +4,6 @@ import { GUIDE_CATEGORIES, GUIDE_DOCS } from '@/lib/guideData';
 import GuideHeader from '@/components/guide/GuideHeader';
 import GuideHero from '@/components/guide/GuideHero';
 import GuideSearch from '@/components/guide/GuideSearch';
-import GuideCategory from '@/components/guide/GuideCategory';
 import GuideCard from '@/components/guide/GuideCard';
 import GuideSidebar from '@/components/guide/GuideSidebar';
 import { SearchX } from 'lucide-react';
