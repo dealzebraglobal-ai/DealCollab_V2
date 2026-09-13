@@ -5,6 +5,9 @@ import { buildBlindCounterparty, type CounterpartyProposalRow } from '@/lib/M5_b
 import { buildSynergyReview, type SynergySide } from '@/lib/M5_synergy';
 import { hasAcceptedTerms, recordAcceptance } from '@/lib/consent';
 import { deliverNotificationEmail, type NotificationRow } from '@/lib/email/notifications/delivery';
+import { resolveDbUser } from '@/lib/resolveDbUser';
+
+type AuthUserLike = { id?: string; email?: string; phone?: string };
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
@@ -57,20 +60,17 @@ const INTENT_SHORT: Record<string, string> = {
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    const authUser = session?.user as AuthUserLike | undefined;
+    if (!authUser?.id && !authUser?.email && !authUser?.phone) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    const { data: dbUser, error: userErr } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single();
+    const dbUser = await resolveDbUser(supabase, authUser, 'id');
 
-    if (userErr || !dbUser) {
+    if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
@@ -205,7 +205,10 @@ const TOKEN_COST = 50;
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authUser = session?.user as AuthUserLike | undefined;
+    if (!authUser?.id && !authUser?.email && !authUser?.phone) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
     const { dealId, matchId } = body;
@@ -216,20 +219,21 @@ export async function POST(req: NextRequest) {
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    const { data: dbUser } = await supabase
-      .from('users')
-      .select('id, tokens, profile_completion, profile_completed_once')
-      .ilike('email', session.user.email.trim().toLowerCase())
-      .single();
+    const dbUser = await resolveDbUser<{
+      id: string;
+      tokens: number | null;
+      profile_completion: number | null;
+      profile_completed_once: boolean | null;
+    }>(supabase, authUser, 'id, tokens, profile_completion, profile_completed_once');
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    const termsAccepted = await hasAcceptedTerms(dbUser.id, session.user?.id);
+    const termsAccepted = await hasAcceptedTerms(dbUser.id, authUser?.id);
     const isProfileComplete = !!(dbUser.profile_completed_once || (dbUser.profile_completion ?? 0) >= 100);
 
     if (!termsAccepted) {
       if (isProfileComplete) {
         // Auto-heal terms acceptance for already-completed profile
-        await recordAcceptance(dbUser.id, undefined, session.user?.id).catch(() => {});
+        await recordAcceptance(dbUser.id, undefined, authUser?.id).catch(() => {});
       } else {
         return NextResponse.json(
           {
@@ -375,7 +379,10 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authUser = session?.user as AuthUserLike | undefined;
+    if (!authUser?.id && !authUser?.email && !authUser?.phone) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
     const { id, status } = body; // status: 'approved' | 'declined'
@@ -383,7 +390,7 @@ export async function PATCH(req: NextRequest) {
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    const { data: dbUser } = await supabase.from('users').select('id').eq('email', session.user.email).single();
+    const dbUser = await resolveDbUser(supabase, authUser, 'id');
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     // Ensure user is the receiver
@@ -490,7 +497,10 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authUser = session?.user as AuthUserLike | undefined;
+    if (!authUser?.id && !authUser?.email && !authUser?.phone) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -499,7 +509,7 @@ export async function DELETE(req: NextRequest) {
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error("Supabase client failed to initialize");
 
-    const { data: dbUser } = await supabase.from('users').select('id').eq('email', session.user.email).single();
+    const dbUser = await resolveDbUser(supabase, authUser, 'id');
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     // Fetch EOI to verify ownership

@@ -14,7 +14,99 @@ import useSWR from 'swr';
 
 import { formatMatchScore, normalizeMatchScoreNum } from '@/utils/formatters';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+interface MatchDetailResponse {
+   match: {
+      id: string;
+      proposalId: string;
+      matchedProposalId: string;
+      finalScore: number;
+      matchReason: string;
+      matchArchetype: string | null;
+      status: string;
+   };
+   counterparty: {
+      userId?: string;
+      intent: string;
+      sectors: string[] | null;
+      geographies: string[] | null;
+      dealStructure: string | null;
+      dealSizeMinCr: string | number | null;
+      dealSizeMaxCr: string | number | null;
+      revenueMinCr: string | number | null;
+      revenueMaxCr: string | number | null;
+      anonymizedPreview?: string;
+      teaser?: string;
+      revealedContact?: { advisor: string | null; phone: string | null } | null;
+   };
+   synergy: {
+      alignmentBand: string;
+      comment: string;
+      sectorFit: string;
+      financialFit: string;
+      geographyFit: string;
+   } | null;
+   eoi: { id: string; status: string; isSender: boolean } | null;
+   userTokens?: number;
+}
+
+class ApiError extends Error {
+   status: number;
+   constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+   }
+}
+
+/**
+ * A naive `fetch(url).then(res => res.json())` treats EVERY response as
+ * success data — including a 401/403/404/500 JSON error body (`{error: "..."}`
+ * becomes truthy `data`, so the page renders past the loading/error checks and
+ * crashes destructuring `undefined` fields out of it), an HTML error page
+ * (JSON.parse throws on `<html>...`), or an empty body. This fetcher
+ * classifies the response first so the page can show a real, status-specific
+ * message instead of crashing or showing a raw error page.
+ */
+const fetcher = async (url: string): Promise<MatchDetailResponse> => {
+   let res: Response;
+   try {
+      res = await fetch(url);
+   } catch {
+      throw new ApiError(0, 'Network error — check your connection and try again.');
+   }
+
+   const contentType = res.headers.get('content-type') || '';
+   let body: ({ error?: string; message?: string } & Partial<MatchDetailResponse>) | null = null;
+   if (contentType.includes('application/json')) {
+      body = await res.json().catch(() => null);
+   } else {
+      await res.text().catch(() => ''); // drain HTML/plain-text bodies without parsing as JSON
+   }
+
+   if (!res.ok) {
+      throw new ApiError(res.status, body?.error || body?.message || `Request failed (HTTP ${res.status})`);
+   }
+   if (!body) {
+      throw new ApiError(res.status, 'Received an unexpected empty response.');
+   }
+   return body as MatchDetailResponse;
+};
+
+function mandateErrorState(status: number): { title: string; message: string; showRetry: boolean } {
+   switch (status) {
+      case 401:
+         return { title: 'Session expired', message: 'Please sign in again to view this mandate.', showRetry: false };
+      case 403:
+         return { title: 'Access restricted', message: "You don't have permission to view this mandate.", showRetry: false };
+      case 404:
+         return { title: 'Mandate not found', message: 'It may have been removed or is no longer available.', showRetry: false };
+      case 429:
+         return { title: 'Too many requests', message: 'Please wait a moment and try again.', showRetry: true };
+      case 0:
+         return { title: 'Network error', message: 'Check your connection and try again.', showRetry: true };
+      default:
+         return { title: "We couldn't load this mandate", message: 'Please try again in a moment.', showRetry: true };
+   }
+}
 
 const getIntentLabel = (intent: string) => {
    switch (intent) {
@@ -45,25 +137,70 @@ export default function MatchDetailPage() {
    const { addNotification } = useNotifications();
    const id = params.id as string;
 
-   const { data, error, mutate } = useSWR(`/api/matches/detail/${id}`, fetcher);
+   const { data, error, mutate, isValidating } = useSWR(
+      id ? `/api/matches/detail/${id}` : null,
+      fetcher,
+      {
+         // Don't retry a 401/403/404 — it won't change without user action, and
+         // hammering the endpoint on a permission/not-found error wastes requests.
+         shouldRetryOnError: (err) => !(err instanceof ApiError) || ![401, 403, 404].includes(err.status),
+      },
+   );
    const [isSending, setIsSending] = useState(false);
    const [sendError, setSendError] = useState<string | null>(null);
    const [previewExpanded, setPreviewExpanded] = useState(false);
    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-   if (error) return (
-      <div className="flex-1 p-10 max-w-4xl mx-auto w-full text-center space-y-4">
-         <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-         <h2 className="text-xl font-bold text-gray-800">Failed to load match details</h2>
-         <p className="text-sm text-gray-500">The match record may not exist or you do not have permission to view it.</p>
-         <button onClick={() => router.back()} className="px-6 py-2 bg-gray-800 text-white rounded-xl text-xs font-bold uppercase tracking-widest">
-            Go Back
-         </button>
-      </div>
-   );
+   // Missing mandate ID (e.g. malformed deep link) — same clean state as a 404, no API call made.
+   if (!id) {
+      const s = mandateErrorState(404);
+      return (
+         <div className="flex-1 p-10 max-w-4xl mx-auto w-full text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-bold text-gray-800">{s.title}</h2>
+            <p className="text-sm text-gray-500">{s.message}</p>
+            <button onClick={() => router.push('/deal-log')} className="px-6 py-2 bg-gray-800 text-white rounded-xl text-xs font-bold uppercase tracking-widest">
+               Go Back
+            </button>
+         </div>
+      );
+   }
+
+   if (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const s = mandateErrorState(status);
+      return (
+         <div className="flex-1 p-10 max-w-4xl mx-auto w-full text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-bold text-gray-800">{s.title}</h2>
+            <p className="text-sm text-gray-500">{s.message}</p>
+            <div className="flex items-center justify-center gap-3">
+               {s.showRetry && (
+                  <button
+                     onClick={() => mutate()}
+                     disabled={isValidating}
+                     className="px-6 py-2 bg-[#FF6A00] hover:bg-[#EA580C] text-white rounded-xl text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+                  >
+                     {isValidating ? 'Retrying…' : 'Retry'}
+                  </button>
+               )}
+               {status === 401 ? (
+                  <button onClick={() => router.push('/login')} className="px-6 py-2 bg-gray-800 text-white rounded-xl text-xs font-bold uppercase tracking-widest">
+                     Sign In
+                  </button>
+               ) : (
+                  <button onClick={() => router.push('/deal-log')} className="px-6 py-2 bg-gray-800 text-white rounded-xl text-xs font-bold uppercase tracking-widest">
+                     Go Back
+                  </button>
+               )}
+            </div>
+         </div>
+      );
+   }
 
    if (!data) return (
       <div className="flex-1 p-10 max-w-7xl mx-auto w-full space-y-8 animate-pulse">
+         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Loading mandate…</p>
          <div className="w-48 h-8 bg-gray-100 rounded-xl" />
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8 h-96 bg-gray-50 rounded-[32px]" />
@@ -72,7 +209,31 @@ export default function MatchDetailPage() {
       </div>
    );
 
-   const { match, counterparty, eoi, synergy } = data;
+   // One malformed match/counterparty payload must not crash the whole page —
+   // render the same "couldn't load" state instead of an uncaught TypeError.
+   if (!data.match || !data.counterparty) {
+      const s = mandateErrorState(500);
+      return (
+         <div className="flex-1 p-10 max-w-4xl mx-auto w-full text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-bold text-gray-800">{s.title}</h2>
+            <p className="text-sm text-gray-500">{s.message}</p>
+            <button onClick={() => mutate()} className="px-6 py-2 bg-[#FF6A00] hover:bg-[#EA580C] text-white rounded-xl text-xs font-bold uppercase tracking-widest">
+               Retry
+            </button>
+         </div>
+      );
+   }
+
+   const { match, eoi, synergy } = data;
+   // Defensive defaults — a WhatsApp-created counterparty proposal can legitimately
+   // have empty arrays for these (no sector/geography captured yet); the JSX below
+   // calls .join()/.map() on them unconditionally.
+   const counterparty = {
+      ...data.counterparty,
+      sectors: Array.isArray(data.counterparty.sectors) ? data.counterparty.sectors : [],
+      geographies: Array.isArray(data.counterparty.geographies) ? data.counterparty.geographies : [],
+   };
 
    const dealSummary = counterparty?.anonymizedPreview || counterparty?.teaser || '';
 

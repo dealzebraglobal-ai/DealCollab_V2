@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { buildBlindCounterparty, type CounterpartyProposalRow } from '@/lib/M5_blindCard';
 import { buildSynergyReview, type SynergySide } from '@/lib/M5_synergy';
+import { resolveDbUser } from '@/lib/resolveDbUser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,8 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    const authUser = session?.user as { id?: string; email?: string; phone?: string } | undefined;
+    if (!authUser?.id && !authUser?.email && !authUser?.phone) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,11 +28,13 @@ export async function GET(
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error('Supabase client failed to initialize');
 
-    const { data: dbUser } = await supabase
-      .from('users')
-      .select('id, tokens')
-      .eq('email', session.user.email)
-      .single();
+    // WhatsApp-authenticated sessions don't reliably match on email alone —
+    // resolve by id, then email, then phone (same order as /api/deals).
+    const dbUser = await resolveDbUser<{ id: string; tokens: number | null }>(
+      supabase,
+      authUser,
+      'id, tokens',
+    );
 
     if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
