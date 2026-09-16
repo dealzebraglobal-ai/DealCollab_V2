@@ -49,6 +49,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
   const [formData, setFormData] = useState<ProfileFormData>(INITIAL_FORM_DATA);
   const [direction, setDirection] = useState<'next' | 'back'>('next');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const dbHydrated = useRef(false);
   const sessionHydrated = useRef(false);
 
@@ -159,6 +160,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
 
   const handleBack = () => {
     if (currentStep > 1) {
+      setSubmitError(null);
       setDirection('back');
       setCurrentStep(prev => prev - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -179,24 +181,45 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
 
   const handleFinalSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       // 1. Handle File Upload if present (Direct to Supabase via Signed URL)
       let attachmentUrl = formData.attachmentUrl;
       if (formData.attachmentFile) {
         // A. Get Signed URL from our backend
         const signedRes = await fetch(`/api/profile/upload/signed-url?file=${encodeURIComponent(formData.attachmentFile.name)}&type=${encodeURIComponent(formData.attachmentFile.type)}`);
-        const { uploadUrl, path, error: signedError } = await signedRes.json();
-        
-        if (!signedRes.ok) throw new Error(signedError || 'Failed to get upload permission');
+        const signedBody = await signedRes.json().catch(() => null);
+
+        if (!signedRes.ok) {
+          throw new Error(`Profile submission failed: ${signedBody?.error || 'could not prepare attachment upload.'}`);
+        }
+        const { uploadUrl, path } = signedBody || {};
+        if (!uploadUrl || !path) {
+          throw new Error('Profile submission failed: invalid attachment upload response.');
+        }
 
         // B. Upload directly to Supabase (Bypasses Vercel 4.5MB limit)
-        const uploadRes = await fetch(uploadUrl, {
-          method: 'PUT',
-          body: formData.attachmentFile,
-          headers: { 'Content-Type': formData.attachmentFile.type }
-        });
+        let uploadRes: Response;
+        try {
+          uploadRes = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: formData.attachmentFile,
+            headers: { 'Content-Type': formData.attachmentFile.type },
+          });
+        } catch {
+          throw new Error('Profile submission failed: network error while uploading attachment. Please check your connection and try again.');
+        }
 
-        if (!uploadRes.ok) throw new Error('Direct upload to storage failed');
+        if (!uploadRes.ok) {
+          // A signed upload URL is only valid for 5 minutes (see /api/profile/upload/signed-url) —
+          // 400/403 here from Supabase Storage most often means it expired mid-form-fill.
+          const expired = uploadRes.status === 400 || uploadRes.status === 403;
+          throw new Error(
+            expired
+              ? 'Profile submission failed: attachment upload link expired. Please reselect the file and try again.'
+              : `Profile submission failed: attachment upload failed (HTTP ${uploadRes.status}).`,
+          );
+        }
 
         // C. Get the public URL
         const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/profile-attachments/${path}`;
@@ -238,22 +261,52 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
         is_google_url: finalProfileImage?.includes('googleusercontent.com')
       });
       
-      const response = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          ...submitData, 
-          attachmentUrl, 
-          profileImage: finalProfileImage, // Ensure we use the NEW one
-          // Step 5: Prevent empty array overwrite
-          currentFocus: (submitData.currentFocus && submitData.currentFocus.length > 0) 
-            ? submitData.currentFocus 
-            : undefined
-        }),
-      });
-      const result = await response.json();
-      
-      if (!response.ok) throw new Error(result.errors?.[0]?.message || 'Submission failed');
+      let response: Response;
+      try {
+        response = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...submitData,
+            attachmentUrl,
+            profileImage: finalProfileImage, // Ensure we use the NEW one
+            // Step 5: Prevent empty array overwrite
+            currentFocus: (submitData.currentFocus && submitData.currentFocus.length > 0)
+              ? submitData.currentFocus
+              : undefined
+          }),
+        });
+      } catch {
+        throw new Error('Profile submission failed: network error. Please check your connection and try again.');
+      }
+
+      // The backend returns TWO different failure shapes depending on the
+      // path taken — {errors: [{message}]} for input validation (400), and
+      // {error: "..."} for everything else (401/404/409/500/503). Reading
+      // only `errors[0].message` (the previous behavior) silently discarded
+      // every non-validation failure and fell back to the generic
+      // "Submission failed" the user saw with zero diagnostic value.
+      const contentType = response.headers.get('content-type') || '';
+      const result = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null;
+
+      if (!response.ok) {
+        const backendMessage = result?.errors?.[0]?.message || result?.error;
+        const statusMessage =
+          response.status === 401 ? 'your session has expired — please sign in again.' :
+          response.status === 403 ? 'you do not have permission to update this profile.' :
+          response.status === 404 ? 'your user account could not be found.' :
+          response.status === 409 ? 'this profile was updated elsewhere — please refresh and try again.' :
+          response.status === 413 ? 'your attachment is too large for the server to accept.' :
+          response.status === 429 ? 'too many attempts — please wait a moment and try again.' :
+          response.status >= 500 ? 'the server had a problem saving your profile. Please try again.' :
+          'please check your details and try again.';
+        throw new Error(`Profile submission failed: ${backendMessage || statusMessage}`);
+      }
+      if (!result) {
+        throw new Error('Profile submission failed: received an unexpected response from the server.');
+      }
 
       // Update local state and rewards immediately
       updateReadiness('identity', 20);
@@ -284,10 +337,14 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
         response: result
       });
     } catch (error: unknown) {
-      console.error("FULL ERROR:", error);
-      console.error("STRINGIFIED:", JSON.stringify(error, null, 2));
-      const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
-      alert(errorMessage || 'Failed to save profile. Please try again.');
+      // Full detail stays in the browser console for debugging — never in the
+      // user-facing message (no stack traces, no internal error shapes).
+      console.error("[ProfileStepper] submission failed:", error);
+      const rawMessage = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      const userMessage = rawMessage.startsWith('Profile submission failed:')
+        ? rawMessage
+        : 'Profile submission failed: something went wrong. Please try again.';
+      setSubmitError(userMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -775,6 +832,19 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
 
       {/* STICKY FOOTER NAVIGATION */}
       <div className="sticky bottom-0 w-full bg-white/80 backdrop-blur-xl border-t border-gray-100 py-6 px-6 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] mt-auto">
+        {submitError && (
+          <div className="max-w-5xl mx-auto mb-4 flex items-center justify-between gap-4 px-5 py-3 rounded-2xl bg-red-50 border border-red-100">
+            <p className="text-xs font-bold text-red-600">{submitError}</p>
+            <button
+              type="button"
+              onClick={handleFinalSubmit}
+              disabled={isSubmitting}
+              className="shrink-0 px-4 py-2 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Retrying…' : 'Try Again'}
+            </button>
+          </div>
+        )}
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <button onClick={handleBack} disabled={currentStep === 1 || isSubmitting} className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border-2 ${currentStep === 1 ? 'bg-gray-50 text-gray-300 border-gray-100' : 'bg-white border-brand-accent/20 text-brand-accent hover:bg-brand-accent/5'}`}>
             <ChevronLeft size={18} /> Back
@@ -787,22 +857,26 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
           </div>
 
           <div className="flex items-center gap-4">            {progress === 100 && currentStep < activeTotalSteps && (
-              <button 
-                onClick={handleFinalSubmit} 
+              <button
+                onClick={handleFinalSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2 border-green-100 text-green-600 hover:bg-green-50 active:scale-95"
+                className="flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2 border-green-100 text-green-600 hover:bg-green-50 active:scale-95 disabled:opacity-50"
               >
-                Finalize & Skip <Zap size={14} className="fill-green-600" />
+                {isSubmitting ? 'Submitting…' : 'Finalize & Skip'} <Zap size={14} className="fill-green-600" />
               </button>
             )}
- 
-            <button 
-              onClick={handleNext} 
-              disabled={!isValid || isSubmitting} 
+
+            <button
+              onClick={handleNext}
+              disabled={!isValid || isSubmitting}
               className={`flex items-center gap-4 px-12 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all ${isValid ? 'bg-[#0B1B2B] text-white hover:bg-brand-accent' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
             >
-              {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 
-              currentStep === activeTotalSteps ? <>Finalize Profile <Zap size={16} className="fill-white" /></> : <>Next Step <ChevronRight size={18} /></>}
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Submitting…
+                </>
+              ) : currentStep === activeTotalSteps ? <>Finalize Profile <Zap size={16} className="fill-white" /></> : <>Next Step <ChevronRight size={18} /></>}
             </button>
 
           </div>

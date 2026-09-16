@@ -2,6 +2,7 @@
 import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveDbUser } from '@/lib/resolveDbUser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -67,7 +68,8 @@ export async function GET(
 ) {
     try {
         const session = await auth();
-        if (!session?.user?.email) {
+        const authUser = session?.user as { id?: string; email?: string; phone?: string } | undefined;
+        if (!authUser?.id && !authUser?.email && !authUser?.phone) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -79,12 +81,13 @@ export async function GET(
         const supabase = createServerSupabaseClient();
         if (!supabase) throw new Error('Supabase init failed');
 
-        // Verify ownership
-        const { data: userRow } = await supabase
-            .from('users')
-            .select('id, tokens')
-            .eq('email', session.user.email)
-            .single();
+        // Verify ownership — id, then email, then phone (WhatsApp sessions
+        // don't reliably match on email alone; same order as /api/deals).
+        const userRow = await resolveDbUser<{ id: string; tokens: number | null }>(
+            supabase,
+            authUser,
+            'id, tokens',
+        );
 
         if (!userRow) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 

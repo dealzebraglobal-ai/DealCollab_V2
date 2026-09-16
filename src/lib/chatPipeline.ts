@@ -117,6 +117,23 @@ export function remergeConcurrentState(
   return out as unknown as RouterState;
 }
 
+/**
+ * Transient/infra-level failures (gateway timeouts, dropped connections,
+ * momentary 5xx from Supabase's edge) vs. genuine data/permission errors.
+ * Only the former are safe to retry — retrying a permission or "column does
+ * not exist" error just wastes the same round-trip three times.
+ */
+export function isTransientDbError(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return /gateway timeout|timed?\s*out|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|network|fetch failed|too many connections|connection.*(closed|reset|refused)|57014|08006|08003|08001|\b502\b|\b503\b|\b504\b/i.test(
+    message,
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResult> {
   const { userId, channel } = params;
   const message = normalizeMessage(params.rawMessage || '');
@@ -135,11 +152,35 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
   let storedState: RouterState = createBlankState();
 
   if (activeChatId) {
-    const { data: existingSession, error: loadErr } = await supabase
-      .from('chat_sessions')
-      .select('id, state')
-      .eq('id', activeChatId)
-      .single();
+    // Read-only lookup, safe to retry: a GET can never duplicate a message or
+    // action, unlike the writes below. A "Gateway Timeout" here is Supabase's
+    // edge/PostgREST layer failing to complete the request in time — almost
+    // always a momentary infra blip, not a sign the row or state is bad — so
+    // a couple of short, backed-off retries clear most of them without ever
+    // touching the stored session.
+    const STATE_LOAD_RETRY_DELAYS_MS = [250, 750];
+    let existingSession: { id: string; state: unknown } | null = null;
+    let loadErr: { code?: string; message: string } | null = null;
+
+    for (let attempt = 0; attempt <= STATE_LOAD_RETRY_DELAYS_MS.length; attempt++) {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('id, state')
+        .eq('id', activeChatId)
+        .single();
+      existingSession = data;
+      loadErr = error;
+
+      if (!error) break;
+      if (error.code === 'PGRST116') break; // no rows — not transient, don't retry
+      if (attempt === STATE_LOAD_RETRY_DELAYS_MS.length || !isTransientDbError(error.message)) break;
+
+      console.warn(
+        `[SESSION] state load attempt ${attempt + 1} failed transiently (${error.message}) — ` +
+          `retrying in ${STATE_LOAD_RETRY_DELAYS_MS[attempt]}ms`,
+      );
+      await sleep(STATE_LOAD_RETRY_DELAYS_MS[attempt]);
+    }
 
     if (loadErr) {
       // PGRST116 = "no rows" → the id is genuinely gone; safe to start fresh.
@@ -151,7 +192,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
         console.warn(`[SESSION] chatId ${activeChatId} not found — starting a new session.`);
         activeChatId = null;
       } else {
-        console.error('[SESSION] state load failed (preserving session, not wiping):', loadErr.message);
+        console.error('[SESSION] state load failed after retries (preserving session, not wiping):', loadErr.message);
         throw new Error(`Session state load failed: ${loadErr.message}`);
       }
     } else if (!existingSession) {

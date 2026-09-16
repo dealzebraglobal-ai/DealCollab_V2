@@ -139,31 +139,49 @@ export async function GET(_req: NextRequest) {
   }
 }
 
+function genRequestId(): string {
+  try {
+    const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+    if (c?.randomUUID) return c.randomUUID();
+  } catch { /* fall through */ }
+  return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function logProfileCreate(requestId: string, stage: string, status: 'start' | 'success' | 'failed', extra: Record<string, unknown> = {}) {
+  // Never log passwords/tokens/attachment contents — ids and status only.
+  console.log(`[PROFILE_CREATE] requestId=${requestId} stage=${stage} status=${status}`, extra);
+}
+
 export async function POST(req: NextRequest) {
+  const requestId = genRequestId();
   const supabase = createServerSupabaseClient();
   if (!supabase) {
-    console.error('[PROFILE POST] Supabase init failed:', {
+    logProfileCreate(requestId, 'init', 'failed', {
       hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     });
-    return NextResponse.json({ error: 'Database not configured. Check Vercel environment variables.' }, { status: 503 });
+    return NextResponse.json({ error: 'Database not configured. Check Vercel environment variables.', requestId }, { status: 503 });
   }
   const session = await auth();
 
   if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logProfileCreate(requestId, 'auth', 'failed');
+    return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401 });
   }
 
   try {
     const body = await req.json() as ProfileFormData;
     const email = session.user.email.trim().toLowerCase();
+    logProfileCreate(requestId, 'auth', 'success', { userEmailDomain: email.split('@')[1] });
 
     // 1. Validate Input (Using PRD rules)
     const errors = validateFullProfile(body);
     if (errors.length > 0) {
-      return NextResponse.json({ errors }, { status: 400 });
+      logProfileCreate(requestId, 'validation', 'failed', { fields: errors.map(e => e.field) });
+      return NextResponse.json({ errors, requestId }, { status: 400 });
     }
+    logProfileCreate(requestId, 'validation', 'success');
 
     // Fetch current user state
     const { data: currentUser, error: fetchError } = await supabase
@@ -173,9 +191,10 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (fetchError || !currentUser) {
-      if (fetchError) console.error("Supabase error:", fetchError);
-      return NextResponse.json({ error: fetchError?.message || 'User not found' }, { status: 404 });
+      logProfileCreate(requestId, 'user_lookup', 'failed', { reason: fetchError?.message || 'not_found' });
+      return NextResponse.json({ error: fetchError?.message || 'User not found', requestId }, { status: 404 });
     }
+    logProfileCreate(requestId, 'user_lookup', 'success', { userId: currentUser.id });
 
     // Reward logic: will be re-evaluated after re-calculating the new score based on DB state
     let shouldShowSuccess = false;
@@ -244,9 +263,10 @@ export async function POST(req: NextRequest) {
       .ilike("email", email);
 
     if (updateError) {
-      console.error("Supabase error:", updateError);
+      logProfileCreate(requestId, 'database_insert', 'failed', { reason: updateError.message });
       throw new Error(updateError.message);
     }
+    logProfileCreate(requestId, 'database_insert', 'success', { userId: currentUser.id });
 
     if (isBusinessPromoter) {
       const { error: eupError } = await supabase
@@ -261,6 +281,7 @@ export async function POST(req: NextRequest) {
         }, { onConflict: 'user_id' });
 
       if (eupError) {
+        logProfileCreate(requestId, 'attachment_association', 'failed', { reason: eupError.message });
         console.error('[PROFILE POST] end_user_profiles upsert error:', eupError);
         throw new Error(`Failed to save End User profile: ${eupError.message}`);
       }
@@ -363,19 +384,24 @@ export async function POST(req: NextRequest) {
         .ilike("email", email);
     }
 
+    logProfileCreate(requestId, 'complete', 'success', { isComplete, progress: isComplete ? 100 : score });
     return NextResponse.json({
       success: true,
       rewarded: tokenIncrement > 0,
       shouldShowSuccess,
       progress: isComplete ? 100 : score,
       isComplete,
-      missingFields: isComplete ? [] : canonical.missingFields
+      missingFields: isComplete ? [] : canonical.missingFields,
+      requestId,
     });
   } catch (error: unknown) {
-    console.error("FULL ERROR:", error);
-    console.error("STRINGIFIED:", JSON.stringify(error, null, 2));
-    const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    // Full detail (including stack) stays server-side only — the response
+    // carries a message + requestId so a user report can be traced back to
+    // this exact log line without exposing internals to the client.
+    logProfileCreate(requestId, 'unhandled', 'failed', { reason: error instanceof Error ? error.message : String(error) });
+    console.error(`[PROFILE_CREATE] requestId=${requestId} full error:`, error);
+    const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unexpected server error');
+    return NextResponse.json({ error: errorMessage, requestId }, { status: 500 });
   }
 }
 

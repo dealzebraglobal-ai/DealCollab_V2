@@ -91,8 +91,24 @@ async function wappBizRequest<T = unknown>(
     try {
       parsed = rawText ? JSON.parse(rawText) : undefined;
     } catch {
-      console.error(`[Wappbiz error] ${endpointPath} returned a non-JSON response (HTTP ${res.status})`);
-      return { success: false, error: 'Wappbiz returned a malformed response' };
+      // BUG FIX: this branch previously omitted `status` from the returned
+      // result. Callers (e.g. sendWappBizButtons' self-disable check) key off
+      // `res.status === 404`, so a non-JSON 404 body — exactly what an
+      // undocumented/removed WappBiz route returns (an HTML/plain-text 404
+      // page, not a JSON envelope) — silently bypassed self-disable and kept
+      // retrying the dead endpoint on every single call.
+      const looksHtml = /^\s*</.test(rawText);
+      console.error(
+        `[Wappbiz error] ${endpointPath} returned a non-JSON response (HTTP ${res.status}${looksHtml ? ', HTML body' : ''})`,
+      );
+      return {
+        success: false,
+        status: res.status,
+        error:
+          res.status === 404
+            ? `Wappbiz endpoint ${endpointPath} not found (404)`
+            : 'Wappbiz returned a malformed response',
+      };
     }
 
     if (!res.ok || parsed?.error) {
@@ -217,14 +233,41 @@ export async function sendWappBizMessage(phone: string, text: string) {
  * ("1", "2", "3") in addition to the button-id-style commands it expects
  * today, since a user is now replying to numbered text, not tapping a button.
  */
-// Self-disabling: once WappBiz answers the interactive endpoint with a
-// structural error (404 unknown route / 400 bad param), stop calling it for
-// the rest of this process and go straight to numbered text — so a provider
-// that has NOT actually shipped buttons costs at most one extra round-trip,
-// once, not on every message (Problem 1: response speed).
-let interactiveButtonsDisabled = process.env.WAPPBIZ_BUTTONS_DISABLED === '1';
+/**
+ * Resolves the operator-confirmed button endpoint, if any. WappBiz's
+ * documented Messages APIs (see file header) do not include an
+ * interactive/button endpoint, and `/sendServiceButtonMessage` has been
+ * confirmed to 404 in production — so it is NOT used as a silent default.
+ * Buttons are only attempted once an operator sets WAPPBIZ_BUTTONS_ENDPOINT
+ * after confirming a real working path for their WappBiz plan.
+ */
+function resolveButtonsEndpoint(): string | null {
+  const raw = process.env.WAPPBIZ_BUTTONS_ENDPOINT;
+  if (!raw) return null;
+  if (!raw.startsWith('/')) {
+    console.error(
+      `[Wappbiz config] WAPPBIZ_BUTTONS_ENDPOINT="${raw}" is invalid — must be a path starting with '/' ` +
+        `(e.g. "/sendServiceButtonMessage"). Ignoring; interactive buttons will stay disabled.`,
+    );
+    return null;
+  }
+  return raw;
+}
 
-const WAPPBIZ_BUTTON_ENDPOINT = process.env.WAPPBIZ_BUTTONS_ENDPOINT || '/sendServiceButtonMessage';
+const WAPPBIZ_BUTTON_ENDPOINT = resolveButtonsEndpoint();
+
+// Self-disabling: if a confirmed endpoint is later configured but turns out
+// to still 404 / reject the payload (400) for this account, stop calling it
+// for the rest of this process and go straight to numbered text — so a
+// provider that has NOT actually shipped buttons costs at most one extra
+// round-trip, once, not on every message. NOTE: this in-memory flag does not
+// survive a serverless cold start (Vercel spins up fresh instances per
+// request), so it is a latency/log-noise optimization only, never the
+// primary safeguard — the primary safeguard is defaulting to disabled below
+// when no endpoint has been confirmed at all.
+let interactiveButtonsDisabled =
+  process.env.WAPPBIZ_BUTTONS_DISABLED === '1' || !WAPPBIZ_BUTTON_ENDPOINT;
+let hasLoggedButtonsDisabledReason = false;
 
 /** Numbered-text rendering — the always-available fallback and the pre-buttons behaviour. */
 function buttonsAsNumberedText(text: string, buttons: Array<{ id: string; title: string }>): string {
@@ -241,7 +284,17 @@ function buttonsAsNumberedText(text: string, buttons: Array<{ id: string; title:
 export async function sendWappBizButtons(phone: string, text: string, buttons: Array<{ id: string; title: string }>) {
   const trimmed = buttons.slice(0, 3);
 
-  if (!interactiveButtonsDisabled && trimmed.length > 0) {
+  if (interactiveButtonsDisabled && !hasLoggedButtonsDisabledReason) {
+    hasLoggedButtonsDisabledReason = true;
+    console.log(
+      process.env.WAPPBIZ_BUTTONS_DISABLED === '1'
+        ? '[WAPPBIZ INTERACTIVE] disabled via WAPPBIZ_BUTTONS_DISABLED=1 — sending numbered text instead.'
+        : '[WAPPBIZ INTERACTIVE] no confirmed button endpoint configured (set WAPPBIZ_BUTTONS_ENDPOINT once one is ' +
+            'verified for this WappBiz plan) — sending numbered text instead.',
+    );
+  }
+
+  if (!interactiveButtonsDisabled && trimmed.length > 0 && WAPPBIZ_BUTTON_ENDPOINT) {
     const config = getWappBizConfig();
     // Loud, structured diagnostics — this is the ONLY way to tell whether
     // (A) we never send, (B) our payload is invalid, (C) WappBiz rejects it,

@@ -33,10 +33,30 @@ export async function GET() {
     console.log("userId:", userId);
 
     // 2. Fetch sessions using correct userId
+    // WEB/WHATSAPP separation: a user can have the same users.id across both
+    // channels (e.g. after linking their WhatsApp phone to their web
+    // account), so filtering by user_id alone also returns their WhatsApp-
+    // originated sessions — those must never appear in this web sidebar
+    // list. WhatsApp sessions are reliably identifiable two ways in the
+    // existing schema (src/db/schema.ts's chatSessions table):
+    //   - whatsapp_phone_number: only ever set by the WhatsApp pipeline
+    //     (chatPipeline.ts's runChatTurn only populates it when
+    //     channel === 'WHATSAPP'; the web route never sets it) — always
+    //     NULL for a web session, so this alone is a sufficient filter.
+    //   - source: also channel-tagged, but inconsistently cased across the
+    //     two call sites ('web' lowercase from src/app/api/chat/route.ts's
+    //     `source.toLowerCase()` vs 'WHATSAPP'/'WHATSAPP-WAPPBIZ' uppercase
+    //     from chatPipeline.ts/chatbot.ts) — matched case-insensitively as a
+    //     defense-in-depth belt-and-suspenders, not the primary filter.
+    // Only this listing query is touched — /api/chat/[id] (load a specific
+    // chat by id) and the WhatsApp pipeline itself are untouched, so this is
+    // purely a presentation/retrieval-layer change.
     const { data: history, error: historyErr } = await supabase
       .from("chat_sessions")
       .select("*")
       .eq("user_id", userId)
+      .is("whatsapp_phone_number", null)
+      .not("source", "ilike", "whatsapp%")
       .order("created_at", { ascending: false });
 
     if (historyErr) {
