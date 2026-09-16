@@ -47,6 +47,16 @@ const DOCUMENT_MIME_TO_TYPE: Record<string, string> = {
   'text/plain': 'txt',
 };
 
+function resolveMimeType(file: File): string {
+  if (file.type && DOCUMENT_MIME_TO_TYPE[file.type]) return file.type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.pdf')) return 'application/pdf';
+  if (name.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (name.endsWith('.doc')) return 'application/msword';
+  if (name.endsWith('.txt')) return 'text/plain';
+  return file.type || 'unknown';
+}
+
 interface RowResult {
   file: string;
   row?: number;
@@ -127,7 +137,7 @@ export async function POST(req: NextRequest) {
     // side-channel. Now uses the same constant-time compare as chat/route.ts.
     const isAdmin = isValidAdminSecret(req.headers.get('x-admin-secret'));
     let userId: string;
-    
+
     const supabase = createServerSupabaseClient();
     if (!supabase) throw new Error('Supabase client init failed');
 
@@ -208,14 +218,15 @@ export async function POST(req: NextRequest) {
       }
 
       // ── Document path: one file = one mandate ──────────────────
-      const docType = DOCUMENT_MIME_TO_TYPE[file.type];
+      const mimeType = resolveMimeType(file);
+      const docType = DOCUMENT_MIME_TO_TYPE[mimeType];
       if (!docType) {
-        results.push({ file: file.name, status: 'error', reason: `Unsupported file type: ${file.type || 'unknown'}` });
+        results.push({ file: file.name, status: 'error', reason: `Unsupported file type: ${mimeType || 'unknown'}` });
         continue;
       }
 
       try {
-        const extraction = await extractTextFromFile(buffer, file.type);
+        const extraction = await extractTextFromFile(buffer, mimeType);
         const cleanText = extraction.text.trim();
         if (!cleanText) {
           results.push({ file: file.name, status: 'error', reason: 'No text could be extracted from this document' });
@@ -245,26 +256,26 @@ export async function POST(req: NextRequest) {
           results.push({ file: file.name, status: 'skipped', reason: 'Could not determine deal intent (buy/sell/raise/debt/partner) from document' });
           continue;
         }
-        
+
         // Use extracted canonical fields if available, otherwise fallback
         const dealSizeMin = structuredData.deal_size_min_cr !== undefined ? (structuredData.deal_size_min_cr as number | null) : null;
         const dealSizeMax = structuredData.deal_size_max_cr !== undefined ? (structuredData.deal_size_max_cr as number | null) : null;
         const revenueMin = structuredData.revenue_min_cr !== undefined ? (structuredData.revenue_min_cr as number | null) : null;
         const revenueMax = structuredData.revenue_max_cr !== undefined ? (structuredData.revenue_max_cr as number | null) : null;
-        
+
         const dealSizeText = (structuredData.deal_size as string) ?? detectDealSizeFromText(cleanText);
         const revenueText = (structuredData.revenue as string) ?? detectRevenueFromText(cleanText);
-        
+
         let sizeParsed = { min_cr: dealSizeMin, max_cr: dealSizeMax };
         if (dealSizeMin === null && dealSizeMax === null && dealSizeText) {
-             const norm = normalizeSize(dealSizeText);
-             if (norm) sizeParsed = { min_cr: norm.min_cr, max_cr: norm.max_cr };
+          const norm = normalizeSize(dealSizeText);
+          if (norm) sizeParsed = { min_cr: norm.min_cr, max_cr: norm.max_cr };
         }
-        
+
         let revenueParsed = { min_cr: revenueMin, max_cr: revenueMax };
         if (revenueMin === null && revenueMax === null && revenueText) {
-             const norm = normalizeSize(revenueText);
-             if (norm) revenueParsed = { min_cr: norm.min_cr, max_cr: norm.max_cr };
+          const norm = normalizeSize(revenueText);
+          if (norm) revenueParsed = { min_cr: norm.min_cr, max_cr: norm.max_cr };
         }
 
         // Best-effort storage upload for the document URL — non-blocking if it fails.
@@ -321,9 +332,9 @@ export async function POST(req: NextRequest) {
           proposalId: match?.proposalId, matchCount: match?.matchCount ?? 0,
         });
       } catch (err) {
-        results.push({ 
-          file: file.name, 
-          status: 'error', 
+        results.push({
+          file: file.name,
+          status: 'error',
           reason: (err instanceof Error ? err.message : String(err))
         });
       }

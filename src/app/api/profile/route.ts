@@ -317,8 +317,18 @@ export async function POST(req: NextRequest) {
     const isComplete = canonical.isComplete || score === 100;
     let tokenIncrement = 0;
 
+    // Check if user already received onboarding tokens previously
+    const { data: existingGrant } = await supabase
+      .from('token_transactions')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .in('action', ['SIGNUP_GRANT', 'Profile Completion Reward'])
+      .maybeSingle();
+
     // Reward logic: +100 tokens if reaching 100% for the first time
-    if (isComplete && !currentUser.profile_completed_once) {
+    const isFirstTimeCompletion = isComplete && !currentUser.profile_completed_once && !existingGrant;
+
+    if (isFirstTimeCompletion) {
       tokenIncrement = 100;
       const finalTokensWithReward = (updatedUser.tokens ?? 0) + tokenIncrement;
 

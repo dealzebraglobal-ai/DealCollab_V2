@@ -180,23 +180,6 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
   const handleFinalSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // 0. Submit Terms Acceptance if step 9 is checked
-      if (formData.termsAccepted) {
-        try {
-          const consentRes = await fetch('/api/consent/accept', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accepted: true }),
-          });
-          const consentData = await consentRes.json().catch(() => ({}));
-          if (!consentRes.ok) {
-            console.warn('[ProfileStepper] Terms acceptance warning:', consentData?.message || consentData?.error);
-          }
-        } catch (consentErr) {
-          console.error('[ProfileStepper] Terms acceptance network error:', consentErr);
-        }
-      }
-
       // 1. Handle File Upload if present (Direct to Supabase via Signed URL)
       let attachmentUrl = formData.attachmentUrl;
       if (formData.attachmentFile) {
@@ -280,11 +263,10 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
       updateReadiness('collaboration', 15);
       updateReadiness('additional', 20);
 
+      // Only show the 100 free tokens success screen if user was genuinely rewarded this time
       const isRewardedOrSuccess = !!(
         result.rewarded || 
-        result.shouldShowSuccess || 
-        result.isComplete || 
-        result.progress === 100
+        result.shouldShowSuccess
       );
       if (result.rewarded) {
         addTokens(100);
