@@ -21,7 +21,8 @@ export interface Notification {
   id: number | string;
   type: NotificationType;
   message: string;
-  time: string;
+  time: string;       // relative, e.g. "5 minutes ago" — from the centralized src/utils/date.ts
+  exactTime?: string | null; // exact, e.g. "18 Sep 2026, 3:06 PM" — shown as a tooltip on the relative time
   isRead: boolean;
   matchId?: string | null;   // present on NEW_COUNTERPARTY alerts; deep-links to /deal-log/[id] (id = proposal_matches.id)
   proposalId?: string | null;
@@ -64,6 +65,12 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
 
   // Extract Intent / Category Label
   const extractIntent = () => {
+    // New-match alerts always lead with a clear "NEW MATCH FOUND" heading rather than the
+    // mandate's own intent label (e.g. "SELL-SIDE"), which used to get picked up from the
+    // message body below and made every match alert look like a generic mandate update.
+    if (notification.type === 'new_counterparty' || notification.type === 'match') {
+      return 'NEW MATCH FOUND';
+    }
     const msg = notification.message.toUpperCase();
     if (msg.includes('SELL-SIDE') || msg.includes('SELL_SIDE') || msg.includes('SELL SIDE')) return 'SELL-SIDE';
     if (msg.includes('BUY-SIDE') || msg.includes('BUY_SIDE') || msg.includes('BUY SIDE')) return 'BUY-SIDE';
@@ -72,9 +79,6 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
     if (msg.includes('PARTNERSHIP')) return 'PARTNERSHIP';
 
     switch (notification.type) {
-      case 'new_counterparty':
-      case 'match':
-        return 'AI MATCH';
       case 'eoi_received':
         return 'INCOMING OFFER';
       case 'eoi_approved':
@@ -167,7 +171,10 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
             )}
           </div>
 
-          <span className="text-xs text-gray-400 font-normal shrink-0">
+          <span
+            className="text-xs text-gray-400 font-normal shrink-0"
+            title={notification.exactTime || undefined}
+          >
             {notification.time}
           </span>
         </div>

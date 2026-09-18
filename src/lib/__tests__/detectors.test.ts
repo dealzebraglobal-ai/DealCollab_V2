@@ -8,7 +8,50 @@ import {
   detectFrictionSignal,
   detectTradingDistribution,
   detectHelpQuery,
+  detectContractManufacturingExposure,
 } from '../detectors';
+
+// Regression suite for the "contract manufacturing" sector-contamination bug:
+// mentioning "contract manufacturing" / "manufacturing exposure" as a business-model
+// detail must never overwrite the mandate's actual target industry with the generic
+// "manufacturing" sector.
+describe('detectSectorFromText — contract manufacturing must not contaminate sector', () => {
+  it('TEST 1: Toys + contract manufacturing → consumer (NOT manufacturing)', () => {
+    expect(detectSectorFromText(
+      'We are looking to identify sell-side opportunities in the Toys sector, established businesses with revenue, domestic-focused business model and exposure to contract manufacturing.'
+    )).toBe('consumer');
+  });
+  it('TEST 2: Toys without manufacturing → consumer', () => {
+    expect(detectSectorFromText('Toys sector, established businesses, domestic-focused business model')).toBe('consumer');
+  });
+  it('TEST 3: Home Textiles + contract manufacturing → consumer', () => {
+    expect(detectSectorFromText('Home Textiles company with exposure to contract manufacturing')).toBe('consumer');
+  });
+  it('TEST 4: Fashion + contract manufacturing → consumer', () => {
+    expect(detectSectorFromText('Fashion brand with contract manufacturing exposure')).toBe('consumer');
+  });
+  it('TEST 5: Cybersecurity / OT Security + contract manufacturing → saas (not manufacturing)', () => {
+    expect(detectSectorFromText('Cybersecurity / OT Security company with contract manufacturing exposure')).toBe('saas');
+  });
+  it('genuine manufacturer still detected: "manufacturing plant" with no other industry', () => {
+    expect(detectSectorFromText('we run a manufacturing plant and factory')).toBe('manufacturing');
+  });
+  it('genuine manufacturer still detected: auto component OEM', () => {
+    expect(detectSectorFromText('auto component OEM manufacturer')).toBe('manufacturing');
+  });
+});
+
+describe('detectContractManufacturingExposure', () => {
+  it('detects "contract manufacturing" phrase', () => {
+    expect(detectContractManufacturingExposure('exposure to contract manufacturing')).toBe(true);
+  });
+  it('detects "manufacturing exposure" phrase', () => {
+    expect(detectContractManufacturingExposure('manufacturing exposure across suppliers')).toBe(true);
+  });
+  it('returns false when no business-model phrase present', () => {
+    expect(detectContractManufacturingExposure('Toys company based in Mumbai')).toBe(false);
+  });
+});
 
 describe('detectSectorFromText — correct cases (regression guards)', () => {
   it('multispeciality hospital → healthcare', () => {

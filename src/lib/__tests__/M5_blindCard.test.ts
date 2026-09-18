@@ -46,6 +46,31 @@ describe('M5_blindCard', () => {
     }
   });
 
+  it('pre-EOI view surfaces allowlisted structured business data, but never raw contact/URL fields from metadata', () => {
+    const cpWithBusinessData: CounterpartyProposalRow = {
+      ...cp,
+      metadata: {
+        ...cp.metadata,
+        sub_type: 'CDMO',
+        capacity_utilisation: '78%',
+        business_model: 'contract_manufacturing_exposure',
+        contact_email: 'ceo@snackbrand.com', // must NOT be surfaced — not in the allowlist
+        document_url: 'https://storage/secret-teaser.pdf', // must NOT be surfaced
+      },
+    };
+    const pre = buildBlindCounterparty(cpWithBusinessData, false);
+
+    const fieldMap = Object.fromEntries(pre.businessData.map(f => [f.key, f.value]));
+    expect(fieldMap.sub_type).toBe('CDMO');
+    expect(fieldMap.capacity_utilisation).toBe('78%');
+    expect(fieldMap.business_model).toBe('contract_manufacturing_exposure');
+    expect(pre.businessData.every(f => f.label && f.label.length > 0)).toBe(true);
+
+    const preJson = JSON.stringify(pre);
+    expect(preJson.includes('ceo@snackbrand.com')).toBe(false);
+    expect(preJson.includes('secret-teaser.pdf')).toBe(false);
+  });
+
   it('sparse teaser never leaks free text', () => {
     const sparse = buildSafeTeaser({ ...cp, deal_structure: null, deal_size_min_cr: null, deal_size_max_cr: null, revenue_min_cr: null, revenue_max_cr: null });
     for (const tok of IDENTITY_TOKENS) {

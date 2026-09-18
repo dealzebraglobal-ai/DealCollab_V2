@@ -132,8 +132,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         )}
         
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col w-full h-full relative overflow-y-auto bg-white">
+        {/* Main Content Area — md:pt-20 reserves clearance for the floating Tokens/Profile
+            badge above (absolute, top-6, ~56px tall). Without it, any page's own top-right
+            content (e.g. deal-log/[id]'s "Confidential Match" pill, the notifications page's
+            header buttons) visually collided with/hid behind the badge on desktop. */}
+        <main className={`flex-1 flex flex-col w-full h-full relative overflow-y-auto bg-white ${isStandalonePage ? '' : 'md:pt-[76px]'}`}>
           {children}
         </main>
       </div>

@@ -381,7 +381,7 @@ export default function Home() {
       
       {/* Fixed Sticky Input Bar */}
       <div className="sticky bottom-0 left-0 w-full z-40">
-        <InputBar onSendMessage={handleSendMessage} />
+        <InputBar onSendMessage={handleSendMessage} isSending={isTyping} />
       </div>
     </div>
   );

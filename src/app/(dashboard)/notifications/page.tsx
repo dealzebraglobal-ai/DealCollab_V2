@@ -5,12 +5,12 @@ import NotificationList from '@/components/NotificationList';
 import { useNotifications } from '@/components/NotificationProvider';
 import { useUser } from '@/components/UserProvider';
 import { NotificationSkeleton, EmptyState, ErrorState } from '@/components/Skeleton';
-import { Bell, Lock } from 'lucide-react';
+import { Bell, Lock, Volume2, VolumeX } from 'lucide-react';
 import FeatureLockedOverlay from '@/components/FeatureLockedOverlay';
 
 export default function NotificationsPage() {
   const isLocked = false;
-  const { notifications, markAsRead, markAllAsRead, unreadCount, refreshNotifications } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, unreadCount, refreshNotifications, isSoundMuted, toggleSound } = useNotifications();
   const { tokens } = useUser();
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -85,7 +85,18 @@ export default function NotificationsPage() {
               <span>{typeof tokens === 'number' ? tokens : 700} Tokens</span>
             </Link>
 
-            <button 
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-pressed={!isSoundMuted}
+              title={isSoundMuted ? 'Unmute new-match sound' : 'Mute new-match sound'}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F9FAFB] border border-[#E5E7EB] text-gray-600 rounded-full text-xs font-semibold hover:bg-gray-100 transition-all shadow-2xs"
+            >
+              {isSoundMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              <span className="hidden sm:inline">{isSoundMuted ? 'Sound off' : 'Sound on'}</span>
+            </button>
+
+            <button
               onClick={markAllAsRead}
               disabled={unreadCount === 0}
               className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all border shadow-2xs active:scale-95 ${

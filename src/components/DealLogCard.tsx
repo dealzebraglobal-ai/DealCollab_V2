@@ -1,6 +1,6 @@
 'use client';
-import React from 'react';
-import { Clock, Trash2, ChevronDown, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, Trash2, ChevronDown, ArrowRight, Pencil, Check, X } from 'lucide-react';
 import { DealStatus } from './StatusBadge';
 import MatchWindow, { Match } from './MatchWindow';
 import { formatDealTimestamp } from '@/utils/date';
@@ -9,6 +9,9 @@ interface DealLogCardProps {
   deal: {
     id: string | number;
     deal: string;
+    originalTitle?: string;
+    customTitle?: string | null;
+    remark?: string | null;
     sector: string;
     region: string;
     status: DealStatus;
@@ -28,6 +31,7 @@ interface DealLogCardProps {
   onDelete: () => void;
   onViewMatch: (match: Match) => void;
   onConnectMatch?: (match: Match) => void;
+  onRename?: (customTitle: string, remark: string) => void;
 }
 
 function getStructureLabel(deal: { intent?: string; structure?: string | null; metadata?: any }) {
@@ -73,17 +77,40 @@ export default function DealLogCard({
   onToggle,
   onDelete,
   onViewMatch,
+  onRename,
 }: DealLogCardProps) {
   const ts = deal.createdAt ? formatDealTimestamp(deal.createdAt) : null;
   const structureLabel = getStructureLabel(deal);
   const topLineLabel = getTopLineLabel(deal);
   const isMatched = deal.status === 'Matched' || (deal.matches && deal.matches.length > 0);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(deal.customTitle || deal.originalTitle || deal.deal);
+  const [remarkDraft, setRemarkDraft] = useState(deal.remark || '');
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onToggle();
     }
+  };
+
+  const startEditing = () => {
+    setTitleDraft(deal.customTitle || deal.originalTitle || deal.deal);
+    setRemarkDraft(deal.remark || '');
+    setIsEditing(true);
+  };
+
+  const saveEdit = () => {
+    const trimmedTitle = titleDraft.trim();
+    // Renaming back to the original (auto-generated) title clears the custom override.
+    const nextCustomTitle = trimmedTitle && trimmedTitle !== (deal.originalTitle || '') ? trimmedTitle : '';
+    onRename?.(nextCustomTitle, remarkDraft.trim());
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
   };
 
   return (
@@ -100,17 +127,81 @@ export default function DealLogCard({
       >
         {/* Top Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-          <div className="flex flex-col gap-0.5 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-[14.5px] font-bold text-[#1F2937] leading-snug">
-                {deal.deal}
-              </h3>
-              {deal.isNew && (
-                <span className="px-1.5 py-0.2 bg-[#FF6A00] text-white rounded text-[9.5px] font-bold uppercase tracking-wider">
-                  NEW
-                </span>
-              )}
-            </div>
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            {isEditing ? (
+              <div className="flex flex-col gap-1.5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="text"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  placeholder={deal.originalTitle}
+                  maxLength={120}
+                  autoFocus
+                  className="w-full text-[14px] font-bold text-[#1F2937] border border-[#EA580C]/40 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30"
+                />
+                <input
+                  type="text"
+                  value={remarkDraft}
+                  onChange={(e) => setRemarkDraft(e.target.value)}
+                  placeholder="Remark (e.g. Referred by Tushar Sir)"
+                  maxLength={240}
+                  className="w-full text-[12px] text-gray-700 border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"
+                />
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    className="p-1 text-white bg-[#EA580C] hover:bg-[#C2410C] rounded-md transition-all"
+                    title="Save"
+                  >
+                    <Check size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-all"
+                    title="Cancel"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-[14.5px] font-bold text-[#1F2937] leading-snug">
+                    {deal.deal}
+                  </h3>
+                  {deal.customTitle && (
+                    <span
+                      title={`Original: ${deal.originalTitle}`}
+                      className="px-1.5 py-0.2 bg-gray-100 text-gray-500 rounded text-[9.5px] font-semibold uppercase tracking-wider"
+                    >
+                      Custom name
+                    </span>
+                  )}
+                  {deal.isNew && (
+                    <span className="px-1.5 py-0.2 bg-[#FF6A00] text-white rounded text-[9.5px] font-bold uppercase tracking-wider">
+                      NEW
+                    </span>
+                  )}
+                  {onRename && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); startEditing(); }}
+                      title="Rename / add remark"
+                      aria-label="Rename deal or add a remark"
+                      className="shrink-0 p-1 text-gray-400 hover:text-[#EA580C] hover:bg-orange-50 rounded-md transition-all"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  )}
+                </div>
+                {deal.remark && (
+                  <p className="text-[11.5px] text-gray-500 font-medium italic">· {deal.remark}</p>
+                )}
+              </>
+            )}
 
             {ts && (
               <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-normal">

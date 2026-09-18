@@ -34,6 +34,11 @@ interface MatchDetailResponse {
       dealSizeMaxCr: string | number | null;
       revenueMinCr: string | number | null;
       revenueMaxCr: string | number | null;
+      industry?: string | null;
+      qualityTier?: string | number | null;
+      specialConditions?: string[];
+      businessData?: { key: string; label: string; value: string }[];
+      isConnected?: boolean;
       anonymizedPreview?: string;
       teaser?: string;
       revealedContact?: { advisor: string | null; phone: string | null } | null;
@@ -293,12 +298,10 @@ export default function MatchDetailPage() {
 
          await refreshProfile();
 
-         addNotification({
-            type: 'success',
-            message: 'Expression of Interest sent. Tokens are charged only if the counterparty approves.',
-            time: 'Just now'
-         });
-
+         // Sending an EOI is confirmed via the success modal below — it does not need
+         // its own entry in the persistent notification feed (that feed is reserved for
+         // events the user didn't just trigger themselves, e.g. a new match or an
+         // incoming EOI). The EOI record itself is unaffected either way.
          mutate();
          setShowSuccessModal(true);
       } catch (err: unknown) {
@@ -353,58 +356,109 @@ export default function MatchDetailPage() {
                      </p>
                   </div>
 
-                  {/* COUNTERPARTY DETAILS CARD */}
+                  {/* COMPLETE DEAL INFORMATION — every non-identifying structured field the API
+                      actually returns, grouped for scanability. Nothing here is fabricated: a
+                      field only appears when the underlying record has a value; otherwise the
+                      existing "Not provided" convention is used (never hidden silently, never invented). */}
                   <div className="bg-white rounded-2xl border border-[#E5E7EB] hover:border-black shadow-sm p-6 sm:p-8 space-y-6 transition-all duration-200">
                      <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3.5">
-                        <h2 className="text-xs font-bold uppercase tracking-wider text-[#1F1F1F]">Counterparty Profile</h2>
+                        <h2 className="text-xs font-bold uppercase tracking-wider text-[#1F1F1F]">Complete Deal Information</h2>
                         <span className="text-[11px] font-semibold text-[#747775] bg-[#F3F4F6] border border-[#E5E7EB] px-2.5 py-0.5 rounded-full">
                            Verified Network
                         </span>
                      </div>
 
-                     {/* 3-Column Data Grid for desktop */}
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-1">
-                           <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Deal Structure</label>
-                           <p className="text-sm font-semibold text-[#1F1F1F]">{getIntentLabel(counterparty.intent)}</p>
-                           <p className="text-xs font-medium text-[#747775]">{counterparty.dealStructure || 'Standard Structure'}</p>
+                     {/* DEAL OVERVIEW */}
+                     <div className="space-y-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#EA580C]">Deal Overview</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                           <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Intent / Structure</label>
+                              <p className="text-sm font-semibold text-[#1F1F1F]">{getIntentLabel(counterparty.intent)}</p>
+                              <p className="text-xs font-medium text-[#747775]">{counterparty.dealStructure || 'Not provided'}</p>
+                           </div>
+                           <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Industry</label>
+                              <p className="text-sm font-semibold text-[#1F1F1F]">{counterparty.industry || 'Not provided'}</p>
+                           </div>
+                           <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Geography</label>
+                              <p className="text-sm font-semibold text-[#1F1F1F] flex items-center gap-1.5">
+                                 <Globe size={14} className="text-[#FF6A00]" />
+                                 {counterparty.geographies.join(', ') || 'Not provided'}
+                              </p>
+                           </div>
                         </div>
-
-                        <div className="space-y-1">
-                           <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Financial Range</label>
-                           <p className="text-sm font-semibold text-[#1F1F1F] flex items-center gap-1.5">
-                              <TrendingUp size={14} className="text-[#FF6A00]" />
-                              Size: {formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr)}
-                           </p>
-                           <p className="text-xs font-medium text-[#747775] pl-5">
-                              Rev: {formatSize(counterparty.revenueMinCr, counterparty.revenueMaxCr)}
-                           </p>
-                        </div>
-
-                        <div className="space-y-1">
-                           <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Geography</label>
-                           <p className="text-sm font-semibold text-[#1F1F1F] flex items-center gap-1.5">
-                              <Globe size={14} className="text-[#FF6A00]" />
-                              {counterparty.geographies.join(', ') || 'Global'}
-                           </p>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Sector Focus</label>
+                           <div className="flex flex-wrap gap-2 mt-1">
+                              {counterparty.sectors.length > 0 ? counterparty.sectors.map((sector: string) => (
+                                 <span key={sector} className="px-3 py-1 bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg text-xs font-semibold text-[#1F1F1F]">
+                                    {sector}
+                                 </span>
+                              )) : (
+                                 <span className="text-xs font-medium text-[#747775] italic">Not provided</span>
+                              )}
+                           </div>
                         </div>
                      </div>
 
-                     {/* Sectors Row */}
+                     {/* FINANCIALS */}
+                     <div className="space-y-3 border-t border-[#E5E7EB] pt-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#EA580C]">Financials</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Deal Size</label>
+                              <p className="text-sm font-semibold text-[#1F1F1F] flex items-center gap-1.5">
+                                 <TrendingUp size={14} className="text-[#FF6A00]" />
+                                 {formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr)}
+                              </p>
+                           </div>
+                           <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Revenue</label>
+                              <p className="text-sm font-semibold text-[#1F1F1F]">{formatSize(counterparty.revenueMinCr, counterparty.revenueMaxCr)}</p>
+                           </div>
+                        </div>
+                     </div>
+
+                     {/* BUSINESS PROFILE — structured, non-identifying attributes captured during
+                         qualification (capacity, certifications, business model, etc). Only ever
+                         shows fields that actually exist on the record (M5_blindCard allowlist). */}
+                     {counterparty.businessData && counterparty.businessData.length > 0 && (
+                        <div className="space-y-3 border-t border-[#E5E7EB] pt-4">
+                           <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#EA580C]">Business Profile</p>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {counterparty.businessData.map((field) => (
+                                 <div key={field.key} className="space-y-1">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">{field.label}</label>
+                                    <p className="text-sm font-semibold text-[#1F1F1F]">{field.value}</p>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                     )}
+
+                     {/* TRANSACTION REQUIREMENTS — special conditions only ever populated once connected (see M5_blindCard) */}
                      <div className="space-y-2 border-t border-[#E5E7EB] pt-4">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Sector Focus</label>
+                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#EA580C]">Transaction Requirements</p>
                         <div className="flex flex-wrap gap-2 mt-1">
-                           {counterparty.sectors.map((sector: string) => (
-                              <span key={sector} className="px-3 py-1 bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg text-xs font-semibold text-[#1F1F1F]">
-                                 {sector}
+                           {counterparty.specialConditions && counterparty.specialConditions.length > 0 ? (
+                              counterparty.specialConditions.map((cond: string) => (
+                                 <span key={cond} className="px-3 py-1 bg-[#FFF7ED] border border-[#FFEDD5] rounded-lg text-xs font-semibold text-[#EA580C]">
+                                    {cond}
+                                 </span>
+                              ))
+                           ) : (
+                              <span className="text-xs font-medium text-[#747775] italic">
+                                 {counterparty.isConnected ? 'Not provided' : 'Visible after Expression of Interest is approved'}
                               </span>
-                           ))}
+                           )}
                         </div>
                      </div>
 
-                     {/* Anonymized Preview */}
+                     {/* STRATEGIC RATIONALE / OVERVIEW */}
                      <div className="space-y-2 border-t border-[#E5E7EB] pt-4">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Anonymized Preview</label>
+                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#EA580C]">Strategic Rationale</p>
                         <div className="text-xs font-normal text-[#1F1F1F] leading-relaxed bg-[#F9FAFB] p-4 rounded-xl border border-[#E5E7EB] mt-1">
                            {dealSummary ? (
                               <>
@@ -428,11 +482,30 @@ export default function MatchDetailPage() {
                         </div>
                      </div>
 
-                     {/* Integrated Synergy Assessment */}
+                     {/* OTHER AVAILABLE INFORMATION */}
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-[#E5E7EB] pt-4">
+                        <p className="col-span-full text-[10px] font-black uppercase tracking-[0.15em] text-[#EA580C]">Other Available Information</p>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Quality Tier</label>
+                           <p className="text-sm font-semibold text-[#1F1F1F]">
+                              {counterparty.qualityTier ? `Tier ${counterparty.qualityTier}` : 'Not provided'}
+                           </p>
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Match Reference</label>
+                           <p className="text-sm font-semibold text-[#1F1F1F]">#{String(match.id).slice(-6).toUpperCase()}</p>
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Mandate ID</label>
+                           <p className="text-sm font-semibold text-[#1F1F1F]">#{String(match.proposalId).slice(-6).toUpperCase()}</p>
+                        </div>
+                     </div>
+
+                     {/* MATCH ANALYSIS */}
                      {synergy && (
                         <div className="bg-[#F9FAFB] p-5 rounded-2xl border border-[#E5E7EB] hover:border-black transition-all duration-200 space-y-3 mt-4 border-t pt-4">
                            <div className="flex items-center justify-between">
-                              <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#1F1F1F]">Synergy Assessment</h3>
+                              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#EA580C]">Match Analysis</p>
                               <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] border border-[#86EFAC] text-[10px] font-bold uppercase tracking-wider text-[#15803D]">
                                  {synergy.alignmentBand} alignment
                               </span>

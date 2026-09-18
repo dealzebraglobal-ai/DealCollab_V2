@@ -1,14 +1,32 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { 
-  User, Globe, MapPin, Target, Zap, MessageSquare, Edit3, Briefcase, FileText
+import {
+  User, Globe, MapPin, Target, Zap, MessageSquare, Edit3, Briefcase, FileText, IdCard
 } from 'lucide-react';
-import { UserProfile } from '../UserProvider';
+import { UserProfile, useUser } from '../UserProvider';
+import VCardModal from './VCardModal';
 
 interface ProfileViewProps {
   data: UserProfile | null; // Corrected from 'any'
   onEdit: () => void;
+}
+
+function VCardButton({ data }: { data: UserProfile }) {
+  const { isProfileComplete } = useUser();
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-foreground rounded-2xl font-black text-sm hover:border-brand-accent hover:text-brand-accent transition-all transform hover:-translate-y-1 shadow-sm"
+      >
+        <IdCard size={18} />
+        Your vCard
+      </button>
+      <VCardModal isOpen={isOpen} onClose={() => setIsOpen(false)} data={data} isProfileComplete={isProfileComplete} />
+    </>
+  );
 }
 
 export default function ProfileView({ data, onEdit }: ProfileViewProps) {
@@ -51,7 +69,8 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <VCardButton data={data} />
+            <button
               onClick={onEdit}
               className="flex items-center gap-2 px-6 py-3 bg-foreground text-white rounded-2xl font-black text-sm hover:bg-brand-accent transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-brand-accent/20"
             >
@@ -168,7 +187,8 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <VCardButton data={data} />
+          <button
             onClick={onEdit}
             className="flex items-center gap-2 px-6 py-3 bg-foreground text-white rounded-2xl font-black text-sm hover:bg-brand-accent transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-brand-accent/20"
           >

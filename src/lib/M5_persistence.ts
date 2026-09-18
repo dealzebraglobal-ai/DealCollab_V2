@@ -199,7 +199,7 @@ const INTENT_LABEL: Record<string, string> = {
 
 export function buildBlindNotification(p: BlindNotificationInput): NotificationRecord {
     // Counterparty side (NEW proposal): coarse sector + region ONLY. No identity.
-    const what = p.cpSectorLabel ? ` ${p.cpSectorLabel}` : '';
+    const sectorLabel = p.cpSectorLabel || 'a related';
     const where = p.cpGeographyLabel ? ` in ${p.cpGeographyLabel}` : '';
 
     // Recipient side (their OWN proposal): safe to name in full — it's their deal. This is what
@@ -210,7 +210,9 @@ export function buildBlindNotification(p: BlindNotificationInput): NotificationR
     const mandateLabel = mine ? `${p.subjectRef} (${mine})` : p.subjectRef;
 
     const message =
-        `A new counterparty representing${what} demand${where} is ${band(p.finalScore)} match for your mandate ${mandateLabel}. ` +
+        `A new requirement matching your mandate has just been added. ` +
+        `A counterparty in the ${sectorLabel} sector${where} is ${band(p.finalScore)} match for your mandate ${mandateLabel}. ` +
+        `Review the match and send an Expression of Interest if relevant. ` +
         `Identity stays hidden until an Expression of Interest is exchanged.`;
 
     return {
@@ -221,6 +223,6 @@ export function buildBlindNotification(p: BlindNotificationInput): NotificationR
         proposal_id: p.subjectProposalId,
         match_id: p.matchId,
         delivery_channels: ['in_app'], // email/whatsapp deferred — v1 stores the record only
-        metadata: { final_score: p.finalScore, blind: true, subject_ref: p.subjectRef },
+        metadata: { final_score: p.finalScore, blind: true, subject_ref: p.subjectRef, heading: 'NEW MATCH FOUND' },
     };
 }

@@ -392,6 +392,36 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
   }
 }
 
+// JPG/JPEG upload support — reuses the SAME tesseract.js OCR engine already used for
+// scanned PDF pages, rather than a second, unrelated image pipeline. A JPEG has no
+// "native text layer" (unlike a PDF), so it always goes straight to OCR.
+async function extractImageText(buffer: Buffer, mimeType: string, requestId: string): Promise<ExtractionResult> {
+  const tag = `[parse-document][request=${requestId}]`;
+  type TesseractWorker = Awaited<ReturnType<typeof import('tesseract.js')['createWorker']>>;
+  let worker: TesseractWorker | null = null;
+  try {
+    console.error(`${tag} STEP ocr-worker-init:start (image)`);
+    const { createWorker } = await import('tesseract.js');
+    worker = await withTimeout(createWorker('eng'), OCR_WORKER_INIT_TIMEOUT_MS, 'OCR worker initialization');
+    console.error(`${tag} STEP ocr-worker-init:success (image)`);
+
+    const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    console.error(`${tag} STEP ocr-recognize:start (image)`);
+    const { data: { text } } = await withTimeout(
+      worker.recognize(dataUrl),
+      OCR_PAGE_TIMEOUT_MS,
+      'OCR image recognition',
+    );
+    console.error(`${tag} STEP ocr-recognize:success (image) chars=${text.length}`);
+
+    const trimmed = text.trim();
+    const warnings = hasUsableOcrText(trimmed) ? [] : ['Image OCR produced little to no readable text.'];
+    return { text: trimmed, pageCount: 1, extractionMethod: 'ocr', pagesProcessed: 1, warnings };
+  } finally {
+    if (worker) await worker.terminate().catch(() => {});
+  }
+}
+
 export async function extractTextFromFile(
   buffer: Buffer,
   mimeType: string,
@@ -422,7 +452,12 @@ export async function extractTextFromFile(
       result = await extractPdf(buffer, requestId);
     }
 
-    // 4. Unsupported Handling
+    // 4. JPG/JPEG Handling — routed through the existing OCR pipeline
+    else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg' || mimeType === 'image/pjpeg') {
+      result = await extractImageText(buffer, mimeType === 'image/pjpeg' ? 'image/jpeg' : mimeType, requestId);
+    }
+
+    // 5. Unsupported Handling
     else {
       console.warn(`[PARSER] Unsupported MIME type: ${mimeType}`);
       throw new Error(`UNSUPPORTED_FILE_TYPE: No text-extraction path is implemented for ${mimeType}.`);

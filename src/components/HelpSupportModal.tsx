@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { X, LifeBuoy, Mail, MessageCircle, HelpCircle, Send, CheckCircle2 } from 'lucide-react';
+import { X, LifeBuoy, Mail, MessageCircle, HelpCircle, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface HelpSupportModalProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -21,12 +22,20 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
     if (!message.trim()) return;
 
     setIsSubmitting(true);
-    // Simulate query submission / dispatch to support channel
+    setSubmitError(null);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send your message. Please try Email or WhatsApp support instead.');
+      }
       setSubmitted(true);
-    } catch {
-      // fallback
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setIsSubmitting(false);
     }
@@ -36,6 +45,7 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
     setSubject('');
     setMessage('');
     setSubmitted(false);
+    setSubmitError(null);
     onClose();
   };
 
@@ -144,6 +154,13 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#F97316] text-xs resize-none"
                 />
               </div>
+
+              {submitError && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600 font-semibold">
+                  <AlertCircle size={14} className="shrink-0" />
+                  {submitError}
+                </div>
+              )}
 
               <button
                 type="submit"

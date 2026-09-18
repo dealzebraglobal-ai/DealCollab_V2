@@ -30,6 +30,7 @@ import {
   detectStructureFromText,
   detectTradingDistribution,
   detectConfirmation,
+  detectContractManufacturingExposure,
 } from './detectors';
 
 // ─────────────────────────────────────────────────────────────
@@ -176,6 +177,29 @@ export function updateStateFromExtraction(
     } else {
       console.warn(`[STATE] Rejected invalid sector "${extraction.state.sector}". Keeping: "${current.sector ?? 'null'}"`);
     }
+  }
+
+  // Guard: "contract manufacturing" / "manufacturing exposure" is a business-model detail,
+  // not the target industry. If the model set sector="manufacturing" but the message's only
+  // manufacturing signal is that business-model phrasing (no genuine "manufacturing plant" /
+  // "our factory" / "we manufacture" language) and a deterministic, more specific sector fits
+  // the actual message, prefer that sector instead — never let the word "manufacturing" alone
+  // overwrite a specific industry like Toys, Fashion, Home Textiles, or Cybersecurity.
+  if (updated.sector === 'manufacturing') {
+    const deterministic = detectSectorFromText(currentMessage);
+    if (deterministic && deterministic !== 'manufacturing') {
+      console.warn(`[STATE] Overriding sector="manufacturing" with deterministic "${deterministic}" — "manufacturing" in the message looked like a business-model/contract-manufacturing mention, not the target industry.`);
+      updated.sector = deterministic;
+    }
+  }
+
+  // Capture contract-manufacturing exposure as a business-model attribute, independent of
+  // sector — never let it influence sector classification.
+  if (detectContractManufacturingExposure(currentMessage)) {
+    updated.industry_data = {
+      ...updated.industry_data,
+      ...(updated.industry_data?.business_model ? {} : { business_model: 'contract_manufacturing_exposure' }),
+    };
   }
 
   // Core deal fields

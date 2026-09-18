@@ -42,8 +42,9 @@ Return ONLY valid JSON. No preamble, no markdown, no fences.
 - INTENT + INTENT_FLAVOR + INTENT_RATIONALE + INTENT_CONFIDENCE: determine these by the rules in the INTENT block (reason about role/direction via the ordered hierarchy; PE/VC deploying = BUY_SIDE/financial; keywords are last resort). intent_rationale is one short line; intent_confidence is 0–100 and, when 49 or below, ask one clarifying question instead of guessing.
 
 # EXTRACTION RULES
-- INDUSTRY (PRIMARY) — Always set "industry" to the SPECIFIC, TRUE industry in your own words, exactly as the business describes itself: e.g. "Freshwater Aquaculture (RAS)", "EV charging infrastructure", "specialty steel trading", "agri-commodity exports". This is the primary industry signal and drives matching. NEVER distort or omit it to fit a preset category.
+- INDUSTRY (PRIMARY) — Always set "industry" to the SPECIFIC, TRUE industry in your own words, exactly as the business describes itself: e.g. "Freshwater Aquaculture (RAS)", "EV charging infrastructure", "specialty steel trading", "agri-commodity exports", "Toys", "Home Textiles", "Cybersecurity / OT Security". This is the primary industry signal and drives matching. NEVER distort or omit it to fit a preset category, and NEVER let a business-model detail (see CONTRACT MANUFACTURING rule below) replace it.
 - SECTOR (COARSE, optional) — "sector" is only a rough category for legacy filtering. Set it to the closest fit from the preset list ONLY if one genuinely applies; if none fits (e.g. aquaculture, agriculture, mining, media), set sector to "mixed" and rely on "industry". Do NOT force a wrong category — a wrong sector corrupts matching.
+- CONTRACT MANUFACTURING IS A BUSINESS MODEL, NOT AN INDUSTRY — "contract manufacturing", "manufacturing exposure", "manufacturing capability/capacity", or "outsourced manufacturing" describe HOW a business operates (or its supply chain), not WHAT it sells. A mandate like "Toys companies with exposure to contract manufacturing" has industry="Toys" and sector="consumer" (or "mixed" if unclear) — never sector="manufacturing" or industry="Manufacturing". Only set sector/industry to manufacturing when the business ITSELF is described as the manufacturer of its own end product with no more specific target industry stated (e.g. "we run a sheet-metal manufacturing plant", "auto component manufacturer"). Record the contract-manufacturing detail in industry_data (e.g. { "business_model": "contract_manufacturing_exposure" }) instead of overwriting sector/industry.
 - NEVER ask for anything in # FIELDS ALREADY PROVIDED.
 - REDUNDANCY — FIELD-TO-QUESTION SUPPRESSION (apply before generating ANY question):
   products_services OR capabilities OR company_overview present → NEVER ask "what does the business do?" in any form.
@@ -103,7 +104,14 @@ STEP B — Extract all fields from user message AND # FIELDS ALREADY PROVIDED. B
     API/formulation/CRAMS/bulk drug → sector="pharma"
     solar/wind/MW/SPV/EPC → sector="renewable"
     digital marketing/agency/IT services → sector="saas"
-    manufacturing/plant/factory/OEM → sector="manufacturing"
+    cybersecurity/OT security/infosec → sector="saas"
+    toys/home textiles/fashion/apparel/consumer brand → sector="consumer"
+    the business ITSELF is a manufacturer with no more specific target industry (e.g.
+      "sheet-metal manufacturing plant", "auto component OEM factory") → sector="manufacturing"
+    "contract manufacturing" / "manufacturing exposure" / "manufacturing capability" mentioned
+      as an attribute of a DIFFERENT stated industry (Toys, Fashion, Home Textiles, Cybersecurity,
+      etc.) → do NOT set sector="manufacturing". Keep sector matching the stated industry (or
+      "mixed" if none fits) and record the detail in industry_data instead.
     section 8/ngo/trust → sector="ngo" | refinery/petroleum → sector="oil_gas"
   SKIP MAP — if any key exists in # FIELDS ALREADY PROVIDED, suppress the corresponding question completely:
     products_services / capabilities / company_overview → skip "what does the business do?"

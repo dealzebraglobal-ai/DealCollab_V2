@@ -98,6 +98,63 @@ export function buildSafeTeaser(cp: CounterpartyProposalRow): string {
     return parts.join('. ') + '.';
 }
 
+// Explicit allowlist of industry_data / metadata keys that are safe to surface
+// BEFORE an EOI is approved — every one of these is a structured business
+// attribute (capacity, certifications, business model, etc.), never free text
+// that could name the company. Canonical keys per M0_outputSchema.ts's
+// "industry_data: Populate from user's M4 answers using CANONICAL KEYS" list,
+// plus the contract-manufacturing business-model flag (stateManager.ts).
+// Everything else in metadata (raw_text fragments, document_url, contact
+// fields on imported rows, mandate_summary, custom_title/remark) stays withheld.
+const SAFE_INDUSTRY_DATA_KEYS = [
+    'sub_type', 'regulatory_approvals', 'product_portfolio', 'manufacturing_capacity',
+    'certifications', 'capacity_utilisation', 'client_concentration', 'revenue_model',
+    'client_profile', 'churn_or_retention', 'core_value', 'regulatory_status',
+    'loan_book_or_aum', 'asset_type', 'operational_status', 'capacity_mw',
+    'ppa_off_taker', 'channel_mix', 'brand_strength', 'sku_portfolio',
+    'infrastructure_type', 'contract_quality', 'geography_coverage', 'accreditations',
+    'enrolment_scale', 'founder_dependency', 'product_type', 'export_revenue_pct',
+    'compliance_status', 'asset_ownership', 'performance_history', 'location_spread',
+    'regulatory_licences', 'debt_structure', 'business_model', 'capabilities',
+    'government_oem_exposure', 'technology_rd_focus',
+] as const;
+
+const FIELD_LABELS: Record<string, string> = {
+    sub_type: 'Sub-type', regulatory_approvals: 'Regulatory Approvals', product_portfolio: 'Product Portfolio',
+    manufacturing_capacity: 'Manufacturing Capacity', certifications: 'Certifications',
+    capacity_utilisation: 'Capacity Utilisation', client_concentration: 'Client Concentration',
+    revenue_model: 'Revenue Model', client_profile: 'Client Profile', churn_or_retention: 'Churn / Retention',
+    core_value: 'Core Value Driver', regulatory_status: 'Regulatory Status', loan_book_or_aum: 'Loan Book / AUM',
+    asset_type: 'Asset Type', operational_status: 'Operational Status', capacity_mw: 'Capacity (MW)',
+    ppa_off_taker: 'PPA / Off-taker', channel_mix: 'Channel Mix', brand_strength: 'Brand Strength',
+    sku_portfolio: 'SKU Portfolio', infrastructure_type: 'Infrastructure Type', contract_quality: 'Contract Quality',
+    geography_coverage: 'Geography Coverage', accreditations: 'Accreditations', enrolment_scale: 'Enrolment Scale',
+    founder_dependency: 'Founder Dependency', product_type: 'Product Type', export_revenue_pct: 'Export Revenue %',
+    compliance_status: 'Compliance Status', asset_ownership: 'Asset Ownership', performance_history: 'Performance History',
+    location_spread: 'Location Spread', regulatory_licences: 'Regulatory Licences', debt_structure: 'Debt Structure',
+    business_model: 'Business Model', capabilities: 'Capabilities', government_oem_exposure: 'Government/OEM Exposure',
+    technology_rd_focus: 'Technology / R&D Focus',
+};
+
+export interface BusinessDataField {
+    key: string;
+    label: string;
+    value: string;
+}
+
+function extractSafeIndustryData(metadata: Record<string, unknown> | null | undefined): BusinessDataField[] {
+    if (!metadata || typeof metadata !== 'object') return [];
+    const fields: BusinessDataField[] = [];
+    for (const key of SAFE_INDUSTRY_DATA_KEYS) {
+        const raw = metadata[key];
+        if (raw === null || raw === undefined || raw === '') continue;
+        const value = Array.isArray(raw) ? raw.join(', ') : String(raw);
+        if (!value.trim()) continue;
+        fields.push({ key, label: FIELD_LABELS[key] || key, value });
+    }
+    return fields;
+}
+
 export interface BlindCounterpartyView {
     id: string;
     userId: string | null;     // bare uuid; needed by the EOI-send flow. Not PII on its own.
@@ -111,6 +168,7 @@ export interface BlindCounterpartyView {
     dealStructure: string | null;
     qualityTier: number | string | null;
     industry: string | null;    // free-text industry (owner-ruled safe pre-EOI); extracted ONLY from metadata.industry
+    businessData: BusinessDataField[]; // structured, non-identifying business attributes (allowlisted)
     teaser: string;
     anonymizedPreview: string;
     isConnected: boolean;
@@ -133,6 +191,7 @@ export function buildBlindCounterparty(
     // wire pre-EOI — imported rows carry contact_email/URL there.
     const rawIndustry = cp.metadata && typeof cp.metadata.industry === 'string' ? cp.metadata.industry.trim() : '';
     const industry = rawIndustry.length > 0 ? rawIndustry : null;
+    const businessData = extractSafeIndustryData(cp.metadata);
 
     const view: BlindCounterpartyView = {
         id: cp.id,
@@ -147,6 +206,7 @@ export function buildBlindCounterparty(
         dealStructure: cp.deal_structure,
         qualityTier: cp.quality_tier,
         industry,
+        businessData,
         teaser,
         anonymizedPreview: teaser,     // pre-EOI: teaser only
         isConnected,

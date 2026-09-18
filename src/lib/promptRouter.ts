@@ -41,6 +41,7 @@ import {
   detectShellQuery,
   detectGatewaySector,
   detectHelpQuery,
+  detectContractManufacturingExposure,
 } from './detectors';
 import {
   createBlankState,
@@ -90,6 +91,7 @@ export {
   detectShellQuery,
   detectGatewaySector,
   detectHelpQuery,
+  detectContractManufacturingExposure,
   createBlankState,
   updateStateFromExtraction,
   initializeStateFromDocument,

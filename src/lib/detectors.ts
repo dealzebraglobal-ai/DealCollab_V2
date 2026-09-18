@@ -61,6 +61,8 @@ const SECTOR_KEYWORDS: Record<SectorKey, string[]> = {
     'digital marketing', 'marketing agency', 'performance marketing',
     'advertising agency', 'adtech', 'digital agency', 'seo agency',
     'it services', 'it company', 'it firm', 'managed services',
+    'cybersecurity', 'cyber security', 'infosec', 'ot security',
+    'information security', 'network security',
   ],
   finserv: [
     'nbfc', 'lending', 'fintech', 'financial service', 'insurance',
@@ -70,6 +72,8 @@ const SECTOR_KEYWORDS: Record<SectorKey, string[]> = {
   consumer: [
     'consumer brand', 'd2c', 'fmcg', 'retail', 'brand', 'marketplace',
     'ecommerce', 'food brand', 'personal care', 'beauty', 'fashion',
+    'toy', 'toys', 'children\'s toy', 'games and toys', 'home textile',
+    'home textiles', 'textile brand', 'apparel brand', 'garment brand',
   ],
   realestate: [
     'real estate', 'property', 'land', 'infrastructure', 'commercial property',
@@ -226,14 +230,55 @@ function sectorKeywordMatches(text: string, keyword: string): boolean {
   return new RegExp(`\\b${escaped}${right}`, 'i').test(text);
 }
 
+// "Contract manufacturing" / "manufacturing exposure" / "manufacturing capability" /
+// "manufacturing partner" describe an OPERATING MODEL (how the business — or its supply
+// chain — works), not the industry it sells into. A Toys, Fashion, Home Textiles, or
+// Cybersecurity mandate that merely mentions exposure to contract manufacturing must not
+// be reclassified into the generic "manufacturing" sector on that basis alone. Strip these
+// business-model phrases before scoring so the bare 'manufactur' stem only fires when the
+// text actually describes the business itself as a manufacturer (e.g. "manufacturing plant",
+// "manufacturing unit", "we manufacture", "our factory").
+const MANUFACTURING_BUSINESS_MODEL_PHRASES = [
+  /\bcontract\s+manufactur\w*/gi,
+  /\bmanufactur\w*\s+exposure\b/gi,
+  /\bexposure\s+to\s+(contract\s+)?manufactur\w*/gi,
+  /\bmanufactur\w*\s+capability\b/gi,
+  /\bmanufactur\w*\s+partner\w*/gi,
+  /\boutsourced\s+manufactur\w*/gi,
+];
+
+function stripManufacturingBusinessModelPhrases(text: string): string {
+  return MANUFACTURING_BUSINESS_MODEL_PHRASES.reduce(
+    (acc, pattern) => acc.replace(pattern, ' '),
+    text,
+  );
+}
+
+// Detects "contract manufacturing" style language as a standalone business-model /
+// operating-model attribute, independent of sector classification. Used to populate
+// industry_data (e.g. business_model: 'contract_manufacturing_exposure') without ever
+// touching the sector field.
+export function detectContractManufacturingExposure(text: string): boolean {
+  return MANUFACTURING_BUSINESS_MODEL_PHRASES.some(pattern => {
+    pattern.lastIndex = 0;
+    return pattern.test(text);
+  });
+}
+
 export function detectSectorFromText(text: string): SectorKey | null {
-  const lower = text.toLowerCase();
+  const lower = stripManufacturingBusinessModelPhrases(text.toLowerCase());
   let bestKey: SectorKey | null = null;
   let bestScore = 0;
   for (const [key, keywords] of Object.entries(SECTOR_KEYWORDS) as [SectorKey, string[]][]) {
     if (key === 'mixed') continue;
     const score = keywords.filter(kw => sectorKeywordMatches(lower, kw)).length;
-    if (score > bestScore) { bestScore = score; bestKey = key as SectorKey; }
+    // Strictly greater than — on a tie, the sector already found (earlier in
+    // object iteration order) wins. Explicit `key === 'manufacturing'` never wins
+    // a tie against a later, more specific sector.
+    if (score > bestScore || (score > 0 && score === bestScore && bestKey === 'manufacturing' && key !== 'manufacturing')) {
+      bestScore = score;
+      bestKey = key as SectorKey;
+    }
   }
   if (bestScore > 0) console.log(`[DETECTOR] Sector scored: ${bestKey} (score: ${bestScore})`);
   return bestKey;

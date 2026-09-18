@@ -352,4 +352,25 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
     const result = await extractTextFromFile(Buffer.from('Deal mandate: sell-side, SaaS, Bangalore.'), 'text/plain');
     expect(result.text).toContain('Deal mandate');
   });
+
+  it('18. JPG upload is routed through OCR (same engine as scanned PDF pages)', async () => {
+    tesseractRecognize.mockResolvedValue({ data: { text: 'Deal mandate: sell-side, Toys, Mumbai.' } });
+    const { extractTextFromFile } = await import('../documentParser');
+
+    const result = await extractTextFromFile(Buffer.from('fake-jpeg-bytes'), 'image/jpeg');
+
+    expect(createWorkerMock).toHaveBeenCalled();
+    expect(tesseractRecognize).toHaveBeenCalledWith(expect.stringMatching(/^data:image\/jpeg;base64,/));
+    expect(result.text).toBe('Deal mandate: sell-side, Toys, Mumbai.');
+    expect(result.extractionMethod).toBe('ocr');
+    expect(result.pageCount).toBe(1);
+    expect(tesseractTerminate).toHaveBeenCalled();
+  });
+
+  it('19. JPG with no readable text throws EXTRACTION_FAILED, same as any other empty extraction', async () => {
+    tesseractRecognize.mockResolvedValue({ data: { text: '' } });
+    const { extractTextFromFile } = await import('../documentParser');
+
+    await expect(extractTextFromFile(Buffer.from('fake-jpeg-bytes'), 'image/jpeg')).rejects.toThrow('EXTRACTION_FAILED');
+  });
 });

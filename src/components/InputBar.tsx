@@ -1,28 +1,31 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Send } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { Plus, ArrowUp, X, Loader2 } from 'lucide-react';
 
 interface InputBarProps {
   onSendMessage: (text: string, file?: File | null) => void;
+  isSending?: boolean;
 }
 
-export default function InputBar({ onSendMessage }: InputBarProps) {
+// Clean, minimal, ChatGPT-inspired search-box pattern — a rounded rectangle
+// (not a pill/oval), white surface, one neutral border, no orange outline by
+// default. Orange is reserved for the send button and a subtle focus ring,
+// per the "orange for accents, not for the container" design direction.
+export default function InputBar({ onSendMessage, isSending = false }: InputBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pathname = usePathname();
-  const isHomePage = pathname === '/home';
+
+  const canSend = (inputValue.trim().length > 0 || !!pendingFile) && !isSending;
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (inputValue.trim() || pendingFile) {
-      onSendMessage(inputValue.trim(), pendingFile);
-      setInputValue('');
-      setPendingFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    }
+    if (!canSend) return;
+    onSendMessage(inputValue.trim(), pendingFile);
+    setInputValue('');
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -30,9 +33,10 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
       e.preventDefault();
       handleSubmit();
     }
+    // Shift+Enter falls through to the textarea's default newline behavior.
   };
 
-  // Auto-resize height based on value
+  // Auto-resize height based on value, capped so the box never dominates the page.
   React.useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -56,92 +60,79 @@ export default function InputBar({ onSendMessage }: InputBarProps) {
   };
 
   return (
-    <div className="w-full bg-transparent pb-6 pt-1 px-4 md:px-6">
-      <div className="max-w-[600px] mx-auto relative group">
-        <input 
+    <div className="w-full bg-transparent pb-5 pt-1 px-3 sm:px-6">
+      <div className="max-w-[720px] mx-auto">
+        {/* Same upload pipeline as before — JPG/JPEG, PDF, DOC/DOCX, TXT — this
+            attachment button is the only entry point, no second upload path. */}
+        <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
           className="hidden"
-          accept=".pdf,.doc,.docx,.txt,image/*"
+          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,image/*"
         />
-        
-        <form 
+
+        <form
           onSubmit={handleSubmit}
           data-onboarding-target="search"
-          className={`flex flex-col transition-all overflow-hidden ${
-            isHomePage
-              ? 'bg-[#F3F4F6] hover:bg-[#EAEAEA] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#FF6A00]/30 focus-within:border-[#FF6A00]/40 border border-transparent rounded-full px-2 py-1 shadow-sm'
-              : 'bg-[rgba(255,255,255,0.72)] backdrop-blur-xl border border-[rgba(17,17,17,0.08)] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] focus-within:ring-1 focus-within:ring-[#FF6A00]/30 focus-within:border-[#FF6A00]/50'
-          }`}
+          className="flex flex-col bg-white border border-gray-200 rounded-3xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:border-gray-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] focus-within:border-[#C2410C]/60 focus-within:ring-[3px] focus-within:ring-[#C2410C]/15 focus-within:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-150"
         >
           {/* File Attachment Preview Badge */}
           {pendingFile && (
-            <div className={`flex items-center gap-2 px-3 py-1.5 ${isHomePage ? 'bg-white rounded-full mx-2 my-1 border border-[#E5E7EB]' : 'bg-[#F5F5F3] border-b border-[rgba(17,17,17,0.08)]'} animate-in slide-in-from-top-2`}>
-              <div className="w-5 h-5 rounded-full bg-[#FFF7ED] shadow-sm flex items-center justify-center">
-                <Plus size={12} className="text-[#FF6A00] rotate-45" />
+            <div className="flex items-center gap-2 mx-3 mt-3 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl animate-in slide-in-from-top-2">
+              <div className="w-5 h-5 rounded-full bg-[#FFF7ED] shrink-0 flex items-center justify-center">
+                <Plus size={12} className="text-[#C2410C] rotate-45" />
               </div>
-              <span className={`text-xs font-medium truncate max-w-[200px] ${isHomePage ? 'text-[#1F1F1F]' : 'text-[#111111]'}`}>
+              <span className="text-xs font-medium text-gray-700 truncate max-w-[220px]">
                 {pendingFile.name}
               </span>
-              <button 
+              <button
                 type="button"
                 onClick={() => setPendingFile(null)}
-                className="ml-auto p-1 hover:bg-black/5 rounded-full transition-colors"
+                className="ml-auto p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-full transition-colors"
+                title="Remove attachment"
               >
-                <Plus size={12} className="text-[#747775] rotate-45" />
+                <X size={12} />
               </button>
             </div>
           )}
 
-          <div className="flex items-center relative py-1">
-            <button 
+          <div className="flex items-end gap-1.5 px-2.5 py-2 sm:px-3">
+            <button
               type="button"
               onClick={handlePlusClick}
-              className={`flex-shrink-0 w-8 h-8 flex items-center justify-center transition-colors z-10 rounded-full ${
-                isHomePage
-                  ? 'text-[#444746] hover:text-[#1F1F1F] hover:bg-black/5'
-                  : 'text-[#4B5563] hover:text-[#111111]'
-              }`}
-              title="Attach Document"
+              disabled={isSending}
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Attach a document or image (PDF, DOCX, TXT, JPG)"
             >
-              <Plus size={16} className={pendingFile ? "text-[#FF6A00]" : ""} />
+              <Plus size={18} className={pendingFile ? 'text-[#C2410C]' : ''} />
             </button>
-   
-            <div className="flex-1 flex items-center relative">
-              <textarea 
-                ref={textareaRef}
-                value={inputValue || ""}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={pendingFile ? "Add a message about this document..." : "Ask DealCollab AI anything..."} 
-                rows={1}
-                autoFocus
-                enterKeyHint="send"
-                className={`flex-1 bg-transparent border-none outline-none font-normal text-[13px] py-1.5 px-1 pr-3 resize-none min-h-[20px] max-h-[200px] scrollbar-hide relative z-20 ${
-                  isHomePage
-                    ? 'text-[#1F1F1F] placeholder:text-[#747775]'
-                    : 'text-[#111111] placeholder:text-[#4B5563]/60'
-                }`}
-                style={{ height: 'auto' }}
-              />
-              
-              <button 
-                type="submit"
-                disabled={!inputValue.trim() && !pendingFile}
-                className={`mr-2 w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-25 active:scale-95 shadow-sm shrink-0 z-10 ${
-                  isHomePage
-                    ? 'bg-[#FF6A00] hover:bg-[#E65C00] text-white shadow-orange-500/20'
-                    : 'bg-[#111111] hover:bg-[#FF6A00] text-white'
-                }`}
-              >
-                <Send size={13} className="ml-0.5" />
-              </button>
-            </div>
+
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={pendingFile ? 'Add a message about this document...' : 'Ask DealCollab about a deal, mandate, or opportunity...'}
+              rows={1}
+              disabled={isSending}
+              autoFocus
+              enterKeyHint="send"
+              className="flex-1 bg-transparent border-none outline-none font-normal text-[14px] leading-6 py-1.5 px-1 resize-none min-h-[24px] max-h-[200px] overflow-y-auto scrollbar-hide text-gray-900 placeholder:text-gray-400 disabled:opacity-60"
+            />
+
+            <button
+              type="submit"
+              disabled={!canSend}
+              className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed bg-[#C2410C] hover:bg-[#9A3412] text-white shadow-sm shadow-orange-900/25"
+              title="Send"
+            >
+              {isSending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
+            </button>
           </div>
         </form>
-        
-        <p className={`text-center text-[10px] mt-2 font-normal ${isHomePage ? 'text-[#747775]' : 'text-[#4B5563] uppercase tracking-[0.1em] opacity-60'}`}>
+
+        <p className="text-center text-[10.5px] mt-2 font-normal text-gray-400">
           DealCollab AI can make mistakes. Verify important deal and counterparty information.
         </p>
       </div>

@@ -132,24 +132,27 @@
 }
 
 @media (min-width: 768px) {
+  /* ROOT-CAUSE FIX for the stray text-cursor bug: `zoom` is a non-standard
+     Chromium/WebKit-only CSS property with well-documented caret/hit-testing
+     inconsistencies — the browser's native text caret and click coordinates
+     are computed in a coordinate space that doesn't always stay in sync with
+     `zoom` once an element's size changes dynamically via JS (exactly what
+     InputBar's textarea auto-resize does on every keystroke, reading
+     `scrollHeight` and writing `style.height`). That mismatch is what put the
+     caret visibly outside the chatbox.
+     `zoom: 0.8` (then 0.9) was also the actual cause of every "text is too
+     small" complaint — it silently shrunk every real, authored font-size on
+     desktop by 10-20%. Removing it outright both fixes the caret bug AND
+     genuinely increases readability: text now renders at the size it was
+     actually authored at, with no scaling/transform mechanism at all — not a
+     replacement hack, just the removal of one. */
   html {
-    zoom: 0.8;
     height: 100%;
   }
 
   body {
     min-height: 100%;
     height: 100%;
-  }
-
-  .h-screen {
-    height: calc(100vh / 0.8) !important;
-    height: calc(100dvh / 0.8) !important;
-  }
-
-  .min-h-screen {
-    min-height: calc(100vh / 0.8) !important;
-    min-height: calc(100dvh / 0.8) !important;
   }
 }
 

@@ -45,6 +45,7 @@ const DOCUMENT_MIME_TO_TYPE: Record<string, string> = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
   'application/msword': 'doc',
   'text/plain': 'txt',
+  'image/jpeg': 'jpg',
 };
 
 function resolveMimeType(file: File): string {
@@ -54,6 +55,7 @@ function resolveMimeType(file: File): string {
   if (name.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   if (name.endsWith('.doc')) return 'application/msword';
   if (name.endsWith('.txt')) return 'text/plain';
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
   return file.type || 'unknown';
 }
 

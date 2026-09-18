@@ -48,7 +48,7 @@ interface DBDeal {
   raw_text?: string | null;
   normalised_text?: string | null;
   summary_text?: string | null;
-  metadata?: { mandate_summary?: string; [key: string]: unknown };
+  metadata?: { mandate_summary?: string; custom_title?: string | null; remark?: string | null; [key: string]: unknown };
   source?: string;
   created_at?: string;
 }
@@ -56,6 +56,9 @@ interface DBDeal {
 interface Deal {
   id: string | number;
   deal: string;
+  originalTitle: string;
+  customTitle?: string | null;
+  remark?: string | null;
   sector: string;
   region: string;
   status: DealStatus;
@@ -130,9 +133,15 @@ export default function DealLogPage() {
   const deals: Deal[] = (Array.isArray(rawDeals) ? rawDeals : []).map((dbDeal: DBDeal) => {
     const intentName = dbDeal.intent ? (INTENT_LABELS[dbDeal.intent] || dbDeal.intent) : 'Sell Side';
     const sectorName = formatSectorLabel(dbDeal.sectors?.[0]);
+    const originalTitle = `${intentName}: ${sectorName}`;
+    const customTitle = dbDeal.metadata?.custom_title || null;
+    const remark = dbDeal.metadata?.remark || null;
     return {
       id: dbDeal.id,
-      deal: `${intentName}: ${sectorName}`,
+      deal: customTitle || originalTitle,
+      originalTitle,
+      customTitle,
+      remark,
       sector: sectorName,
       region: dbDeal.geographies?.[0] || 'Pune, Maharashtra',
       summary: dbDeal.summary_text || dbDeal.raw_text || 'Deal summary unavailable',
@@ -192,10 +201,53 @@ export default function DealLogPage() {
   }));
 
   const handleDelete = async (id: string | number) => {
-    if (Array.isArray(rawDeals)) {
-      mutate(rawDeals.filter((d: DBDeal) => d.id !== id), false);
+    const previousDeals = Array.isArray(rawDeals) ? rawDeals : null;
+
+    // 1. Optimistic removal — immediate UI feedback, no revalidation yet.
+    if (previousDeals) {
+      mutate(previousDeals.filter((d: DBDeal) => d.id !== id), false);
     }
     if (expandedDealId === id) setExpandedDealId(null);
+
+    try {
+      // 2. Persist the deletion server-side (soft delete: proposals.status = 'DELETED').
+      const res = await fetch(`/api/deals/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      // 3. Confirmed — revalidate against the server so the list reflects the
+      // real, persisted state (and so any other open tab/session catches up).
+      await mutate();
+    } catch (err) {
+      console.error('Failed to delete deal:', err);
+      // 4. Roll back the optimistic removal — the deal was NOT actually deleted,
+      // so it must not silently vanish from the UI while still existing server-side.
+      if (previousDeals) mutate(previousDeals, false);
+      alert(err instanceof Error ? `Could not delete this deal: ${err.message}` : 'Could not delete this deal.');
+    }
+  };
+
+  const handleRename = async (id: string | number, customTitle: string, remark: string) => {
+    // Optimistic update so the Deal Log reflects the edit immediately.
+    if (Array.isArray(rawDeals)) {
+      mutate(
+        rawDeals.map((d: DBDeal) => d.id === id
+          ? { ...d, metadata: { ...(d.metadata || {}), custom_title: customTitle || null, remark: remark || null } }
+          : d),
+        false,
+      );
+    }
+    try {
+      const res = await fetch(`/api/deals/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ custom_title: customTitle, remark }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } finally {
+      mutate();
+    }
   };
 
   const handleToggleExpand = (id: string | number) => {
@@ -386,6 +438,7 @@ export default function DealLogPage() {
                   onToggle={() => handleToggleExpand(deal.id)}
                   onDelete={() => handleDelete(deal.id)}
                   onViewMatch={handleViewMatch}
+                  onRename={(customTitle, remark) => handleRename(deal.id, customTitle, remark)}
                 />
               ))}
             </div>
