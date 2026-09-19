@@ -13,6 +13,8 @@ import { useNotifications } from '@/components/NotificationProvider';
 import useSWR from 'swr';
 
 import { formatMatchScore, normalizeMatchScoreNum } from '@/utils/formatters';
+import IdentityCard from '@/components/IdentityCard';
+import EOIContributionModal from '@/components/EOIContributionModal';
 
 interface MatchDetailResponse {
    match: {
@@ -552,6 +554,42 @@ export default function MatchDetailPage() {
                {/* RIGHT COLUMN: Merged Score, Reason & Send EOI Block */}
                <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
 
+                  {/* IDENTITY CARD (Locked pre-approval, Disclosure post-approval) */}
+                  <IdentityCard
+                     mode={counterparty.isConnected ? 'disclosure' : 'locked'}
+                     data={{
+                        fullName: counterparty.isConnected && counterparty.revealedContact?.advisor ? counterparty.revealedContact.advisor : null,
+                        designation: counterparty.isConnected ? 'Advisory Partner · DealCollab Network' : 'Senior advisor · boutique firm',
+                        organisation: counterparty.isConnected ? 'Verified Advisory Partner' : null,
+                        headline: dealSummary || undefined,
+                        mandateSide: counterparty.intent ? counterparty.intent.replace(/_/g, '-').toLowerCase() : 'sell-side',
+                        ticketBand: formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr) !== 'Undisclosed'
+                           ? formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr)
+                           : undefined,
+                        // Do NOT expose closedCount or expertise for counterparty — these are personal profile
+                        // attributes only available after EOI approval and explicit disclosure by the owner.
+                        closedCount: null,
+                        expertise: counterparty.isConnected ? ['M&A Advisory', 'Deal Structuring'] : undefined,
+                        sectors: counterparty.sectors.slice(0, 4),
+                        geographies: counterparty.geographies.slice(0, 3),
+                        phone: counterparty.isConnected ? counterparty.revealedContact?.phone ?? null : null,
+                        email: null,  // Email is never pre-disclosed; only phone via revealedContact
+                        location: counterparty.geographies[0] ? `${counterparty.geographies[0]} region` : 'India region',
+                        isVerified: true,
+                        intentFitScore: Math.round(Number(match.finalScore) || 70),
+                        matchReference: `DC-M-${String(match.id).slice(-4).toUpperCase()} · ${counterparty.sectors[0] || 'Advisory'} · ${formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr)}`,
+                        matchedMandateText: `MATCHED ON DC-M-${String(match.id).slice(-4).toUpperCase()} · ${counterparty.intent} · ${formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr)}`,
+                        eoiReference: eoi ? String(eoi.id).slice(-4).toUpperCase() : undefined,
+                        disclosureTimestamp: counterparty.isConnected
+                           ? new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase() + ' · IST'
+                           : undefined,
+                     }}
+                     onAction={!eoi ? handleSendEOI : undefined}
+                     actionLoading={isSending}
+                     actionLabel={!eoi ? 'Send Expression of Interest' : undefined}
+                     showExportButtons={!!counterparty.isConnected}
+                  />
+
                   {/* UNIFIED ACTION CARD */}
                   <div className="bg-white rounded-2xl border border-[#E5E7EB] hover:border-black shadow-sm p-6 space-y-5 transition-all duration-200">
 
@@ -655,35 +693,18 @@ export default function MatchDetailPage() {
             </div>
          </div>
 
-         {/* EOI SUCCESS CONFIRMATION MODAL */}
-         {showSuccessModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-               <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-[#E5E7EB] text-center space-y-5 animate-in zoom-in-95 duration-200">
-                  <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto text-green-600 border border-green-100 shadow-sm">
-                     <CheckCircle2 size={28} />
-                  </div>
-                  <div className="space-y-2">
-                     <h3 className="text-lg font-bold text-[#1F1F1F] tracking-tight">
-                        Your EOI is sent
-                     </h3>
-                     <p className="text-xs text-[#747775] font-medium leading-relaxed">
-                        Tokens are charged only if counterparty approves it.
-                     </p>
-                  </div>
-                  <div className="pt-2">
-                     <button
-                        onClick={() => {
-                           setShowSuccessModal(false);
-                           router.push('/deal-dashboard');
-                        }}
-                        className="px-6 py-2.5 bg-[#FF6A00] hover:bg-[#EA580C] text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow transition-all active:scale-95"
-                     >
-                        Okay
-                     </button>
-                  </div>
-               </div>
-            </div>
-         )}
+         {/* EOI CONTRIBUTION / THANK-YOU CARD (Replaces legacy modal) */}
+         <EOIContributionModal
+            isOpen={showSuccessModal}
+            onClose={() => {
+               setShowSuccessModal(false);
+               router.push('/deal-dashboard');
+            }}
+            onContinue={() => {
+               setShowSuccessModal(false);
+               router.push('/deal-dashboard');
+            }}
+         />
       </div>
    );
 }

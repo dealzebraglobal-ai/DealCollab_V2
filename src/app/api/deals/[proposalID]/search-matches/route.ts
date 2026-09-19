@@ -61,6 +61,7 @@ export async function POST(
       intent: p.intent,
       raw_text: p.raw_text || '',
       sector: p.sectors?.[0] ?? null,
+      industry: p.industry ?? ((p.metadata as Record<string, unknown>)?.industry as string) ?? null,
       sub_sector: null,
       geography: p.geographies?.[0] ?? null,
       deal_size: null,

@@ -35,6 +35,11 @@
   --color-brand-border: var(--border);
   --color-ai-accent: var(--ai-accent);
 
+  --font-serif-card: var(--font-instrument-serif), Georgia, serif;
+  --font-manrope: var(--font-manrope), sans-serif;
+  --font-mono-card: var(--font-ibm-plex-mono), monospace;
+  --font-poppins: var(--font-poppins), sans-serif;
+
   @keyframes slide-in-top {
     from {
       transform: translateY(-1rem);

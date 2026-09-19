@@ -11,7 +11,6 @@ import { UserProfile } from '../UserProvider';
 // PRD-aligned validation and types
 import { 
   STEPS, 
-  TOTAL_STEPS, 
   INITIAL_FORM_DATA, 
   ProfileFormData, 
   validateStep, 
@@ -630,10 +629,10 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                       placeholder="e.g. Looking to raise $2M seed round for our B2B SaaS startup..." 
                     />
                     <div className="flex justify-between mt-1 px-1">
-                      <p className="text-[10px] text-brand-secondary font-medium">Please be as descriptive as possible (min 40 characters if entered).</p>
+                      <p className="text-[10px] text-brand-secondary font-medium">Please be as descriptive as possible.</p>
                       {formData.expertiseDescription.trim().length > 0 && (
-                        <span className={`text-[10px] font-bold ${formData.expertiseDescription.length >= 40 ? 'text-green-500' : 'text-brand-accent'}`}>
-                          {formData.expertiseDescription.length} / 40 min
+                        <span className="text-[10px] font-bold text-gray-500">
+                          {formData.expertiseDescription.length} characters
                         </span>
                       )}
                     </div>
@@ -704,13 +703,15 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                       onChange={e => updateFormData({ expertiseDescription: e.target.value })} 
                       rows={6} 
                       className="textarea-premium" 
-                      placeholder="Minimum 60 characters..." 
+                      placeholder="Describe your expertise, experience, and transaction focus..." 
                     />
                     <div className="flex justify-between mt-1 px-1">
                       <p className="text-[10px] text-brand-secondary font-medium">Replaces Priority Sectors field. Be descriptive.</p>
-                      <span className={`text-[10px] font-bold ${formData.expertiseDescription.length >= 60 ? 'text-green-500' : 'text-brand-accent'}`}>
-                        {formData.expertiseDescription.length} / 60 min
-                      </span>
+                      {formData.expertiseDescription.length > 0 && (
+                        <span className="text-[10px] font-bold text-gray-500">
+                          {formData.expertiseDescription.length} characters
+                        </span>
+                      )}
                     </div>
                   </InputGroup>
                 </div>

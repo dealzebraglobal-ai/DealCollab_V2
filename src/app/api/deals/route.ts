@@ -5,10 +5,13 @@ import { NextResponse } from 'next/server';
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
 
+import { generateFullDealSummary } from '@/lib/dealSummaryGenerator';
+
 // ─── Types returned by the get_deals_for_user RPC ────────────────────────────
 interface DealRow {
   proposal_id: string;
   proposal_intent: string | null;
+  proposal_industry: string | null;
   proposal_sectors: string[] | null;
   proposal_geographies: string[] | null;
   proposal_size_min: number | null;
@@ -28,6 +31,7 @@ interface DealRow {
   matched_proposal_id: string | null;
   // Counterparty proposal columns — null when the proposal has no matches
   cp_intent: string | null;
+  cp_industry: string | null;
   cp_sectors: string[] | null;
   cp_geographies: string[] | null;
   cp_size_min: number | null;
@@ -117,6 +121,7 @@ export async function GET() {
     const proposalMap = new Map<string, {
       id: string;
       intent: string | null;
+      industry: string | null;
       sectors: string[] | null;
       geographies: string[] | null;
       deal_size_min_cr: number | null;
@@ -136,10 +141,12 @@ export async function GET() {
         matchedProposalId: string | null;
         counterparty: {
           intent: string | null;
+          industry: string | null;
           sectors: string[] | null;
           geographies: string[] | null;
           size_min: number | null;
           size_max: number | null;
+          deal_structure?: string | null;
           raw_text: string | null;
           normalised_text: string | null;
           summary_text: string | null;
@@ -154,6 +161,7 @@ export async function GET() {
         proposalMap.set(row.proposal_id, {
           id: row.proposal_id,
           intent: row.proposal_intent,
+          industry: row.proposal_industry || (row.proposal_metadata as Record<string, unknown> | null)?.industry as string | null || row.proposal_sectors?.[0] || null,
           sectors: row.proposal_sectors,
           geographies: row.proposal_geographies,
           deal_size_min_cr: row.proposal_size_min,
@@ -172,6 +180,39 @@ export async function GET() {
       // Attach match data if this row has a match (match_id != null)
       if (row.match_id) {
         const proposal = proposalMap.get(row.proposal_id)!;
+        const cpIndustry = row.cp_industry || (row.cp_metadata as Record<string, unknown> | null)?.industry as string | null || row.cp_sectors?.[0] || null;
+        
+        // Generate full deal intelligence summary using all available source and counterparty data
+        const dynamicSummary = generateFullDealSummary(
+          {
+            intent: row.proposal_intent,
+            industry: row.proposal_industry,
+            sector: row.proposal_sectors?.[0],
+            geography: row.proposal_geographies?.[0],
+            deal_size_min: row.proposal_size_min,
+            deal_size_max: row.proposal_size_max,
+            structure: (row.proposal_metadata as Record<string, unknown> | null)?.deal_structure as string | null,
+            industry_data: row.proposal_metadata,
+          },
+          {
+            id: row.matched_proposal_id ?? undefined,
+            intent: row.cp_intent,
+            industry: cpIndustry,
+            sectors: row.cp_sectors,
+            geographies: row.cp_geographies,
+            deal_size_min_cr: row.cp_size_min,
+            deal_size_max_cr: row.cp_size_max,
+            deal_structure: row.cp_deal_structure,
+            metadata: row.cp_metadata,
+            normalised_text: row.cp_normalised_text,
+          },
+          {
+            finalScore: Number(row.match_final_score || 0),
+            similarityScore: Number(row.match_similarity_score || 0),
+            matchReason: row.match_reason || undefined,
+          }
+        );
+
         proposal.matches.push({
           id: row.match_id,
           score: row.match_final_score,
@@ -180,14 +221,16 @@ export async function GET() {
           matchedProposalId: row.matched_proposal_id,
           counterparty: {
             intent: row.cp_intent,
+            industry: cpIndustry,
             sectors: row.cp_sectors,
             geographies: row.cp_geographies,
             size_min: row.cp_size_min,
             size_max: row.cp_size_max,
+            deal_structure: row.cp_deal_structure,
             raw_text: row.cp_raw_text,
             normalised_text: row.cp_normalised_text,
-            summary_text: row.cp_summary_text ?? null,
-            mandate_summary: (row.cp_metadata as Record<string, unknown> | null)?.mandate_summary as string | null ?? null,
+            summary_text: dynamicSummary || row.cp_summary_text || null,
+            mandate_summary: dynamicSummary || ((row.cp_metadata as Record<string, unknown> | null)?.mandate_summary as string | null) || null,
           },
         });
       }

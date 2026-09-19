@@ -45,10 +45,10 @@ describe('Canonical Profile Completion & Synchronization Suite', () => {
       expect(res.missingFields).toHaveLength(0);
     });
 
-    it('TEST 2: Incomplete profile (missing terms or description < 60 chars) returns isComplete=false and percentage < 100', () => {
+    it('TEST 2: Incomplete profile (missing expertise description) returns isComplete=false and percentage < 100', () => {
       const incompleteProfile: ProfileUser = {
         ...completeAdvisorProfile,
-        expertise_description: 'Too short', // less than 60 chars
+        expertise_description: '', // empty
       };
       const res = getProfileCompletion(incompleteProfile);
       expect(res.isComplete).toBe(false);

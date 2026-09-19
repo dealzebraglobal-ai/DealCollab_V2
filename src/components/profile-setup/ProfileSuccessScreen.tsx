@@ -13,7 +13,9 @@ interface ProfileSuccessScreenProps {
 export default function ProfileSuccessScreen({ onDashboardClick, returnUrl }: ProfileSuccessScreenProps) {
   const [countdown, setCountdown] = useState(5);
   const callbackRef = useRef(onDashboardClick);
-  callbackRef.current = onDashboardClick;
+  useEffect(() => {
+    callbackRef.current = onDashboardClick;
+  }, [onDashboardClick]);
 
   useEffect(() => {
     // Initial celebratory pop sequence

@@ -10,24 +10,52 @@
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /**
- * Formats date into exact readable string: "31 Aug 2026, 2:30 PM"
+ * Formats date into exact readable string in the requested timezone (default: Asia/Kolkata / IST).
+ * E.g., "18 Sep 2026, 03:06 PM"
  */
-export function formatExactDateTime(dateInput: string | Date | undefined | null): string {
+export function formatExactDateTime(
+  dateInput: string | Date | undefined | null,
+  timeZone: string = 'Asia/Kolkata'
+): string {
   if (!dateInput) return 'Date unavailable';
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (isNaN(date.getTime())) return 'Invalid date';
 
-  const day = date.getDate();
-  const month = MONTHS[date.getMonth()];
-  const year = date.getFullYear();
+  try {
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    // formatted: "18 Sept 2026 at 03:06 pm" or "18 Sep 2026, 03:06 pm"
+    const parts = formatter.formatToParts(date);
+    const day = parts.find(p => p.type === 'day')?.value || '';
+    const month = parts.find(p => p.type === 'month')?.value || '';
+    const year = parts.find(p => p.type === 'year')?.value || '';
+    const hour = parts.find(p => p.type === 'hour')?.value || '';
+    const minute = parts.find(p => p.type === 'minute')?.value || '';
+    const dayPeriod = (parts.find(p => p.type === 'dayPeriod')?.value || 'AM').toUpperCase();
 
-  let hours = date.getHours();
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // 0 -> 12
+    return `${day} ${month} ${year}, ${hour}:${minute} ${dayPeriod}`;
+  } catch {
+    // Fallback if timezone is invalid
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = MONTHS[date.getMonth()];
+    const year = date.getFullYear();
 
-  return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const hoursPadded = String(hours).padStart(2, '0');
+
+    return `${day} ${month} ${year}, ${hoursPadded}:${minutes} ${ampm}`;
+  }
 }
 
 /**

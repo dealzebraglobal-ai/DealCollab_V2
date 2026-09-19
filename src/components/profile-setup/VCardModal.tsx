@@ -1,8 +1,8 @@
 'use client';
 import React, { useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
-import { X, Download, Share2, User, Phone, Mail, Building2, MapPin, Briefcase, Sparkles, AlertCircle, Check } from 'lucide-react';
+import { X, Download, Share2, AlertCircle, Check } from 'lucide-react';
 import type { UserProfile } from '../UserProvider';
+import IdentityCard from '@/components/IdentityCard';
 
 interface VCardModalProps {
   isOpen: boolean;
@@ -98,6 +98,215 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
     })
     : '';
 
+  const drawCardToCanvas = async (): Promise<HTMLCanvasElement> => {
+    const width = 1200;
+    const height = 675;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get canvas context');
+
+    // Background gradient (#0B1B2B -> #111827)
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+    bgGrad.addColorStop(0, '#0B1B2B');
+    bgGrad.addColorStop(1, '#111827');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Decorative ambient glow (#F97316)
+    const glowGrad = ctx.createRadialGradient(width - 100, 100, 20, width - 100, 100, 400);
+    glowGrad.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+    glowGrad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Header Badge: DealCollab
+    ctx.fillStyle = '#F97316';
+    ctx.beginPath();
+    ctx.roundRect(70, 60, 44, 44, [10]);
+    ctx.fill();
+
+    // Star icon / accent inside badge
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '900 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✦', 92, 82);
+
+    ctx.textAlign = 'left';
+    ctx.font = '900 22px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillText('DEALCOLLAB', 128, 83);
+
+    // Profile photo or initial avatar
+    const avatarX = 70;
+    const avatarY = 140;
+    const avatarSize = 130;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(avatarX, avatarY, avatarSize, avatarSize, [24]);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.stroke();
+    ctx.clip();
+
+    let imageDrawn = false;
+    if (photo) {
+      try {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = photo;
+        });
+        ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize);
+        imageDrawn = true;
+      } catch {
+        // Fallback to avatar initial
+      }
+    }
+
+    if (!imageDrawn) {
+      ctx.fillStyle = '#F97316';
+      ctx.font = '900 56px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((name[0] || 'D').toUpperCase(), avatarX + avatarSize / 2, avatarY + avatarSize / 2);
+    }
+    ctx.restore();
+
+    // Name, Role, Firm
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '900 42px sans-serif';
+    ctx.fillText(name || 'Verified Member', 230, 195);
+
+    if (role) {
+      ctx.fillStyle = '#F97316';
+      ctx.font = '700 24px sans-serif';
+      ctx.fillText(role, 230, 235);
+    }
+
+    if (company) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.font = '600 20px sans-serif';
+      ctx.fillText(company, 230, 268);
+    }
+
+    // Divider
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(70, 310);
+    ctx.lineTo(width - 70, 310);
+    ctx.stroke();
+
+    // Contact & Location Grid
+    const infoStartY = 360;
+    const col1X = 70;
+    const col2X = 620;
+
+    // Contact Number
+    if (data?.phone) {
+      ctx.fillStyle = '#F97316';
+      ctx.font = '900 22px sans-serif';
+      ctx.fillText('TEL', col1X, infoStartY);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '600 24px sans-serif';
+      ctx.fillText(data.phone, col1X + 65, infoStartY);
+    }
+
+    // Email
+    if (data?.email) {
+      ctx.fillStyle = '#F97316';
+      ctx.font = '900 22px sans-serif';
+      ctx.fillText('MAIL', col2X, infoStartY);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '600 24px sans-serif';
+      ctx.fillText(data.email, col2X + 75, infoStartY);
+    }
+
+    // Location & Organization
+    const infoRow2Y = 425;
+    if (place) {
+      ctx.fillStyle = '#F97316';
+      ctx.font = '900 22px sans-serif';
+      ctx.fillText('LOC', col1X, infoRow2Y);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.font = '600 24px sans-serif';
+      ctx.fillText(place, col1X + 65, infoRow2Y);
+    }
+
+    if (company) {
+      ctx.fillStyle = '#F97316';
+      ctx.font = '900 22px sans-serif';
+      ctx.fillText('ORG', col2X, infoRow2Y);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.font = '600 24px sans-serif';
+      ctx.fillText(company, col2X + 75, infoRow2Y);
+    }
+
+    // Sectors / Focus Chips
+    if (sectors.length > 0) {
+      let chipX = 70;
+      const chipY = 490;
+      const chipHeight = 44;
+
+      ctx.font = '700 18px sans-serif';
+      for (const s of sectors.slice(0, 4)) {
+        const textWidth = ctx.measureText(s).width;
+        const chipWidth = textWidth + 36;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.roundRect(chipX, chipY, chipWidth, chipHeight, [22]);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.stroke();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s, chipX + 18, chipY + chipHeight / 2);
+        chipX += chipWidth + 14;
+      }
+    }
+
+    // Footer Watermark
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'right';
+    ctx.font = '600 16px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillText('AI-Driven M&A Deal Network · dealcollab.com', width - 70, height - 40);
+
+    return canvas;
+  };
+
+  const handleDownloadImage = async (format: 'png' | 'jpeg') => {
+    if (!canRender) return;
+    try {
+      const canvas = await drawCardToCanvas();
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+      const extension = format === 'png' ? 'png' : 'jpg';
+      const dataUrl = canvas.toDataURL(mimeType, 0.95);
+
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${name.replace(/[^a-z0-9]+/gi, '_') || 'dealcollab'}_vcard.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      console.error('Failed to download vCard image:', err);
+    }
+  };
+
   const handleDownload = () => {
     if (!canRender) return;
     const blob = new Blob([vcardText], { type: 'text/vcard;charset=utf-8' });
@@ -115,6 +324,27 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
     if (!canRender) return;
     const shareText = `${name}${role ? ` — ${role}` : ''}${company ? ` @ ${company}` : ''}\nPhone: ${data?.phone}\nEmail: ${data?.email}${place ? `\nBased in: ${place}` : ''}\n\nShared via DealCollab`;
     try {
+      // Try Web Share with image if supported
+      if (navigator.share && navigator.canShare) {
+        try {
+          const canvas = await drawCardToCanvas();
+          const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'));
+          if (blob) {
+            const file = new File([blob], `${name.replace(/[^a-z0-9]+/gi, '_') || 'dealcollab'}_vcard.png`, { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                title: `${name} — DealCollab vCard`,
+                text: shareText,
+                files: [file],
+              });
+              return;
+            }
+          }
+        } catch {
+          // Fall back to text share
+        }
+      }
+
       if (navigator.share) {
         await navigator.share({ title: `${name} — DealCollab vCard`, text: shareText });
         return;
@@ -126,7 +356,7 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
         setCopyState('copied');
         setTimeout(() => setCopyState('idle'), 2000);
       } catch {
-        // Clipboard unavailable too — the card is still visible/downloadable, so this is a soft failure.
+        // Clipboard unavailable too
       }
     }
   };
@@ -165,74 +395,74 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
             </div>
           ) : (
             <>
-              {/* The card itself */}
-              <div ref={cardRef} className="rounded-3xl bg-gradient-to-br from-[#0B1B2B] to-[#111827] p-6 text-white relative overflow-hidden shadow-xl">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-[#F97316]/20 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
-                <div className="relative z-10 flex items-center gap-2 mb-5">
-                  <div className="bg-[#F97316] text-white p-1 rounded shadow-lg">
-                    <Sparkles size={12} />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">DealCollab</span>
+              {/* The DealCollab Public Identity Card */}
+              <IdentityCard
+                mode="public"
+                data={{
+                  fullName: name || 'Verified Member',
+                  initials: (name ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('') : 'DC').toUpperCase(),
+                  designation: role || undefined,
+                  organisation: company || undefined,
+                  headline: data?.expertiseDescription || (data as any)?.headline || undefined,
+                  mandateSide: (data?.intent && (data.intent as string[])[0])
+                    ? ((data.intent as string[])[0]).replace(/_/g, '-').toLowerCase()
+                    : undefined,
+                  // Use real profile ticket band if available, otherwise omit
+                  ticketBand: (data as any)?.dealSizeMin && (data as any)?.dealSizeMax
+                    ? `₹${(data as any).dealSizeMin}–${(data as any).dealSizeMax} Cr`
+                    : (data as any)?.ticketBand || undefined,
+                  // Use real closed count if available
+                  closedCount: (data as any)?.closedCount ?? (data as any)?.closed_count ?? undefined,
+                  expertise: data?.expertiseDescription
+                    ? [data.expertiseDescription]
+                    : (data as any)?.expertise?.length
+                      ? (data as any).expertise.slice(0, 3)
+                      : undefined,
+                  sectors: sectors.slice(0, 4),
+                  geographies: (data?.geographies && (data.geographies as string[]).length > 0
+                    ? data.geographies as string[]
+                    : ['India']).slice(0, 3),
+                  phone: data?.phone || undefined,
+                  email: data?.email || undefined,
+                  location: place || undefined,
+                  isVerified: (data as any)?.kycVerified !== undefined ? !!(data as any).kycVerified : true,
+                  verifiedCode: String(data?.id || '').slice(-4).toUpperCase() || undefined,
+                  profileSlug: `usr_${String(data?.id || 'dc').slice(0, 8)}`,
+                }}
+                showExportButtons={false}
+              />
+
+              {/* Action Buttons: JPG, PNG, VCF, Share */}
+              <div className="space-y-2 mt-4">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={() => handleDownloadImage('jpeg')}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
+                  >
+                    <Download size={13} /> Download JPG
+                  </button>
+                  <button
+                    onClick={() => handleDownloadImage('png')}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-[#1F2937] hover:bg-[#111827] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
+                  >
+                    <Download size={13} /> Download PNG
+                  </button>
                 </div>
 
-                <div className="relative z-10 flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center overflow-hidden shrink-0 relative">
-                    {photo ? (
-                      <Image src={photo} alt={name} fill sizes="64px" className="object-cover" />
-                    ) : (
-                      <User size={28} className="text-white/70" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-lg font-black tracking-tight truncate">{name}</p>
-                    {role && <p className="text-xs font-semibold text-white/70 truncate">{role}</p>}
-                    {company && <p className="text-xs font-medium text-white/50 truncate">{company}</p>}
-                  </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={handleDownload}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                  >
+                    <Download size={13} /> vCard (.vcf)
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-white border border-gray-200 hover:border-[#F97316] hover:text-[#F97316] text-gray-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                  >
+                    {copyState === 'copied' ? <><Check size={13} /> Copied</> : <><Share2 size={13} /> Share</>}
+                  </button>
                 </div>
-
-                <div className="relative z-10 mt-5 space-y-2 border-t border-white/10 pt-4">
-                  <div className="flex items-center gap-2 text-xs font-medium text-white/80">
-                    <Phone size={12} className="text-[#F97316]" /> {data?.phone}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-medium text-white/80">
-                    <Mail size={12} className="text-[#F97316]" /> {data?.email}
-                  </div>
-                  {place && (
-                    <div className="flex items-center gap-2 text-xs font-medium text-white/80">
-                      <MapPin size={12} className="text-[#F97316]" /> {place}
-                    </div>
-                  )}
-                  {company && (
-                    <div className="flex items-center gap-2 text-xs font-medium text-white/80">
-                      <Building2 size={12} className="text-[#F97316]" /> {company}
-                    </div>
-                  )}
-                </div>
-
-                {sectors.length > 0 && (
-                  <div className="relative z-10 mt-4 flex flex-wrap gap-1.5">
-                    {sectors.slice(0, 4).map(s => (
-                      <span key={s} className="flex items-center gap-1 px-2 py-0.5 bg-white/10 rounded-full text-[10px] font-bold text-white/80">
-                        <Briefcase size={9} /> {s}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={handleDownload}
-                  className="flex items-center justify-center gap-2 py-3 bg-[#1F2937] hover:bg-[#F97316] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-                >
-                  <Download size={14} /> Download
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 hover:border-[#F97316] hover:text-[#F97316] text-gray-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-                >
-                  {copyState === 'copied' ? <><Check size={14} /> Copied</> : <><Share2 size={14} /> Share</>}
-                </button>
               </div>
             </>
           )}

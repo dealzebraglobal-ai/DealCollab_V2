@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveDbUser } from '@/lib/resolveDbUser';
+import { generateFullDealSummary } from '@/lib/dealSummaryGenerator';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,7 @@ interface MatchRow {
     status: string;
     // joined from proposals
     intent: string;
+    industry: string | null;
     sectors: string[] | null;
     geographies: string[] | null;
     deal_size_min_cr: string | null;
@@ -29,6 +31,7 @@ interface MatchRow {
     quality_tier: string | null;
     raw_text: string | null;
     summary_text: string | null;
+    metadata: Record<string, unknown> | null;
 }
 
 interface ParsedReason {
@@ -161,8 +164,8 @@ export async function GET(
         const { data: counterparties } = await supabase
             .from('proposals')
             .select(`
-        id, intent, sectors, geographies, deal_size_min_cr, deal_size_max_cr,
-        revenue_min_cr, revenue_max_cr, deal_structure, quality_tier, raw_text, summary_text
+        id, intent, industry, sectors, geographies, deal_size_min_cr, deal_size_max_cr,
+        revenue_min_cr, revenue_max_cr, deal_structure, quality_tier, raw_text, summary_text, metadata
       `)
             .in('id', matchedIds);
 
@@ -191,6 +194,35 @@ export async function GET(
             const isConnected = !!connection;
             const parsed = parseMatchReason(m.match_reason);
 
+            // Generate full-fledged M&A intelligence brief
+            const dealSummary = cp
+                ? generateFullDealSummary(
+                    {
+                        intent: proposal.intent,
+                        sectors: proposal.sectors,
+                        geographies: proposal.geographies,
+                    },
+                    {
+                        intent: cp.intent,
+                        industry: cp.industry,
+                        sectors: cp.sectors,
+                        geographies: cp.geographies,
+                        deal_size_min_cr: cp.deal_size_min_cr ? Number(cp.deal_size_min_cr) : null,
+                        deal_size_max_cr: cp.deal_size_max_cr ? Number(cp.deal_size_max_cr) : null,
+                        revenue_min_cr: cp.revenue_min_cr ? Number(cp.revenue_min_cr) : null,
+                        revenue_max_cr: cp.revenue_max_cr ? Number(cp.revenue_max_cr) : null,
+                        deal_structure: cp.deal_structure,
+                        raw_text: cp.raw_text,
+                        metadata: cp.metadata,
+                    },
+                    {
+                        finalScore: Number(m.final_score),
+                        archetype: m.match_archetype,
+                        matchReason: m.match_reason,
+                    }
+                )
+                : 'Counterparty details unavailable';
+
             return {
                 rank: `P${idx + 1}`,
                 matchId: m.id,
@@ -204,17 +236,23 @@ export async function GET(
                 strategicFit: parsed.strategicFit ?? null,
                 geographyFit: parsed.geographyFit ?? null,
                 riskFlags: parsed.riskFlags ?? [],
-                // Anonymized public preview
+                // Rich M&A intelligence summary & parameters
+                dealSummary,
                 summary: cp ? summarizeDeal(cp) : 'Counterparty details unavailable',
                 intent: cp?.intent ?? null,
+                industry: cp?.industry ?? (cp?.sectors?.length ? cp.sectors[0] : null),
                 sectors: cp?.sectors ?? [],
                 geographies: cp?.geographies ?? [],
                 dealStructure: cp?.deal_structure ?? null,
                 sizeRange: cp?.deal_size_min_cr && cp?.deal_size_max_cr
                     ? `₹${cp.deal_size_min_cr}–${cp.deal_size_max_cr} Cr`
                     : cp?.deal_size_min_cr ? `₹${cp.deal_size_min_cr} Cr` : null,
+                revenueRange: cp?.revenue_min_cr && cp?.revenue_max_cr
+                    ? `₹${cp.revenue_min_cr}–${cp.revenue_max_cr} Cr`
+                    : cp?.revenue_min_cr ? `₹${cp.revenue_min_cr} Cr` : null,
                 teaser: cp?.summary_text || cp?.raw_text || '',
                 qualityTier: cp?.quality_tier ?? null,
+                isIdentityProtected: true,
                 // Connection state
                 isConnected,
                 revealedContact: isConnected ? {

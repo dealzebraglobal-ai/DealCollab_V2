@@ -85,7 +85,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // in a LATER fetch and weren't in the baseline count as genuinely new.
   const seenIdsRef = useRef<Set<string | number> | null>(null);
   const isSoundMutedRef = useRef(isSoundMuted);
-  isSoundMutedRef.current = isSoundMuted;
+  useEffect(() => {
+    isSoundMutedRef.current = isSoundMuted;
+  }, [isSoundMuted]);
 
   useEffect(() => {
     if (apiNotifications && Array.isArray(apiNotifications)) {

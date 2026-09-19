@@ -124,17 +124,62 @@ export default function MatchDetailsModal({ isOpen, onClose, match, matchName, m
             </div>
           )}
 
+          {/* Full M&A Deal Intelligence Brief */}
+          {(() => {
+            const rawSummary = match?.dealSummary || match?.counterparty?.dealSummary || match?.counterparty?.summary;
+            if (!rawSummary) return null;
+
+            const paragraphs = rawSummary
+              .split('\n\n')
+              .map(p => p.trim())
+              .filter(Boolean);
+
+            return (
+              <div className="bg-[#F9FAFB] p-5 rounded-xl border border-[#E5E7EB] mb-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Info size={16} className="text-[#FF6A00]" />
+                  <span className="text-sm font-bold text-[#1F2937]">M&A Deal Intelligence Brief</span>
+                </div>
+                <div className="space-y-4 text-xs text-gray-700 leading-relaxed">
+                  {paragraphs.map((paragraph, idx) => {
+                    const lines = paragraph.split('\n');
+                    const firstLine = lines[0].trim();
+                    const isHeading = firstLine.startsWith('###') || firstLine.startsWith('##');
+                    const headingText = isHeading ? firstLine.replace(/^#+\s*/, '') : null;
+                    const bodyText = isHeading ? lines.slice(1).join(' ').trim() : lines.join(' ').trim();
+
+                    return (
+                      <div key={idx} className="space-y-1">
+                        {headingText && (
+                          <h4 className="text-xs font-bold tracking-wider uppercase text-gray-900 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6A00] inline-block" />
+                            {headingText}
+                          </h4>
+                        )}
+                        {bodyText && (
+                          <p className="text-gray-600 font-normal leading-relaxed pl-3.5 border-l-2 border-orange-100">
+                            {bodyText}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Counterparty details */}
           <div className="space-y-3">
             <div className="bg-[#F9FAFB] p-4 rounded-xl border border-[#E5E7EB]">
               <div className="flex items-center gap-2 mb-2">
-                <Info size={14} className="text-[#6B7280]" />
+                <Building2 size={14} className="text-[#6B7280]" />
                 <span className="text-sm font-bold text-[#1F2937]">Counterparty Profile</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
                 <div>
-                  <span className="text-[#6B7280]">Sector:</span>{' '}
-                  <span className="font-semibold text-[#1F2937]">{sector}</span>
+                  <span className="text-[#6B7280]">Industry / Sector:</span>{' '}
+                  <span className="font-semibold text-[#1F2937]">{match?.counterparty?.industry || sector}</span>
                 </div>
                 <div>
                   <span className="text-[#6B7280]">Geography:</span>{' '}
@@ -148,6 +193,18 @@ export default function MatchDetailsModal({ isOpen, onClose, match, matchName, m
                   <div>
                     <span className="text-[#6B7280]">Structure:</span>{' '}
                     <span className="font-semibold text-[#1F2937]">{structure}</span>
+                  </div>
+                )}
+                {match?.counterparty?.sizeRange && (
+                  <div>
+                    <span className="text-[#6B7280]">Deal Size:</span>{' '}
+                    <span className="font-semibold text-[#1F2937]">{match.counterparty.sizeRange}</span>
+                  </div>
+                )}
+                {match?.counterparty?.revenueRange && (
+                  <div>
+                    <span className="text-[#6B7280]">Revenue:</span>{' '}
+                    <span className="font-semibold text-[#1F2937]">{match.counterparty.revenueRange}</span>
                   </div>
                 )}
               </div>

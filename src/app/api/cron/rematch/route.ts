@@ -61,9 +61,9 @@ export async function GET(req: NextRequest) {
         const query = ss.query_object as ScoringQuery;
         if (!query?.intent) continue;
 
-        // Re-embed (we don't store embedding column in saved_searches in schema above)
         const narrative = [
             `Intent: ${query.intent}`,
+            (ss.industry || query.industry) ? `Industry: ${ss.industry || query.industry}` : '',
             query.sector ? `Sector: ${query.sector}` : '',
             query.geography ? `Geography: ${query.geography}` : '',
         ].filter(Boolean).join('\n');

@@ -40,6 +40,7 @@ interface DBMatch {
 interface DBDeal {
   id: string;
   intent?: string;
+  industry?: string | null;   // TRUE free-text industry (e.g. "Home Textiles") — preferred over sectors[0]
   sectors?: string[];
   geographies?: string[];
   deal_size_min_cr?: number | null;
@@ -132,8 +133,12 @@ export default function DealLogPage() {
 
   const deals: Deal[] = (Array.isArray(rawDeals) ? rawDeals : []).map((dbDeal: DBDeal) => {
     const intentName = dbDeal.intent ? (INTENT_LABELS[dbDeal.intent] || dbDeal.intent) : 'Sell Side';
-    const sectorName = formatSectorLabel(dbDeal.sectors?.[0]);
-    const originalTitle = `${intentName}: ${sectorName}`;
+    // Use true structured industry (e.g. "Home Textiles") in preference to the coarse
+    // sector bucket (e.g. "fmcg"). The sector is only a fallback when industry is absent.
+    const industryLabel = dbDeal.industry
+      ? dbDeal.industry.trim()
+      : formatSectorLabel(dbDeal.sectors?.[0]);
+    const originalTitle = `${intentName}: ${industryLabel}`;
     const customTitle = dbDeal.metadata?.custom_title || null;
     const remark = dbDeal.metadata?.remark || null;
     return {
@@ -142,7 +147,7 @@ export default function DealLogPage() {
       originalTitle,
       customTitle,
       remark,
-      sector: sectorName,
+      sector: industryLabel,
       region: dbDeal.geographies?.[0] || 'Pune, Maharashtra',
       summary: dbDeal.summary_text || dbDeal.raw_text || 'Deal summary unavailable',
       status: dbDeal.matches && dbDeal.matches.length > 0 ? "Matched" : "Searching Match",
@@ -171,12 +176,18 @@ export default function DealLogPage() {
         matchReason: m.reason || 'AI alignment detected.',
         counterparty: {
           sector: m.counterparty?.sector || 'Unknown',
+          industry: (m.counterparty as any)?.industry || m.counterparty?.sector || 'Unknown',
           subSector: null,
           geography: m.counterparty?.geography || 'Global',
           intent: m.counterparty?.intent || 'UNKNOWN',
-          structure: null,
+          structure: (m.counterparty as any)?.deal_structure || null,
+          sizeRange: (m.counterparty as any)?.size_min && (m.counterparty as any)?.size_max
+            ? `₹${(m.counterparty as any).size_min}–${(m.counterparty as any).size_max} Cr`
+            : (m.counterparty as any)?.size_min ? `₹${(m.counterparty as any).size_min} Cr` : null,
+          dealSummary: m.counterparty?.mandate_summary || m.counterparty?.summary_text || undefined,
           summary: m.counterparty?.summary_text || m.counterparty?.raw_text || 'Deal summary unavailable',
         },
+        dealSummary: m.counterparty?.mandate_summary || m.counterparty?.summary_text || undefined,
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
       }))

@@ -134,7 +134,7 @@ export function getProfileCompletion(user: ProfileUser | null | undefined): Cano
 
     // Section 4: Intent & Expertise Description
     { key: 'intent', passed: intent.length > 0 },
-    { key: 'expertise_description', passed: expertiseDescription.length >= 60 },
+    { key: 'expertise_description', passed: expertiseDescription.length > 0 },
 
     // Section 5: Active Mandates
     { key: 'active_mandates', passed: activeMandates.length > 0 },

@@ -129,11 +129,25 @@ export default function DealLogCard({
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
           <div className="flex flex-col gap-0.5 flex-1 min-w-0">
             {isEditing ? (
-              <div className="flex flex-col gap-1.5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="flex flex-col gap-1.5 w-full max-w-sm"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
                 <input
                   type="text"
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      saveEdit();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      cancelEdit();
+                    }
+                  }}
                   placeholder={deal.originalTitle}
                   maxLength={120}
                   autoFocus
@@ -143,6 +157,16 @@ export default function DealLogCard({
                   type="text"
                   value={remarkDraft}
                   onChange={(e) => setRemarkDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      saveEdit();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      cancelEdit();
+                    }
+                  }}
                   placeholder="Remark (e.g. Referred by Tushar Sir)"
                   maxLength={240}
                   className="w-full text-[12px] text-gray-700 border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20"

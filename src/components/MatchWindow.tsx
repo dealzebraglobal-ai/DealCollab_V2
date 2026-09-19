@@ -20,10 +20,14 @@ export interface MatchScores {
 
 export interface MatchCounterparty {
   sector: string;
+  industry?: string | null;
   subSector: string | null;
   geography: string;
   intent: string;
   structure: string | null;
+  sizeRange?: string | null;
+  revenueRange?: string | null;
+  dealSummary?: string;
   summary?: string;
 }
 
@@ -37,6 +41,8 @@ export interface Match {
   scores: MatchScores;
   matchReason: string;
   matchArchetype?: string;
+  dealSummary?: string;
+  isIdentityProtected?: boolean;
   counterparty: MatchCounterparty;
   status: string;
   createdAt: string;
@@ -158,46 +164,95 @@ export default function MatchWindow({ status, matches: propMatches, onViewMatch,
                       className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white border border-[#E5E7EB] rounded-xl hover:border-black transition-all duration-200 group"
                     >
                       <div className="flex-1 min-w-0">
-                        {/* Top line: rank + score */}
-                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <span className="text-[10px] font-medium text-black uppercase tracking-wider bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-full">
+                        {/* Top line: rank + score + Identity Protected */}
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className="text-[10px] font-semibold text-black uppercase tracking-wider bg-[#F3F4F6] border border-[#E5E7EB] px-2.5 py-0.5 rounded-full">
                             {match.label || `P${index + 1}`}
                           </span>
                           <ScoreBadge score={match.finalScore} />
-                          {!approved && (
-                            <div className="flex items-center gap-1 text-[10px] text-black font-normal">
-                              <Shield size={10} />
-                              <span>Identity Protected</span>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                            <Shield size={10} />
+                            <span>Identity Protected</span>
+                          </div>
                         </div>
 
-                        {/* Sector + Geography */}
-                        <div className="flex items-center gap-3 mb-1">
-                          <div className="flex items-center gap-1 text-xs text-black font-medium">
-                            <Building2 size={12} className="text-black" />
-                            <span>{match.counterparty.sector}</span>
+                        {/* Industry, Sector, Geography & Financials chips */}
+                        <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-md">
+                            <Building2 size={12} className="text-[#FF6A00]" />
+                            <span className="capitalize">{match.counterparty.industry || match.counterparty.sector}</span>
                           </div>
                           {match.counterparty.geography && (
-                            <div className="flex items-center gap-1 text-xs text-black font-normal">
-                              <MapPin size={12} />
-                              <span>{match.counterparty.geography}</span>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-md">
+                              <MapPin size={12} className="text-gray-400" />
+                              <span className="capitalize">{match.counterparty.geography.toLowerCase() === 'pan-india' ? 'Pan-India' : match.counterparty.geography}</span>
                             </div>
+                          )}
+                          {match.counterparty.sizeRange && (
+                            <span className="text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                              Deal: {match.counterparty.sizeRange}
+                            </span>
+                          )}
+                          {match.counterparty.revenueRange && (
+                            <span className="text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                              Rev: {match.counterparty.revenueRange}
+                            </span>
+                          )}
+                          {match.counterparty.structure && (
+                            <span className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md capitalize">
+                              {match.counterparty.structure.replace(/_/g, ' ')}
+                            </span>
                           )}
                         </div>
 
-                        {match.counterparty.summary && (
-                          <div className="mb-2 p-2.5 bg-gray-50 border border-gray-100 rounded-lg">
-                            <p className="text-xs text-black italic line-clamp-2 font-normal">
-                              &ldquo;{match.counterparty.summary}&rdquo;
-                            </p>
+                        {/* Rich M&A Deal Summary or Counterparty Brief */}
+                        {(() => {
+                          const rawSummary = match.dealSummary || match.counterparty.dealSummary || match.counterparty.summary;
+                          if (!rawSummary) return null;
+
+                          const paragraphs = rawSummary
+                            .split('\n\n')
+                            .map(p => p.trim())
+                            .filter(Boolean)
+                            .slice(0, 3);
+
+                          return (
+                            <div className="mb-3 p-3.5 bg-gray-50/90 border border-gray-200/90 rounded-xl space-y-2.5 text-xs text-gray-700 leading-relaxed shadow-xs">
+                              {paragraphs.map((paragraph, pIdx) => {
+                                // Extract heading if present (e.g. "### Strategic Acquisition & Growth Opportunity\nBody...")
+                                const lines = paragraph.split('\n');
+                                const firstLine = lines[0].trim();
+                                const isHeading = firstLine.startsWith('###') || firstLine.startsWith('##');
+                                const headingText = isHeading ? firstLine.replace(/^#+\s*/, '') : null;
+                                const bodyText = isHeading ? lines.slice(1).join(' ').trim() : lines.join(' ').trim();
+
+                                return (
+                                  <div key={pIdx} className="space-y-0.5">
+                                    {headingText && (
+                                      <h4 className="text-[11px] font-semibold tracking-wide uppercase text-gray-900 flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF6A00] inline-block" />
+                                        {headingText}
+                                      </h4>
+                                    )}
+                                    {bodyText && (
+                                      <p className="text-gray-600 font-normal leading-relaxed pl-3 border-l border-gray-200">
+                                        {bodyText}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Strategic Match Rationale */}
+                        {match.matchReason && !match.dealSummary?.includes(match.matchReason.trim()) && (
+                          <div className="text-xs text-gray-600 font-normal leading-relaxed pt-0.5">
+                            <span className="font-semibold text-gray-800">Strategic Alignment: </span>
+                            {match.matchReason}
                           </div>
                         )}
-
-                        {/* Match reason */}
-                        <p className="text-xs text-black line-clamp-2 leading-relaxed font-normal">
-                          {match.matchReason}
-                        </p>
                       </div>
 
                       <ActionButtons

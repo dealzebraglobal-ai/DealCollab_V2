@@ -40,6 +40,7 @@ export function getCounterpartyIntents(intent: DealIntent): string[] {
 
 export interface ScoringQuery {
     intent: DealIntent;
+    industry?: string | null;
     sector: SectorKey | null;
     sub_sector: string | null;
     geography: string | null;
@@ -54,6 +55,7 @@ export interface ScoringQuery {
 export interface ScoringCandidate {
     id: string;
     intent: string;
+    industry?: string | null;
     sectors: string[] | null;
     geographies: string[] | null;
     deal_size_min_cr: number | null;
@@ -294,10 +296,10 @@ function scoreSector(query: ScoringQuery, cand: ScoringCandidate): { score: numb
         if (adj === 'adjacent') base = 0.5;
     }
     if (base === 0) return { score: 0, overlap: 0 };
-    // Sub-sector exact-match bonus: +0.20, capped at 1.0
-    const qSub = query.sub_sector?.toLowerCase();
-    const cSub = cand.sub_sector?.toLowerCase();
-    if (qSub && cSub && qSub === cSub) {
+    // Sub-sector / Industry exact-match bonus: +0.20, capped at 1.0
+    const qSub = query.industry?.toLowerCase() || query.sub_sector?.toLowerCase();
+    const cSub = cand.industry?.toLowerCase() || cand.sub_sector?.toLowerCase();
+    if (qSub && cSub && (qSub === cSub || qSub.includes(cSub) || cSub.includes(qSub))) {
         base = Math.min(1.0, base + 0.20);
     }
     return { score: base, overlap: base >= 1 ? 1 : 0.5 };

@@ -30,33 +30,161 @@ export interface SectorRelation {
 
 const NORMALIZE_MAP: Record<string, string> = {
   pharma:        'PHARMACEUTICALS',
+  pharmaceutical: 'PHARMACEUTICALS',
+  pharmaceuticals: 'PHARMACEUTICALS',
   healthcare:    'HEALTHCARE',
+  hospitals:     'HEALTHCARE',
+  hospital:      'HEALTHCARE',
   manufacturing: 'MANUFACTURING',
   saas:          'TECHNOLOGY',
+  software:      'TECHNOLOGY',
+  technology:    'TECHNOLOGY',
   finserv:       'FINTECH',
   consumer:      'FMCG',
+  fmcg:          'FMCG',
   realestate:    'REAL_ESTATE',
+  'real estate': 'REAL_ESTATE',
   logistics:     'LOGISTICS',
   education:     'EDUCATION',
   chemicals:     'CHEMICALS',
   hospitality:   'HOTELS',
+  hotels:        'HOTELS',
   renewable:     'RENEWABLE_ENERGY',
+  'renewable energy': 'RENEWABLE_ENERGY',
   defence:       'DEFENCE',
+  defense:       'DEFENCE',
   oil_gas:       'OIL_GAS',
+  'oil & gas':   'OIL_GAS',
   ngo:           'NGO',
   mixed:         'GENERAL',
   // sub-sector overrides
   nbfc:          'NBFC',
-  hospital:      'HEALTHCARE',
   fintech:       'FINTECH',
   'auto ancillary': 'AUTO_ANCILLARY',
   ev:            'EV_MOBILITY',
+  // specific product industries (must map to their proper sector category, NOT generic manufacturing!)
+  toy:           'TOYS',
+  toys:          'TOYS',
+  fashion:       'FASHION',
+  textiles:      'HOME_TEXTILES',
+  'home textiles': 'HOME_TEXTILES',
+  cybersecurity: 'CYBERSECURITY',
+  'cyber security': 'CYBERSECURITY',
+  'ot security': 'CYBERSECURITY',
+  'sheet metal': 'SHEET_METAL_MANUFACTURING',
+  'sheet metal manufacturing': 'SHEET_METAL_MANUFACTURING',
+};
+
+// Known explicit cross-industry compatibility rules
+const INDUSTRY_COMPATIBILITY_RULES: Record<string, 'EXACT' | 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE'> = {
+  // Toys is compatible with Toys, Consumer Products, FMCG, Retail
+  'TOYS|TOYS': 'EXACT',
+  'TOYS|CONSUMER': 'COMPATIBLE',
+  'TOYS|FMCG': 'COMPATIBLE',
+  'TOYS|RETAIL': 'COMPATIBLE',
+  'TOYS|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+  'SHEET_METAL_MANUFACTURING|TOYS': 'INCOMPATIBLE',
+  'TOYS|DEFENCE': 'INCOMPATIBLE',
+  'DEFENCE|TOYS': 'INCOMPATIBLE',
+  'TOYS|PHARMACEUTICALS': 'INCOMPATIBLE',
+  'PHARMACEUTICALS|TOYS': 'INCOMPATIBLE',
+
+  // Fashion / Home Textiles
+  'FASHION|FASHION': 'EXACT',
+  'FASHION|HOME_TEXTILES': 'COMPATIBLE',
+  'HOME_TEXTILES|HOME_TEXTILES': 'EXACT',
+  'HOME_TEXTILES|FASHION': 'COMPATIBLE',
+  'FASHION|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+  'HOME_TEXTILES|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+
+  // Cybersecurity
+  'CYBERSECURITY|CYBERSECURITY': 'EXACT',
+  'CYBERSECURITY|TECHNOLOGY': 'COMPATIBLE',
+  'CYBERSECURITY|DEFENCE': 'COMPATIBLE',
+  'CYBERSECURITY|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
 };
 
 export function normalizeSector(raw: string): string {
   if (!raw) return 'GENERAL';
   const lower = raw.toLowerCase().trim();
   return NORMALIZE_MAP[lower] ?? raw.toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+function normalizeIndustryKey(raw: string): string {
+  if (!raw) return 'GENERAL';
+  const lower = raw.toLowerCase().trim();
+  if (NORMALIZE_MAP[lower]) return NORMALIZE_MAP[lower];
+
+  if (lower.includes('toy')) return 'TOYS';
+  if (lower.includes('sheet metal') || lower.includes('sheet_metal') || lower.includes('stamping')) return 'SHEET_METAL_MANUFACTURING';
+  if (lower.includes('textile') || lower.includes('linen') || lower.includes('apparel') || lower.includes('garment')) return 'HOME_TEXTILES';
+  if (lower.includes('fashion')) return 'FASHION';
+  if (lower.includes('cyber') || lower.includes('security')) return 'CYBERSECURITY';
+
+  return normalizeSector(raw);
+}
+
+export function getIndustryCompatibility(
+  sourceIndustry: string | null | undefined,
+  candidateIndustry: string | null | undefined,
+  sourceSector?: string | null,
+  candidateSector?: string | null,
+): SectorRelation {
+  const sInd = (sourceIndustry || sourceSector || '').toLowerCase().trim();
+  const cInd = (candidateIndustry || candidateSector || '').toLowerCase().trim();
+
+  if (!sInd || !cInd) {
+    return {
+      level: 'COMPATIBLE',
+      penalty: 0,
+      reason: 'General compatibility (industry not constrained).',
+    };
+  }
+
+  // Exact normalized string match
+  if (sInd === cInd) {
+    return {
+      level: 'COMPATIBLE',
+      penalty: 0,
+      reason: `Exact industry alignment: both operate in ${candidateIndustry || sourceIndustry}.`,
+    };
+  }
+
+  const sNorm = normalizeIndustryKey(sInd);
+  const cNorm = normalizeIndustryKey(cInd);
+
+  if (sNorm === cNorm && sNorm !== 'GENERAL') {
+    return {
+      level: 'COMPATIBLE',
+      penalty: 0,
+      reason: `Exact category match: ${sNorm}.`,
+    };
+  }
+
+  // Check explicit rules (both directions)
+  const pairKey = `${sNorm}|${cNorm}`;
+  const reverseKey = `${cNorm}|${sNorm}`;
+  const rule = INDUSTRY_COMPATIBILITY_RULES[pairKey] || INDUSTRY_COMPATIBILITY_RULES[reverseKey];
+
+  if (rule === 'INCOMPATIBLE') {
+    return {
+      level: 'INCOMPATIBLE',
+      penalty: 1.0,
+      reason: `Industry mismatch: ${sourceIndustry || sNorm} is incompatible with ${candidateIndustry || cNorm}.`,
+    };
+  }
+  if (rule === 'EXACT' || rule === 'COMPATIBLE') {
+    return {
+      level: 'COMPATIBLE',
+      penalty: 0,
+      reason: `Aligned industry sector: ${sourceIndustry} aligns with ${candidateIndustry}.`,
+    };
+  }
+
+  // Fallback to general sector compatibility
+  const fallbackSectorA = sourceSector || sNorm || sInd;
+  const fallbackSectorB = candidateSector || cNorm || cInd;
+  return getSectorCompatibility(fallbackSectorA, fallbackSectorB);
 }
 
 // ─────────────────────────────────────────────────────────────

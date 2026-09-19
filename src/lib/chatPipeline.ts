@@ -417,6 +417,8 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
       const size = parseRange(dealSizeSource);
       const revenue = parseRange(revenueSource);
 
+      const effectiveIndustry = updatedState.industry ?? s.industry ?? null;
+
       const { data: mandateData, error: mandateErr } = await supabase
         .from('mandates')
         .insert([{
@@ -424,6 +426,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
           raw_text: message,
           normalised_text: JSON.stringify(extraction),
           intent: normalizedIntentForSave,
+          industry: effectiveIndustry,
           sectors: s.sector ? [s.sector] : [],
           geographies: s.geography ? [s.geography] : [],
           deal_size_min_cr: size.min,
@@ -446,7 +449,8 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
 
       await supabase.from('deals').insert([{
         user_id: userId,
-        title: `${extraction.intent}: ${s.sector} deal`,
+        title: `${extraction.intent}: ${effectiveIndustry || s.sector} deal`,
+        industry: effectiveIndustry,
         sector: s.sector,
         region: s.geography,
         size: s.deal_size || 'Undisclosed',

@@ -97,7 +97,7 @@ export default function OnboardingTutorial() {
       }, 600);
       return () => clearTimeout(timer);
     } else {
-      setIsVisible(false);
+      setIsVisible(prev => (prev ? false : prev));
     }
   }, [shouldShowTutorial]);
 

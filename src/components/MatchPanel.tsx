@@ -2,6 +2,46 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Building2, MapPin, Shield } from 'lucide-react';
+
+function renderDealSummary(rawSummary: string | undefined | null, maxParagraphs?: number) {
+    if (!rawSummary) return null;
+
+    const paragraphs = rawSummary
+        .split('\n\n')
+        .map(p => p.trim())
+        .filter(Boolean);
+
+    const displayParagraphs = maxParagraphs ? paragraphs.slice(0, maxParagraphs) : paragraphs;
+
+    return (
+        <div className="my-2.5 p-3.5 bg-gray-50/90 border border-gray-200/90 rounded-xl space-y-2.5 text-xs text-gray-700 leading-relaxed shadow-xs">
+            {displayParagraphs.map((paragraph, pIdx) => {
+                const lines = paragraph.split('\n');
+                const firstLine = lines[0].trim();
+                const isHeading = firstLine.startsWith('###') || firstLine.startsWith('##');
+                const headingText = isHeading ? firstLine.replace(/^#+\s*/, '') : null;
+                const bodyText = isHeading ? lines.slice(1).join(' ').trim() : lines.join(' ').trim();
+
+                return (
+                    <div key={pIdx} className="space-y-0.5">
+                        {headingText && (
+                            <h4 className="text-[11px] font-semibold tracking-wide uppercase text-gray-900 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF6A00] inline-block" />
+                                {headingText}
+                            </h4>
+                        )}
+                        {bodyText && (
+                            <p className="text-gray-600 font-normal leading-relaxed pl-3 border-l border-gray-200">
+                                {bodyText}
+                            </p>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
 interface Match {
     rank: string;            // P1, P2, P3
     matchId: string;
@@ -15,11 +55,14 @@ interface Match {
     geographyFit: string | null;
     riskFlags: string[];
     summary: string;
+    dealSummary?: string;
+    industry?: string | null;
     intent: string | null;
     sectors: string[];
     geographies: string[];
     dealStructure: string | null;
     sizeRange: string | null;
+    revenueRange: string | null;
     teaser: string;
     qualityTier: string | null;
     isConnected: boolean;
@@ -185,12 +228,53 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
                                         {m.isConnected && (
                                             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] font-semibold border border-[#86EFAC]">Connected</span>
                                         )}
+                                        <div className="flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                                            <Shield size={10} />
+                                            <span>Identity Protected</span>
+                                        </div>
                                     </div>
                                     <span className="text-xs font-semibold text-[#747775] shrink-0">Score {m.finalScore.toFixed(0)}%</span>
                                 </div>
-                                <p className="text-sm font-semibold text-[#1F1F1F] mb-1">{m.summary}</p>
-                                <p className="text-xs text-[#4B5563] mb-2 leading-relaxed">{m.reason}</p>
-                                {m.teaser && <p className="text-xs text-[#747775] italic line-clamp-2 bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB] mb-2">&quot;{m.teaser}&quot;</p>}
+
+                                {/* Industry, Sector, Geography & Financials chips */}
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                                        <Building2 size={12} className="text-[#FF6A00]" />
+                                        <span className="capitalize">{m.industry || m.sectors?.[0] || 'Target'}</span>
+                                    </div>
+                                    {m.geographies?.length > 0 && (
+                                        <div className="flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                                            <MapPin size={12} className="text-gray-400" />
+                                            <span className="capitalize">{m.geographies[0].toLowerCase() === 'pan-india' ? 'Pan-India' : m.geographies[0]}</span>
+                                        </div>
+                                    )}
+                                    {m.sizeRange && (
+                                        <span className="text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                                            Deal: {m.sizeRange}
+                                        </span>
+                                    )}
+                                    {m.revenueRange && (
+                                        <span className="text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                                            Rev: {m.revenueRange}
+                                        </span>
+                                    )}
+                                    {m.dealStructure && (
+                                        <span className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md capitalize">
+                                            {m.dealStructure.replace(/_/g, ' ')}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Full-fledged M&A Deal Summary Brief */}
+                                {renderDealSummary(m.dealSummary || m.teaser, 3)}
+
+                                {m.reason && !m.dealSummary?.includes(m.reason.trim()) && (
+                                    <p className="text-xs text-[#4B5563] mt-1 mb-2 leading-relaxed">
+                                        <span className="font-semibold text-gray-800">Strategic Alignment: </span>
+                                        {m.reason}
+                                    </p>
+                                )}
+
                                 <button
                                     onClick={() => { setSelected(m); setView(m.isConnected ? 'connected' : 'detail'); }}
                                     className="mt-1 text-xs font-semibold text-[#FF6A00] hover:text-[#EA580C] hover:underline flex items-center gap-1"
@@ -229,11 +313,52 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
                     <div className="flex items-center gap-2">
                         <h3 className="text-sm font-semibold">{selected.rank}</h3>
                         <span className={`text-xs px-2 py-0.5 rounded font-medium ${labelClass}`}>{labelText}</span>
+                        <div className="flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                            <Shield size={10} />
+                            <span>Identity Protected</span>
+                        </div>
                     </div>
                     <span className="text-xs text-gray-400">Score {selected.finalScore.toFixed(0)}%</span>
                 </div>
-                <p className="text-sm font-medium">{selected.summary}</p>
-                <p className="text-xs text-gray-600">{selected.reason}</p>
+
+                {/* Industry, Sector, Geography & Financials chips */}
+                <div className="flex items-center gap-2 my-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                        <Building2 size={12} className="text-[#FF6A00]" />
+                        <span className="capitalize">{selected.industry || selected.sectors?.[0] || 'Target'}</span>
+                    </div>
+                    {selected.geographies?.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                            <MapPin size={12} className="text-gray-400" />
+                            <span className="capitalize">{selected.geographies[0].toLowerCase() === 'pan-india' ? 'Pan-India' : selected.geographies[0]}</span>
+                        </div>
+                    )}
+                    {selected.sizeRange && (
+                        <span className="text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                            Deal: {selected.sizeRange}
+                        </span>
+                    )}
+                    {selected.revenueRange && (
+                        <span className="text-xs text-gray-700 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                            Rev: {selected.revenueRange}
+                        </span>
+                    )}
+                    {selected.dealStructure && (
+                        <span className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md capitalize">
+                            {selected.dealStructure.replace(/_/g, ' ')}
+                        </span>
+                    )}
+                </div>
+
+                {/* Full M&A Deal Intelligence Brief */}
+                {renderDealSummary(selected.dealSummary || selected.teaser)}
+
+                {selected.reason && !selected.dealSummary?.includes(selected.reason.trim()) && (
+                    <p className="text-xs text-[#4B5563] leading-relaxed">
+                        <span className="font-semibold text-gray-800">Strategic Alignment: </span>
+                        {selected.reason}
+                    </p>
+                )}
 
                 {(selected.sectorFit || selected.revenueFit || selected.strategicFit || selected.geographyFit) && (
                     <div className="bg-gray-50 rounded p-3 space-y-1.5">
@@ -269,12 +394,6 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
                         {selected.riskFlags.map((flag, i) => (
                             <p key={i} className="text-xs text-amber-700">⚠ {flag}</p>
                         ))}
-                    </div>
-                )}
-
-                {selected.teaser && (
-                    <div className="bg-gray-50 rounded p-3 text-xs italic text-gray-700">
-                        &quot;{selected.teaser}&quot;
                     </div>
                 )}
                 <div className="border-t pt-3">

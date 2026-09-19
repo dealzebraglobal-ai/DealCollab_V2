@@ -237,7 +237,7 @@ export function isValidWebsite(url: string): boolean {
     const formatted = url.includes('://') ? url : `http://${url}`;
     const parsed = new URL(formatted);
     return parsed.hostname.includes('.') && parsed.hostname.length > 3;
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -277,11 +277,7 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
         if (data.primarySectors.length > 5) {
           errors.push({ field: 'primarySectors', message: 'Maximum 5 industry sectors allowed' });
         }
-        if (data.expertiseDescription.trim()) {
-          if (data.expertiseDescription.trim().length < 40) {
-            errors.push({ field: 'expertiseDescription', message: `Minimum 40 characters required (currently ${data.expertiseDescription.trim().length})` });
-          }
-        }
+        // Requirement 17: No minimum character restriction on expertiseDescription
         break;
 
       case 3: // Terms and Conditions
@@ -354,11 +350,7 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
       if (data.currentFocus.length > 3) {
         errors.push({ field: 'currentFocus', message: 'Maximum 3 selections allowed' });
       }
-      if (!data.expertiseDescription.trim()) {
-        errors.push({ field: 'expertiseDescription', message: 'Core Professional Expertise is required' });
-      } else if (data.expertiseDescription.trim().length < 60) {
-        errors.push({ field: 'expertiseDescription', message: `Minimum 60 characters required (currently ${data.expertiseDescription.trim().length})` });
-      }
+      // Requirement 17: Expertise description has no minimum character requirement. Can be empty, short, or long.
       break;
 
     case 5: // Active Client Mandates

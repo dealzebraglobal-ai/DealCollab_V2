@@ -27,9 +27,10 @@
 
 import OpenAI from 'openai';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
-import { getSectorCompatibility, normalizeSector, MATCH_ARCHETYPES, detectFraudSignals } from './M5_sectorMatrix';
+import { getSectorCompatibility, getIndustryCompatibility, normalizeSector, MATCH_ARCHETYPES, detectFraudSignals } from './M5_sectorMatrix';
 import { buildReciprocalRow, buildBlindNotification, buildSavedSearchRecord, type MatchRow, type NotificationRecord } from './M5_persistence';
 import { deliverNotificationEmail, type NotificationRow } from './email/notifications/delivery';
+import { generateFullDealSummary, buildEnhancedMandateBrief } from './dealSummaryGenerator';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -73,6 +74,7 @@ interface Candidate {
   id: string;
   user_id: string | null;
   intent: string;
+  industry: string | null;
   sectors: string[] | null;
   geographies: string[] | null;
   deal_size_min_cr: number | null;
@@ -81,9 +83,11 @@ interface Candidate {
   revenue_max_cr: number | null;
   deal_structure: string | null;
   normalised_text: string;
+  raw_text?: string | null;
+  metadata?: Record<string, unknown> | null;
   similarity: number;
-  advisor_name: string | null;
-  contact_phone: string | null;
+  advisor_name?: string | null;
+  contact_phone?: string | null;
   fraud_flags: string[] | null;
   quality_tier: number;
   is_shell: boolean;
@@ -93,12 +97,17 @@ interface Candidate {
 export interface MatchCard {
   matchedProposalId: string;
   sector: string | null;
+  industry: string | null;
   geography: string | null;
   sizeRange: string | null;
+  revenueRange: string | null;
+  transactionType: string | null;
   finalScore: number;
   scoreLabel: 'High' | 'Good' | 'Possible';
   matchReason: string;
+  dealSummary: string;
   archetype: string;
+  isIdentityProtected: boolean;
 }
 
 export interface MatchmakingResult {
@@ -315,13 +324,23 @@ function applyHardRejections(
     }
   }
 
-  // HR-4: Sector hard incompatibility — compare the TRUE industry when present, so an
-  // ENUM-FIRST: HR-4 compares the COARSE ENUM (source.sector), not the free-text industry.
-  // Only explicit HARD_INCOMPATIBLE enum pairs hard-reject; unknown/GENERAL buckets never do.
-  // Fall back to free-text industry only when no sector enum is present.
-  const sourceIndustryHR = source.sector ?? source.industry;
-  if (sourceIndustryHR && candidate.sectors?.[0]) {
-    const comp = getSectorCompatibility(sourceIndustryHR, candidate.sectors[0]);
+  // HR-4: Structured Industry & Sector Incompatibility Gate
+  // If structured industry is available on candidate, gate using structured industry compatibility.
+  // Toys mandate vs Sheet Metal candidate MUST be rejected immediately.
+  const srcInd = source.industry || source.sector;
+  const candInd = candidate.industry || candidate.sectors?.[0];
+  if (srcInd && candInd) {
+    const indComp = getIndustryCompatibility(
+      source.industry,
+      candidate.industry,
+      source.sector,
+      candidate.sectors?.[0]
+    );
+    if (indComp.level === 'INCOMPATIBLE') {
+      return { rejected: true, reason: `HR-4: ${indComp.reason}` };
+    }
+  } else if (source.sector && candidate.sectors?.[0]) {
+    const comp = getSectorCompatibility(source.sector, candidate.sectors[0]);
     if (comp.level === 'INCOMPATIBLE') {
       return { rejected: true, reason: `HR-4: ${comp.reason}` };
     }
@@ -361,13 +380,13 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
   // SEMANTIC (45%) — raw cosine similarity from pgvector
   const semanticScore = Math.max(0, Math.min(1, candidate.similarity));
 
-  // INDUSTRY ALIGNMENT — sector compatibility via DC-KB-003 on the COARSE ENUM (source.sector),
-  // NOT the free-text industry. Free-text drives the embedding/semantic side only; feeding it here
-  // made every out-of-enum industry (e.g. "packaged healthy snacks") default to NARROW, collapsing
-  // the 25% industry signal for legitimate same-sector pairs. Fall back to industry only if no enum.
-  const comp = getSectorCompatibility(
-    (source.sector ?? source.industry) ?? '',
-    candidate.sectors?.[0] ?? '',
+  // INDUSTRY ALIGNMENT — structured industry compatibility
+  // Compares structured candidate industry and source industry/sector
+  const comp = getIndustryCompatibility(
+    source.industry,
+    candidate.industry,
+    source.sector,
+    candidate.sectors?.[0]
   );
   let industryScore = 0;
   switch (comp.level) {
@@ -530,110 +549,25 @@ function computeQualityTier(input: ProposalInput): number {
 // ─────────────────────────────────────────────────────────────
 
 export function buildMandateSummary(input: ProposalInput): string {
-  const intentMap: Record<string, string> = {
-    SELL_SIDE: 'sell-side divestment',
-    BUY_SIDE: 'strategic acquisition',
-    FUNDRAISING: 'growth capital fundraise',
-    DEBT: 'debt financing',
-    STRATEGIC_PARTNERSHIP: 'strategic partnership',
-  };
-  const intentLabel = intentMap[input.intent] ?? 'strategic transaction';
-  const sectorRaw = input.sector ?? 'business';
-  const sector = sectorRaw.replace(/_/g, ' ');
-  const subSector = input.sub_sector === 'shell_company' ? 'dormant/shell company' : (input.sub_sector?.replace(/_/g, ' ') ?? null);
-  const geo = input.geography;
-
-  const sentences: string[] = [];
-
-  // — Opener
-  const geoStr = geo ? `${geo}-based ` : '';
-  const subStr = subSector && subSector !== sector ? ` (${subSector})` : '';
-  sentences.push(
-    `${cap(intentLabel)} opportunity in the ${geoStr}${sector}${subStr} sector.`
-  );
-
-  // — Deal parameters
-  const paramParts: string[] = [];
-  const sMin = parseNum(input.deal_size_min);
-  const sMax = parseNum(input.deal_size_max);
-  if (sMin !== null || sMax !== null) {
-    paramParts.push(
-      sMin !== null && sMax !== null && sMin !== sMax
-        ? `deal size ₹${sMin}–${sMax} Cr`
-        : `deal size ₹${sMax ?? sMin} Cr`
-    );
-  } else if (input.deal_size) {
-    paramParts.push(`deal size of ${input.deal_size}`);
-  }
-  const rMin = parseNum(input.revenue_min);
-  const rMax = parseNum(input.revenue_max);
-  if (rMin !== null || rMax !== null) {
-    paramParts.push(
-      rMin !== null && rMax !== null && rMin !== rMax
-        ? `annual revenue ₹${rMin}–${rMax} Cr`
-        : `annual revenue ₹${rMax ?? rMin} Cr`
-    );
-  } else if (input.revenue) {
-    paramParts.push(`revenue of ${input.revenue}`);
-  }
-  if (input.structure) paramParts.push(`${input.structure} transaction structure`);
-  if (paramParts.length > 0) {
-    sentences.push(`The mandate involves ${paramParts.join(', ')}.`);
-  }
-
-  // — Operational highlights from industry_data
-  const id = input.industry_data ?? {};
-  const strOf = (v: unknown): string | null =>
-    typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
-
-  const highlights: string[] = [];
-  const capacity = strOf(id.capacity) ?? strOf(id.installed_capacity) ?? strOf(id.production_capacity);
-  const employees = strOf(id.employees) ?? strOf(id.workforce) ?? strOf(id.headcount);
-  const ebitda = strOf(id.ebitda) ?? strOf(id.profitability) ?? strOf(id.margins);
-  const channel = strOf(id.distribution_channel) ?? strOf(id.channel) ?? strOf(id.sales_channel);
-  const model = strOf(id.business_model) ?? strOf(id.model) ?? strOf(id.revenue_model);
-  const clients = strOf(id.clients) ?? strOf(id.customer_count) ?? strOf(id.customers);
-  const beds = strOf(id.beds) ?? strOf(id.bed_count);
-  const hospitals = strOf(id.hospitals) ?? strOf(id.hospital_count);
-  const sku = strOf(id.sku_count) ?? strOf(id.product_range) ?? strOf(id.product_count);
-  const arr = strOf(id.arr) ?? strOf(id.arpu) ?? strOf(id.mrr);
-  const growth = strOf(id.growth_rate) ?? strOf(id.yoy_growth) ?? strOf(id.growth);
-  const patents = strOf(id.patents) ?? strOf(id.ip);
-
-  if (capacity) highlights.push(`production capacity of ${capacity}`);
-  if (employees) highlights.push(`workforce of ${employees}`);
-  if (ebitda) highlights.push(`${ebitda} EBITDA / profitability profile`);
-  if (channel) highlights.push(`${channel} distribution channel`);
-  if (model) highlights.push(`${model} business model`);
-  if (clients) highlights.push(`${clients} active clients or customers`);
-  if (hospitals) highlights.push(`${hospitals} hospital facilities`);
-  if (beds) highlights.push(`${beds} operational beds`);
-  if (sku) highlights.push(`${sku} SKU / product range`);
-  if (arr) highlights.push(`ARR / revenue run-rate of ${arr}`);
-  if (growth) highlights.push(`${growth} revenue growth trajectory`);
-  if (patents) highlights.push(`${patents} patents or IP assets`);
-
-  if (highlights.length > 0) {
-    sentences.push(`Key operational attributes include ${highlights.slice(0, 4).join(', ')}.`);
-  }
-
-  // — Counterparty profile
-  const counterpartyFallback: Record<string, string> = {
-    SELL_SIDE: 'strategic operators and private investment groups seeking expansion within the sector',
-    BUY_SIDE: 'business owners, promoters, and intermediaries representing viable sell-side opportunities',
-    FUNDRAISING: 'institutional investors, family offices, and growth-stage equity funds',
-    DEBT: 'NBFCs, private credit funds, and structured debt providers',
-    STRATEGIC_PARTNERSHIP: 'aligned strategic counterparties seeking mutually beneficial business collaboration',
-  };
-  const counterpartyDesc = input.intent_focus
-    ? input.intent_focus.charAt(0).toLowerCase() + input.intent_focus.slice(1)
-    : counterpartyFallback[input.intent] ?? 'aligned strategic counterparties';
-  const geoSuffix = geo ? ` operating in or around ${geo}` : ' across India';
-  sentences.push(`Ideal counterparties include ${counterpartyDesc}${geoSuffix}.`);
-
-  const summary = sentences.join(' ');
-  console.log(`[M5] Mandate summary generated (${summary.split(' ').length} words): ${summary.slice(0, 80)}...`);
-  return summary;
+  return buildEnhancedMandateBrief({
+    intent: input.intent,
+    industry: input.industry,
+    sector: input.sector,
+    sub_sector: input.sub_sector,
+    geography: input.geography,
+    deal_size_min: input.deal_size_min,
+    deal_size_max: input.deal_size_max,
+    revenue_min: input.revenue_min,
+    revenue_max: input.revenue_max,
+    structure: input.structure,
+    intent_focus: input.intent_focus,
+    industry_data: input.industry_data,
+    special_conditions: input.special_conditions,
+    currency: input.currency,
+    urgency: input.urgency,
+    buyer_type: input.buyer_type,
+    raw_text: input.raw_text,
+  });
 }
 
 function cap(s: string): string {
@@ -708,6 +642,7 @@ export async function executeMatchmaking(
         document_text: safeDocText,
         document_url: safeDocUrl,
         intent: input.intent,
+        industry: input.industry ?? null,
         sectors: input.sector ? [normalizeSector(input.sector)] : [],
         geographies: input.geography ? [input.geography] : [],
         deal_structure: input.structure,
@@ -922,15 +857,66 @@ export async function executeMatchmaking(
       const cand = candidates.find(c => c.id === row.matched_proposal_id)!;
       const cMin = cand.deal_size_min_cr ?? 0;
       const cMax = cand.deal_size_max_cr ?? 0;
+      const rMin = cand.revenue_min_cr ?? 0;
+      const rMax = cand.revenue_max_cr ?? 0;
+
+      // Full M&A deal intelligence summary
+      const dealSummary = generateFullDealSummary(
+        {
+          intent: input.intent,
+          industry: input.industry,
+          sector: input.sector,
+          sub_sector: input.sub_sector,
+          geography: input.geography,
+          deal_size_min: input.deal_size_min,
+          deal_size_max: input.deal_size_max,
+          revenue_min: input.revenue_min,
+          revenue_max: input.revenue_max,
+          structure: input.structure,
+          industry_data: input.industry_data,
+          special_conditions: input.special_conditions,
+        },
+        {
+          id: cand.id,
+          intent: cand.intent,
+          industry: cand.industry,
+          sectors: cand.sectors,
+          geographies: cand.geographies,
+          deal_size_min_cr: cand.deal_size_min_cr,
+          deal_size_max_cr: cand.deal_size_max_cr,
+          revenue_min_cr: cand.revenue_min_cr,
+          revenue_max_cr: cand.revenue_max_cr,
+          deal_structure: cand.deal_structure,
+          metadata: cand.metadata,
+          quality_tier: cand.quality_tier,
+          normalised_text: cand.normalised_text,
+          raw_text: cand.raw_text,
+        },
+        {
+          finalScore: row.final_score,
+          similarityScore: row.similarity_score,
+          industryScore: row.industry_score,
+          financialScore: row.financial_score,
+          geoScore: row.geography_boost,
+          archetype: row.match_archetype,
+          matchReason: row.match_reason,
+        }
+      );
+
       return {
         matchedProposalId: row.matched_proposal_id,
         sector: cand.sectors?.[0] ?? null,
+        industry: cand.industry || cand.sectors?.[0] || null,
         geography: cand.geographies?.[0] ?? null,
         sizeRange: formatSizeRange(cMin, cMax),
+        revenueRange: formatSizeRange(rMin, rMax),
+        transactionType: cand.intent,
         finalScore: row.final_score,
         scoreLabel: getScoreLabel(row.final_score),
         matchReason: row.match_reason,
+        dealSummary,
         archetype: row.match_archetype,
+        isIdentityProtected: true,
       };
     });
 

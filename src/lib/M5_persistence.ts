@@ -91,6 +91,7 @@ export interface SavedSearchRecord {
     query_object: Record<string, unknown>;
     query_embedding: number[];
     intent: string;
+    industry?: string | null;
     sectors: string[];
     geographies: string[];
     min_score: number;
@@ -141,6 +142,7 @@ export function buildSavedSearchRecord(
         query_object,                    // NOT NULL in DB — the column the old broken insert omitted
         query_embedding: queryEmbedding,
         intent: input.intent,
+        industry: input.industry ?? null,
         sectors: input.sector ? [normalizeSector(input.sector)] : [],
         geographies: input.geography ? [input.geography] : [],
         min_score: MIN_MATCH_SCORE,

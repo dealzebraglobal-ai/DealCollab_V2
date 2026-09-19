@@ -75,7 +75,7 @@ function isCsv(file: File): boolean {
 // Accepts common header spellings and normalizes to a canonical field name.
 const HEADER_ALIASES: Record<string, string> = {
   intent: 'intent', deal_type: 'intent', type: 'intent', transaction_type: 'intent',
-  sector: 'sector', industry: 'sector',
+  sector: 'sector', industry: 'industry',
   sub_sector: 'sub_sector', subsector: 'sub_sector',
   geography: 'geography', location: 'geography', city: 'geography', region: 'geography',
   deal_size: 'deal_size', ticket_size: 'deal_size', investment_size: 'deal_size', size: 'deal_size',
@@ -101,10 +101,11 @@ function buildProposalInputFromRow(row: Record<string, string>, userId: string):
   const intent = normalizeIntent(row.intent) ?? detectIntentFromText(description);
   if (!intent) return { input: null, reason: 'Could not determine deal intent (buy/sell/raise/debt/partner)' };
 
-  const rawSector = row.sector?.toLowerCase().trim();
+  const rawIndustry = row.industry?.trim() || null;
+  const rawSector = (row.sector || rawIndustry)?.toLowerCase().trim();
   const sector: SectorKey | null = (rawSector && (VALID_SECTOR_KEYS as readonly string[]).includes(rawSector))
     ? (rawSector as SectorKey)
-    : detectSectorFromText(description);
+    : detectSectorFromText(rawIndustry ? `${rawIndustry} ${description}` : description);
 
   const sizeParsed = normalizeSize(row.deal_size || '');
   const revenueParsed = normalizeSize(row.revenue || '');
@@ -115,13 +116,17 @@ function buildProposalInputFromRow(row: Record<string, string>, userId: string):
     intent,
     raw_text: description,
     sector,
+    industry: rawIndustry || (sector ? String(sector) : null),
     sub_sector: row.sub_sector || null,
     geography: row.geography || null,
     deal_size: row.deal_size || null,
     revenue: row.revenue || null,
     structure: row.structure || detectStructureFromText(description),
     intent_focus: row.intent_focus || null,
-    industry_data: row.title ? { title: row.title } : {},
+    industry_data: {
+      ...(row.title ? { title: row.title } : {}),
+      ...(rawIndustry ? { industry: rawIndustry } : {}),
+    },
     special_conditions: [],
     deal_size_min: sizeParsed?.min_cr != null ? String(sizeParsed.min_cr) : null,
     deal_size_max: sizeParsed?.max_cr != null ? String(sizeParsed.max_cr) : null,

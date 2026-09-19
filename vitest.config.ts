@@ -21,4 +21,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  test: {
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    exclude: ['node_modules/**', 'scripts/**'],
+    testTimeout: 15000,
+  },
 });
+

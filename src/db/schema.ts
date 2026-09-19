@@ -112,6 +112,7 @@ export const deals = pgTable('deals', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   title: text('title').notNull(),
+  industry: text('industry'),
   sector: text('sector'),
   region: text('region'),
   size: text('size'),
@@ -235,6 +236,7 @@ export const mandates = pgTable('mandates', {
   rawText: text('raw_text').notNull(),
   normalisedText: text('normalised_text'),
   intent: text('intent'), // BUY_SIDE, SELL_SIDE, INVESTMENT
+  industry: text('industry'),
   sectors: text('sectors').array(),
   geographies: text('geographies').array(),
   dealSizeMinCr: numeric('deal_size_min_cr'),
@@ -261,6 +263,7 @@ export const proposals = pgTable('proposals', {
   rawText: text('raw_text'),
   normalisedText: text('normalised_text').notNull(),
   intent: text('intent').notNull(),
+  industry: text('industry'),
   sectors: text('sectors').array(),
   geographies: text('geographies').array(),
   dealStructure: text('deal_structure'),
@@ -370,6 +373,7 @@ export const savedSearches = pgTable('saved_searches', {
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
   proposalId: uuid('proposal_id').references(() => proposals.id, { onDelete: 'cascade' }),
   queryObject: jsonb('query_object').notNull(),
+  industry: text('industry'),
   status: text('status').default('PENDING').notNull(),
   expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -377,6 +381,7 @@ export const savedSearches = pgTable('saved_searches', {
 }, (table) => ({
   statusIdx: index('idx_saved_searches_status').on(table.status),
   userIdx: index('idx_saved_searches_user').on(table.userId),
+  industryIdx: index('idx_saved_searches_industry').on(table.industry),
 }));
 
 // 12. WHATSAPP INBOUND EVENTS — raw capture + idempotency ledger for inbound
