@@ -18,7 +18,7 @@ export async function generateAIResponse(messages: ChatMessage[]) {
   console.log("AI DEBUG (PRODUCTION):", {
     HAS_GROQ_KEY: !!groqApiKey,
     HAS_OPENAI_KEY: !!openaiApiKey,
-    MODEL: process.env.GROQ_MODEL || "llama-3.1-8b-instant"
+    MODEL: process.env.GROQ_MODEL || "openai/gpt-oss-120b"
   });
 
   if (!groqApiKey && !openaiApiKey) {
@@ -33,7 +33,9 @@ export async function generateAIResponse(messages: ChatMessage[]) {
       const groq = new Groq({ apiKey: groqApiKey });
       
       const response = await groq.chat.completions.create({
-        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+        // llama-3.1-8b-instant was decommissioned by Groq (returns HTTP 404) —
+        // verified against GET /openai/v1/models as of 2026-09.
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
         messages,
         temperature: 0,
         stream: false,

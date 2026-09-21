@@ -84,8 +84,8 @@ export async function GET(req: NextRequest) {
       receiver_id,
       status,
       created_at,
-      sender:users!sender_id(name, email, phone, firm_name, role),
-      receiver:users!receiver_id(name, email, phone, firm_name, role),
+      sender:users!sender_id(id, name, email, phone, firm_name, role, custom_role, image, profile_image, base_city, base_country, expertise_description, intent, geographies, priority_sectors, sectors, active_mandates),
+      receiver:users!receiver_id(id, name, email, phone, firm_name, role, custom_role, image, profile_image, base_city, base_country, expertise_description, intent, geographies, priority_sectors, sectors, active_mandates),
       deal:proposals!deal_id(id, user_id, intent, sectors, geographies, deal_size_min_cr, deal_size_max_cr, revenue_min_cr, revenue_max_cr, deal_structure, special_conditions, quality_tier, normalised_text, summary_text, raw_text, metadata, contact_phone, advisor_name),
       match:proposal_matches!match_id(
         id,

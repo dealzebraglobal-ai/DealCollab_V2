@@ -18,7 +18,7 @@ const SOUND_MUTE_KEY = 'dealcollab_notification_sound_muted';
 // Short synthesized chime via Web Audio API — no audio asset/dependency needed, and it
 // naturally respects browser autoplay restrictions (a suspended/blocked AudioContext just
 // throws, which is caught and ignored below).
-function playMatchChime() {
+function playNotificationChime() {
   try {
     const AudioCtxCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtxCtor) return;
@@ -109,11 +109,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (seenIdsRef.current === null) {
         seenIdsRef.current = new Set(mapped.map(n => n.id));
       } else {
-        const hasNewMatch = mapped.some(n =>
-          !seenIdsRef.current!.has(n.id) && !n.isRead && (n.type === 'new_counterparty' || n.type === 'match')
+        const hasNewNotif = mapped.some(n =>
+          !seenIdsRef.current!.has(n.id) && !n.isRead
         );
         for (const n of mapped) seenIdsRef.current.add(n.id);
-        if (hasNewMatch && !isSoundMutedRef.current) playMatchChime();
+        if (hasNewNotif && !isSoundMutedRef.current) playNotificationChime();
       }
 
       // Delay state update to avoid synchronous cascading render warnings in React 19

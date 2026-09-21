@@ -93,10 +93,12 @@ async function callGroq(messages: ChatMessage[], maxTokens: number): Promise<str
   const groq = getGroq();
   const res = await groq.chat.completions.create(
     {
-      // llama-3.1-8b-instant  → REMOVED: deprecated, returns HTML 404
+      // llama-3.1-8b-instant    → REMOVED: deprecated, returns HTML 404
       // llama-3.1-70b-versatile → REMOVED: deprecated
-      // llama-3.3-70b-versatile → CURRENT stable model (2025)
-      model: "llama-3.3-70b-versatile",
+      // llama-3.3-70b-versatile → REMOVED: decommissioned by Groq (returns HTTP 404
+      //   "model not found" as of 2026-09) — verified against GET /openai/v1/models.
+      // openai/gpt-oss-120b     → CURRENT model available on Groq's catalog.
+      model: "openai/gpt-oss-120b",
       messages,
       temperature: 0.2,
       max_tokens: maxTokens,
@@ -105,7 +107,7 @@ async function callGroq(messages: ChatMessage[], maxTokens: number): Promise<str
     { timeout: 25000 } // 25s limit for Groq
   );
   const raw = res.choices[0]?.message?.content ?? "";
-  return validateAndClean(raw, "Groq llama-3.3-70b-versatile");
+  return validateAndClean(raw, "Groq openai/gpt-oss-120b");
 }
 
 // ─────────────────────────────────────────────────────────────

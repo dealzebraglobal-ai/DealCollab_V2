@@ -16,12 +16,19 @@ export async function GET(
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // Safe redirect to main app destination
+  // Disclosure link -> route to deal log (requires auth; only the approved
+  // counterparty who holds this reference can see anything there).
   if (slug.startsWith('disc_')) {
-    // Disclosure link -> route to deal log
     return NextResponse.redirect(new URL(`/deal-log`, req.url));
   }
 
-  // Public profile link -> redirect to profile view
-  return NextResponse.redirect(new URL(`/deal-dashboard`, req.url));
+  // Public profile link (usr_xxxxxxxx) -> the actual public, unauthenticated
+  // profile page for that member. Previously this fell through to a generic
+  // /deal-dashboard redirect that ignored the slug entirely and bounced an
+  // unauthenticated scanner to /login instead of showing the shared profile.
+  if (slug.startsWith('usr_')) {
+    return NextResponse.redirect(new URL(`/p/${slug}`, req.url));
+  }
+
+  return NextResponse.redirect(new URL('/login', req.url));
 }

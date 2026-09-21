@@ -1,7 +1,9 @@
-'use client';
 import React, { useState } from 'react';
-import { Mail, Phone, MessageSquare, Download, Copy, Check, FileText, User, Building2 } from 'lucide-react';
-
+import { Mail, Phone, MessageSquare, Download, Copy, Check, FileText, User, Building2, IdCard, X, Loader2 } from 'lucide-react';
+import IdentityCard from './IdentityCard';
+import { exportIdentityCardToPNG, type ExportCardData } from '@/lib/identityCardExport';
+import { buildPublicProfileUrl } from '@/lib/publicProfileUrl';
+import QRCode from 'qrcode';
 interface ConnectionDetailsProps {
   item: {
     deal: string;
@@ -17,7 +19,8 @@ interface ConnectionDetailsProps {
 export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
   const [notes, setNotes] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
-
+  const [isVCardOpen, setIsVCardOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
@@ -32,6 +35,83 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
     phone: counterparty?.phone || "Not provided",
     email: counterparty?.email || "Not provided",
     whatsapp: counterparty?.phone ? `https://wa.me/${counterparty.phone.replace(/\D/g, '')}` : '#'
+  };
+
+  // Build vCard payload
+  const cpData = item.raw?.counterparty || {};
+  const cpIntent = cpData.intent || '';
+  const cpSector = (cpData.sectors && cpData.sectors[0]) || null;
+  
+  const formatSize = (min: any, max: any) => {
+    if (!min && !max) return undefined;
+    const minVal = min ? Number(min) : null;
+    const maxVal = max ? Number(max) : null;
+    if (minVal && maxVal && minVal !== maxVal) return `₹${minVal}–${maxVal} Cr`;
+    return `₹${maxVal || minVal} Cr`;
+  };
+  const cpSize = formatSize(cpData.dealSizeMinCr, cpData.dealSizeMaxCr);
+
+  const photoUrl = counterparty?.profile_image || counterparty?.image;
+  const fullName = counterparty?.name || 'Verified Member';
+  const role = counterparty?.role === 'Other' ? counterparty?.custom_role : counterparty?.role;
+  const company = counterparty?.firm_name;
+  
+  const placeArr = [counterparty?.base_city, counterparty?.base_country].filter(Boolean);
+  const place = placeArr.length > 0 ? placeArr.join(', ') : undefined;
+
+  const sectors = cpSector ? [cpSector] : (counterparty?.sectors || counterparty?.priority_sectors || []);
+  const intentStr = cpIntent ? String(cpIntent).replace(/_/g, '-').toLowerCase() : undefined;
+  
+  const profileSlug = `usr_${String(counterparty?.id || 'dc').slice(0, 8)}`;
+  
+  const vcardData = {
+    fullName,
+    initials: (fullName ? fullName.split(' ').map((n: string) => n[0]).slice(0, 2).join('') : 'DC').toUpperCase(),
+    photoUrl,
+    designation: role,
+    organisation: company,
+    headline: counterparty?.expertise_description,
+    mandateSide: intentStr,
+    ticketBand: cpSize,
+    closedCount: counterparty?.closed_count,
+    expertise: counterparty?.expertise_description ? [counterparty.expertise_description] : undefined,
+    sectors: sectors.slice(0, 4),
+    geographies: (counterparty?.geographies && counterparty.geographies.length > 0 ? counterparty.geographies : ['India']).slice(0, 3),
+    phone: counterparty?.phone,
+    email: counterparty?.email,
+    location: place,
+    isVerified: counterparty?.kycVerified !== undefined ? !!counterparty.kycVerified : true,
+    verifiedCode: String(counterparty?.id || '').slice(-4).toUpperCase(),
+    profileSlug,
+  };
+
+  const handleDownload = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      let qrDataUrl = undefined;
+      try {
+        qrDataUrl = await QRCode.toDataURL(buildPublicProfileUrl(profileSlug), {
+          width: 440,
+          margin: 1,
+          color: { dark: '#000000', light: '#FFFFFF' },
+          errorCorrectionLevel: 'M',
+        });
+      } catch (err) {
+        console.error('Failed to generate QR for export', err);
+      }
+      const exportData: ExportCardData = {
+        mode: 'public',
+        ...vcardData,
+        qrDataUrl
+      };
+      await exportIdentityCardToPNG(exportData, `DealCollab_${fullName.replace(/[^a-z0-9]+/gi, '_') || 'Company'}_vCard.png`);
+    } catch (err) {
+      console.error('vCard download failed', err);
+      alert('Unable to download the vCard. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -97,9 +177,22 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
                   <Building2 size={16} className="text-[#EA580C]" />
                   <h4 className="text-xs font-medium uppercase tracking-wider text-[#1F2937]">Direct Contact</h4>
                 </div>
-                <button className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-[10px] font-medium text-[#6B7280] transition-all">
-                   <Download size={12} /> Download vCard
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsVCardOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-[10px] font-medium text-[#6B7280] transition-all"
+                  >
+                     <IdCard size={12} /> View vCard
+                  </button>
+                  <button 
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-[10px] font-medium text-[#6B7280] transition-all disabled:opacity-50"
+                  >
+                     {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} 
+                     {isDownloading ? 'Preparing...' : 'Download vCard'}
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-col gap-3">
@@ -152,6 +245,41 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
            </div>
         </div>
       </div>
+
+      {isVCardOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsVCardOpen(false)}>
+          <div
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h2 className="text-base font-black text-gray-900 tracking-tight">Counterparty vCard</h2>
+              <button onClick={() => setIsVCardOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-900 flex items-center justify-center transition-all">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto">
+              <IdentityCard
+                mode="public"
+                data={vcardData}
+                showExportButtons={false}
+              />
+              
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#1F2937] hover:bg-[#111827] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50"
+                >
+                  {isDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} 
+                  {isDownloading ? 'Preparing vCard...' : 'Download PNG'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

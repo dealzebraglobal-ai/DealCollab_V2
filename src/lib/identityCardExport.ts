@@ -7,6 +7,8 @@ export interface ExportCardData {
   mode: 'public' | 'locked' | 'disclosure';
   fullName?: string;
   initials?: string;
+  photoUrl?: string;
+  qrDataUrl?: string;
   designation?: string;
   organisation?: string;
   headline?: string;
@@ -107,42 +109,66 @@ export async function exportIdentityCardToPNG(
   const paddingX = 80;
   let cursorY = isDisclosure ? 160 : 100;
 
-  // 3. Avatar / Sealed Box
+  // 3. Avatar: real profile photo when available, else a sealed/initials box
   const avatarSize = 150;
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(paddingX, cursorY, avatarSize, avatarSize, [28]);
-  if (isDisclosure) {
-    ctx.fillStyle = '#E2DFD7';
-    ctx.fill();
-    ctx.font = '500 56px "Instrument Serif", Georgia, serif';
-    ctx.fillStyle = '#262626';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(data.initials || 'DC', paddingX + avatarSize / 2, cursorY + avatarSize / 2);
-  } else if (isLocked) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // Lock symbol inside
-    ctx.font = '50px sans-serif';
-    ctx.fillStyle = '#FFA100';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🔒', paddingX + avatarSize / 2, cursorY + avatarSize / 2);
-  } else {
-    // Public
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
-    ctx.fill();
-    ctx.font = '500 56px "Instrument Serif", Georgia, serif';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(data.initials || 'DC', paddingX + avatarSize / 2, cursorY + avatarSize / 2);
+  let photoDrawn = false;
+  if (!isLocked && data.photoUrl) {
+    try {
+      const photoImg = new window.Image();
+      photoImg.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        photoImg.onload = () => resolve();
+        photoImg.onerror = () => reject();
+        photoImg.src = data.photoUrl!;
+      });
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(paddingX, cursorY, avatarSize, avatarSize, [28]);
+      ctx.clip();
+      ctx.drawImage(photoImg, paddingX, cursorY, avatarSize, avatarSize);
+      ctx.restore();
+      photoDrawn = true;
+    } catch {
+      // Fall through to initials fallback below.
+    }
   }
-  ctx.restore();
+
+  if (!photoDrawn) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(paddingX, cursorY, avatarSize, avatarSize, [28]);
+    if (isDisclosure) {
+      ctx.fillStyle = '#E2DFD7';
+      ctx.fill();
+      ctx.font = '500 56px "Instrument Serif", Georgia, serif';
+      ctx.fillStyle = '#262626';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(data.initials || 'DC', paddingX + avatarSize / 2, cursorY + avatarSize / 2);
+    } else if (isLocked) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Lock symbol inside
+      ctx.font = '50px sans-serif';
+      ctx.fillStyle = '#FFA100';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔒', paddingX + avatarSize / 2, cursorY + avatarSize / 2);
+    } else {
+      // Public, no photo available
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.fill();
+      ctx.font = '500 56px "Instrument Serif", Georgia, serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(data.initials || 'DC', paddingX + avatarSize / 2, cursorY + avatarSize / 2);
+    }
+    ctx.restore();
+  }
 
   // Verification status top right
   ctx.textAlign = 'right';
@@ -386,22 +412,35 @@ export async function exportIdentityCardToPNG(
     ctx.fillText(`✉️  ${data.email || 'rohan@meridianap.in'}`, paddingX, contactY + 65);
     ctx.fillText(`📍  ${data.location || 'Mumbai, India'}`, paddingX, contactY + 130);
 
-    // QR Code Box
+    // QR Code Box — real, scannable QR resolving to the public profile URL
+    // (see IdentityCard.tsx / publicProfileUrl.ts). Falls back to a plain
+    // white box with no code if generation failed upstream — never a fake
+    // decorative pattern that looks scannable but isn't.
+    const qrPad = 14;
     ctx.beginPath();
     ctx.roundRect(qrX, contactY - 10, qrSize, qrSize, [20]);
     ctx.fillStyle = '#FFFFFF';
     ctx.fill();
 
-    // Simple decorative stylized QR pattern simulation
-    ctx.fillStyle = '#000000';
-    const s = qrSize / 7;
-    // Corners
-    ctx.fillRect(qrX + s * 0.7, contactY - 10 + s * 0.7, s * 1.8, s * 1.8);
-    ctx.fillRect(qrX + qrSize - s * 2.5, contactY - 10 + s * 0.7, s * 1.8, s * 1.8);
-    ctx.fillRect(qrX + s * 0.7, contactY - 10 + qrSize - s * 2.5, s * 1.8, s * 1.8);
-    // Center dots
-    ctx.fillRect(qrX + s * 2.8, contactY - 10 + s * 2.8, s * 1.4, s * 1.4);
-    ctx.fillRect(qrX + s * 4.6, contactY - 10 + s * 3.5, s * 1.1, s * 1.1);
+    if (data.qrDataUrl) {
+      try {
+        const qrImg = new window.Image();
+        await new Promise<void>((resolve, reject) => {
+          qrImg.onload = () => resolve();
+          qrImg.onerror = () => reject();
+          qrImg.src = data.qrDataUrl!;
+        });
+        ctx.drawImage(
+          qrImg,
+          qrX + qrPad,
+          contactY - 10 + qrPad,
+          qrSize - qrPad * 2,
+          qrSize - qrPad * 2
+        );
+      } catch {
+        // Leave the white box empty rather than draw a fake/misleading code.
+      }
+    }
   }
 
   // 11. Footer Line & Logo

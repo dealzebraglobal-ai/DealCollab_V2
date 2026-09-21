@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Lock,
   ShieldCheck,
@@ -9,9 +9,10 @@ import {
   Mail,
   MapPin,
   ArrowRight,
-  QrCode,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { exportIdentityCardToPNG } from '@/lib/identityCardExport';
+import { buildPublicProfileUrl } from '@/lib/publicProfileUrl';
 
 export type IdentityCardMode = 'public' | 'locked' | 'disclosure';
 
@@ -69,10 +70,45 @@ export default function IdentityCard({
   showExportButtons = true,
 }: IdentityCardProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  // Reset the broken-image flag when the photo itself changes, without a
+  // cascading-render effect (React's "adjust state while rendering" pattern).
+  const [lastPhotoUrl, setLastPhotoUrl] = useState(data.photoUrl);
+  if (data.photoUrl !== lastPhotoUrl) {
+    setLastPhotoUrl(data.photoUrl);
+    setPhotoFailed(false);
+  }
 
   const isDisclosure = mode === 'disclosure';
   const isLocked = mode === 'locked';
   const isPublic = mode === 'public';
+
+  // Only the public card is ever safe to encode into a QR — locked/disclosure
+  // cards carry counterparty data that must stay behind auth + EOI approval.
+  const qrTargetUrl = isPublic && data.profileSlug ? buildPublicProfileUrl(data.profileSlug) : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!qrTargetUrl) {
+      return;
+    }
+    QRCode.toDataURL(qrTargetUrl, {
+      width: 240,
+      margin: 2,
+      color: { dark: '#000000', light: '#FFFFFF' },
+      errorCorrectionLevel: 'M',
+    })
+      .then((url) => { if (!cancelled) setQrDataUrl(url); })
+      .catch((err) => {
+        console.error('QR generation failed:', err);
+        if (!cancelled) setQrDataUrl(null);
+      });
+    return () => { cancelled = true; };
+  }, [qrTargetUrl]);
+
+  const showPhoto = !!data.photoUrl && !photoFailed;
 
   // Compute initials fallback
   const initials =
@@ -113,6 +149,8 @@ export default function IdentityCard({
         mode,
         fullName: data.fullName || undefined,
         initials,
+        photoUrl: showPhoto ? data.photoUrl || undefined : undefined,
+        qrDataUrl: qrDataUrl || undefined,
         designation: data.designation || undefined,
         organisation: data.organisation || undefined,
         headline: bio || undefined,
@@ -218,6 +256,16 @@ export default function IdentityCard({
               {isLocked ? (
                 <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#FFA100] shadow-inner">
                   <Lock size={26} className="text-white/70" />
+                </div>
+              ) : showPhoto ? (
+                <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm border border-white/10 shrink-0">
+                  <img
+                    src={data.photoUrl || undefined}
+                    alt={data.fullName || 'Profile photo'}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={() => setPhotoFailed(true)}
+                  />
                 </div>
               ) : (
                 <div
@@ -490,9 +538,22 @@ export default function IdentityCard({
                     SEALED
                   </span>
                 </div>
-              ) : (
+              ) : isPublic && qrDataUrl ? (
                 <div className="w-20 h-20 rounded-xl bg-white p-1.5 shadow-sm flex items-center justify-center">
-                  <QrCode size={64} className="text-black" />
+                  <img src={qrDataUrl} alt="Scan to view public DealCollab profile" className="w-full h-full" />
+                </div>
+              ) : isPublic ? (
+                <div className="w-20 h-20 rounded-xl bg-white/5 border border-white/10 animate-pulse" />
+              ) : (
+                <div
+                  className={`w-20 h-20 rounded-xl flex flex-col items-center justify-center text-center p-2 ${
+                    isDisclosure ? 'bg-white border border-[#D5D2C9] text-[#92400E]' : 'bg-white/5 border border-white/10 text-white/40'
+                  }`}
+                >
+                  <ShieldCheck size={20} className={isDisclosure ? 'mb-1 text-[#FFA100]' : 'mb-1 text-white/50'} />
+                  <span className="text-[9px] font-mono font-bold tracking-wider uppercase">
+                    {isDisclosure ? 'DISCLOSED' : ''}
+                  </span>
                 </div>
               )}
             </div>

@@ -1,8 +1,10 @@
 'use client';
 import React, { useMemo, useRef, useState } from 'react';
 import { X, Download, Share2, AlertCircle, Check } from 'lucide-react';
+import QRCode from 'qrcode';
 import type { UserProfile } from '../UserProvider';
 import IdentityCard from '@/components/IdentityCard';
+import { buildPublicProfileUrl } from '@/lib/publicProfileUrl';
 
 interface VCardModalProps {
   isOpen: boolean;
@@ -278,6 +280,36 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
       }
     }
 
+    // Real, scannable QR code resolving to the public DealCollab profile
+    // (never phone/email/internal ids — see src/lib/publicProfileUrl.ts).
+    const profileSlug = `usr_${String(data?.id || 'dc').slice(0, 8)}`;
+    try {
+      const qrSize = 110;
+      const qrX = width - 70 - qrSize;
+      const qrY = height - 70 - qrSize;
+      const qrDataUrl = await QRCode.toDataURL(buildPublicProfileUrl(profileSlug), {
+        width: qrSize * 2,
+        margin: 1,
+        color: { dark: '#000000', light: '#FFFFFF' },
+        errorCorrectionLevel: 'M',
+      });
+      const qrImg = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        qrImg.onload = () => resolve();
+        qrImg.onerror = () => reject();
+        qrImg.src = qrDataUrl;
+      });
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, [10]);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+      ctx.restore();
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+    } catch (err) {
+      console.error('Failed to render QR on vCard canvas:', err);
+    }
+
     // Footer Watermark
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'right';
@@ -401,6 +433,7 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
                 data={{
                   fullName: name || 'Verified Member',
                   initials: (name ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('') : 'DC').toUpperCase(),
+                  photoUrl: photo || undefined,
                   designation: role || undefined,
                   organisation: company || undefined,
                   headline: data?.expertiseDescription || (data as any)?.headline || undefined,
