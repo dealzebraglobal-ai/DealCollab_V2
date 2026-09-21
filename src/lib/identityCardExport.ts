@@ -30,9 +30,10 @@ export interface ExportCardData {
   releasedTo?: string;
 }
 
-export async function exportIdentityCardToPNG(
+export async function exportIdentityCardToImage(
   data: ExportCardData,
-  filename = 'dealcollab-identity-card.png'
+  filename = 'dealcollab-identity-card',
+  format: 'png' | 'jpeg' = 'png'
 ): Promise<void> {
   const width = 1200;
   const height = 2160;
@@ -268,8 +269,8 @@ export async function exportIdentityCardToPNG(
   ctx.stroke();
   cursorY += 45;
 
-  // 6. Metrics Grid: SIDE | TICKET BAND | CLOSED
-  const colW = (width - paddingX * 2) / 3;
+  // 6. Metrics Grid: SIDE | TICKET BAND
+  const colW = (width - paddingX * 2) / 2;
 
   const renderMetric = (label: string, val: string, xPos: number) => {
     ctx.font = '700 22px "IBM Plex Mono", monospace';
@@ -283,7 +284,6 @@ export async function exportIdentityCardToPNG(
 
   renderMetric('SIDE', data.mandateSide || 'Sell-side', paddingX);
   renderMetric('TICKET BAND', data.ticketBand || '₹20–250 Cr', paddingX + colW);
-  renderMetric('CLOSED', data.closedCount ? `${data.closedCount} mandates` : '34 mandates', paddingX + colW * 2);
 
   cursorY += 125;
 
@@ -472,13 +472,15 @@ export async function exportIdentityCardToPNG(
   ctx.fillText('Connecting People, Possibilities and Deals', width - paddingX, footerY + 8);
 
   // 12. Trigger Browser Download
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-  if (!blob) throw new Error('Failed to generate PNG blob');
+  const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+  const fileExt = format === 'jpeg' ? 'jpg' : 'png';
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, 0.95));
+  if (!blob) throw new Error(`Failed to generate ${format.toUpperCase()} blob`);
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = filename.endsWith(`.${fileExt}`) ? filename : `${filename}.${fileExt}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

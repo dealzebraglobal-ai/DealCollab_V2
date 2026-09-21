@@ -27,6 +27,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid storage bucket' }, { status: 400 });
   }
 
+  // Security: Prevent uploading unauthorized extensions or mime types
+  const ext = (fileName.split('.').pop() || '').toLowerCase();
+  const allowedExtensions = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'webp', 'csv'];
+  if (!allowedExtensions.includes(ext)) {
+    return NextResponse.json({ error: 'Unsupported file extension' }, { status: 415 });
+  }
+
+  // Optional MIME type check for extra safety
+  const allowedMimePrefixes = ['application/pdf', 'application/msword', 'application/vnd', 'text/', 'image/'];
+  if (!allowedMimePrefixes.some(prefix => fileType.startsWith(prefix))) {
+    return NextResponse.json({ error: 'Unsupported file type' }, { status: 415 });
+  }
+
   const supabase = createServerSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
@@ -34,7 +47,6 @@ export async function GET(req: NextRequest) {
 
   const email = session.user.email.trim().toLowerCase();
   const safeFolder = email.replace(/[^a-z0-9]/g, '_');
-  const ext = fileName.split('.').pop() || (fileType.split('/')[1]) || 'bin';
   const path = `${safeFolder}/${Date.now()}.${ext}`;
 
   // Create a signed URL for uploading (valid for 5 minutes)

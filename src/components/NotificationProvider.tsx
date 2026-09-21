@@ -65,7 +65,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [isSoundMuted, setIsSoundMuted] = useState(false);
   useEffect(() => {
     try {
-      setIsSoundMuted(localStorage.getItem(SOUND_MUTE_KEY) === 'true');
+      const muted = localStorage.getItem(SOUND_MUTE_KEY) === 'true';
+      if (muted) {
+        Promise.resolve().then(() => setIsSoundMuted(muted));
+      }
     } catch {
       // localStorage unavailable (e.g. private browsing) — default to unmuted.
     }

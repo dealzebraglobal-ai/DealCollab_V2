@@ -7,11 +7,12 @@ import {
   Download,
   Phone,
   Mail,
-  MapPin,
   ArrowRight,
+  Loader2,
+  MapPin,
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { exportIdentityCardToPNG } from '@/lib/identityCardExport';
+import { exportIdentityCardToImage } from '@/lib/identityCardExport';
 import { buildPublicProfileUrl } from '@/lib/publicProfileUrl';
 
 export type IdentityCardMode = 'public' | 'locked' | 'disclosure';
@@ -142,10 +143,11 @@ export default function IdentityCard({
 
   const locationText = data.location || [data.city, data.country].filter(Boolean).join(', ') || null;
 
-  const handleExportPNG = async () => {
+  const handleExport = async (format: 'png' | 'jpeg' = 'png') => {
+    if (isExporting) return;
     try {
       setIsExporting(true);
-      await exportIdentityCardToPNG({
+      await exportIdentityCardToImage({
         mode,
         fullName: data.fullName || undefined,
         initials,
@@ -172,9 +174,12 @@ export default function IdentityCard({
         releasedTo: data.releasedToName
           ? `${data.releasedToName}${data.releasedToFirm ? ` · ${data.releasedToFirm}` : ''}`
           : undefined,
-      }, `dealcollab-${mode}-card.png`);
+      },
+      `DealCollab_${data.fullName?.replace(/[^a-z0-9]+/gi, '_') || 'Member'}_Card`,
+      format
+    );
     } catch (err) {
-      console.error('PNG Export failed:', err);
+      console.error('Export failed:', err);
     } finally {
       setIsExporting(false);
     }
@@ -182,7 +187,7 @@ export default function IdentityCard({
 
   return (
     <div className={`flex flex-col items-center w-full max-w-[420px] mx-auto ${className}`}>
-      {/* Top Action Bar (Download Button) */}
+      {/* Top Action Bar (Download Buttons) */}
       {showExportButtons && (
         <div className="w-full flex items-center justify-between pb-3 px-1 text-xs text-[#747775]">
           <span className="font-mono text-[11px] uppercase tracking-wider font-semibold">
@@ -190,15 +195,26 @@ export default function IdentityCard({
             {isLocked && 'Counterparty Card · Locked'}
             {isDisclosure && 'Disclosure card · post-EOI'}
           </span>
-          <button
-            onClick={handleExportPNG}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-[#F3F4F6] text-[#1F1F1F] border border-[#E5E7EB] rounded-lg font-bold text-[11px] uppercase tracking-wider shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-            title="Download high-resolution 1200x2160 PNG"
-          >
-            <Download size={13} className="text-[#FF6A00]" />
-            <span>{isExporting ? 'Exporting…' : 'PNG (1200×2160)'}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handleExport('jpeg')}
+              disabled={isExporting}
+              className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#F3F4F6] text-[#1F1F1F] border border-[#E5E7EB] rounded-lg font-bold text-[11px] uppercase tracking-wider shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Download high-resolution JPG"
+            >
+              {isExporting ? <Loader2 size={13} className="animate-spin text-[#FF6A00]" /> : <Download size={13} className="text-[#FF6A00]" />}
+              <span>{isExporting ? 'Exporting…' : 'JPG'}</span>
+            </button>
+            <button
+              onClick={() => handleExport('png')}
+              disabled={isExporting}
+              className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-[#F3F4F6] text-[#1F1F1F] border border-[#E5E7EB] rounded-lg font-bold text-[11px] uppercase tracking-wider shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Download high-resolution PNG"
+            >
+              {isExporting ? <Loader2 size={13} className="animate-spin text-[#FF6A00]" /> : <Download size={13} className="text-[#FF6A00]" />}
+              <span>{isExporting ? 'Exporting…' : 'PNG'}</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -376,8 +392,8 @@ export default function IdentityCard({
             }`}
           />
 
-          {/* METRICS ROW: SIDE | TICKET BAND | CLOSED */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* METRICS ROW: SIDE | TICKET BAND */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <span className="text-[9px] font-mono uppercase tracking-wider text-white/40 block">
                 SIDE
@@ -400,18 +416,6 @@ export default function IdentityCard({
                 }`}
               >
                 {data.ticketBand || '₹20–250 Cr'}
-              </p>
-            </div>
-            <div>
-              <span className="text-[9px] font-mono uppercase tracking-wider text-white/40 block">
-                CLOSED
-              </span>
-              <p
-                className={`text-xs sm:text-sm font-bold mt-1 ${
-                  isDisclosure ? 'text-[#111827]' : 'text-white'
-                }`}
-              >
-                {data.closedCount ? `${data.closedCount} mandates` : '34 mandates'}
               </p>
             </div>
           </div>

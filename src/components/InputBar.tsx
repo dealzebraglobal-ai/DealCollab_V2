@@ -73,9 +73,10 @@ export default function InputBar({ onSendMessage, isSending = false }: InputBarP
         />
 
         <form
+          onClick={() => textareaRef.current?.focus()}
           onSubmit={handleSubmit}
           data-onboarding-target="search"
-          className="flex flex-col bg-white border border-gray-200 rounded-3xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:border-gray-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] focus-within:border-[#C2410C]/60 focus-within:ring-[3px] focus-within:ring-[#C2410C]/15 focus-within:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-150"
+          className="cursor-text flex flex-col bg-white border border-gray-200 rounded-[28px] shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.12)] focus-within:border-[#EA580C] focus-within:ring-[3px] focus-within:ring-[#EA580C]/15 transition-all duration-200"
         >
           {/* File Attachment Preview Badge */}
           {pendingFile && (
@@ -124,10 +125,10 @@ export default function InputBar({ onSendMessage, isSending = false }: InputBarP
             <button
               type="submit"
               disabled={!canSend}
-              className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed bg-[#C2410C] hover:bg-[#9A3412] text-white shadow-sm shadow-orange-900/25"
+              className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed bg-[#EA580C] hover:bg-[#C2410C] text-white shadow-md"
               title="Send"
             >
-              {isSending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} />}
+              {isSending ? <Loader2 size={18} className="animate-spin" /> : <ArrowUp size={18} strokeWidth={2.5} />}
             </button>
           </div>
         </form>

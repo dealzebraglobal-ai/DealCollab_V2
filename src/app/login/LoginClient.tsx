@@ -248,7 +248,7 @@ const AuthContent = () => {
                   <p className="text-[10px] font-medium italic">Private Beta Access Only</p>
                 </div>
                 <a 
-                  href="mailto:support@dealcollab.in" 
+                  href="mailto:support@dealcollab.org" 
                   className="text-[10px] font-bold text-brand-secondary hover:text-primary-hover transition-colors underline decoration-border underline-offset-4"
                 >
                   Contact Membership Support

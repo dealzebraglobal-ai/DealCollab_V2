@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MessageSquare, Download, Copy, Check, FileText, User, Building2, IdCard, X, Loader2 } from 'lucide-react';
 import IdentityCard from './IdentityCard';
-import { exportIdentityCardToPNG, type ExportCardData } from '@/lib/identityCardExport';
+import { exportIdentityCardToImage, type ExportCardData } from '@/lib/identityCardExport';
 import { buildPublicProfileUrl } from '@/lib/publicProfileUrl';
 import QRCode from 'qrcode';
 interface ConnectionDetailsProps {
@@ -85,7 +85,7 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
     profileSlug,
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (format: 'png' | 'jpeg' = 'png') => {
     if (isDownloading) return;
     setIsDownloading(true);
     try {
@@ -105,7 +105,7 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
         ...vcardData,
         qrDataUrl
       };
-      await exportIdentityCardToPNG(exportData, `DealCollab_${fullName.replace(/[^a-z0-9]+/gi, '_') || 'Company'}_vCard.png`);
+      await exportIdentityCardToImage(exportData, `DealCollab_${fullName.replace(/[^a-z0-9]+/gi, '_') || 'Company'}_vCard`, format);
     } catch (err) {
       console.error('vCard download failed', err);
       alert('Unable to download the vCard. Please try again.');
@@ -185,12 +185,20 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
                      <IdCard size={12} /> View vCard
                   </button>
                   <button 
-                    onClick={handleDownload}
+                    onClick={() => handleDownload('png')}
                     disabled={isDownloading}
                     className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-[10px] font-medium text-[#6B7280] transition-all disabled:opacity-50"
                   >
                      {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} 
-                     {isDownloading ? 'Preparing...' : 'Download vCard'}
+                     {isDownloading ? 'Preparing...' : 'vCard (PNG)'}
+                  </button>
+                  <button 
+                    onClick={() => handleDownload('jpeg')}
+                    disabled={isDownloading}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-[10px] font-medium text-[#6B7280] transition-all disabled:opacity-50"
+                  >
+                     {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} 
+                     {isDownloading ? 'Preparing...' : 'vCard (JPG)'}
                   </button>
                 </div>
               </div>
@@ -266,14 +274,22 @@ export default function ConnectionDetails({ item }: ConnectionDetailsProps) {
                 showExportButtons={false}
               />
               
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-end gap-2">
                 <button
-                  onClick={handleDownload}
+                  onClick={() => handleDownload('jpeg')}
+                  disabled={isDownloading}
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50 border border-gray-200"
+                >
+                  {isDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} 
+                  {isDownloading ? 'Preparing...' : 'Download JPG'}
+                </button>
+                <button
+                  onClick={() => handleDownload('png')}
                   disabled={isDownloading}
                   className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#1F2937] hover:bg-[#111827] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50"
                 >
                   {isDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} 
-                  {isDownloading ? 'Preparing vCard...' : 'Download PNG'}
+                  {isDownloading ? 'Preparing...' : 'Download PNG'}
                 </button>
               </div>
             </div>

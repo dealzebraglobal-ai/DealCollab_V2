@@ -46,6 +46,8 @@ const DOCUMENT_MIME_TO_TYPE: Record<string, string> = {
   'application/msword': 'doc',
   'text/plain': 'txt',
   'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
 };
 
 function resolveMimeType(file: File): string {
@@ -56,6 +58,8 @@ function resolveMimeType(file: File): string {
   if (name.endsWith('.doc')) return 'application/msword';
   if (name.endsWith('.txt')) return 'text/plain';
   if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+  if (name.endsWith('.png')) return 'image/png';
+  if (name.endsWith('.webp')) return 'image/webp';
   return file.type || 'unknown';
 }
 

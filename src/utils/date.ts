@@ -40,7 +40,8 @@ export function formatExactDateTime(
     const minute = parts.find(p => p.type === 'minute')?.value || '';
     const dayPeriod = (parts.find(p => p.type === 'dayPeriod')?.value || 'AM').toUpperCase();
 
-    return `${day} ${month} ${year}, ${hour}:${minute} ${dayPeriod}`;
+    const tzSuffix = timeZone === 'Asia/Kolkata' ? ' IST' : '';
+    return `${day} ${month} ${year}, ${hour}:${minute} ${dayPeriod}${tzSuffix}`;
   } catch {
     // Fallback if timezone is invalid
     const day = String(date.getDate()).padStart(2, '0');
@@ -54,7 +55,8 @@ export function formatExactDateTime(
     hours = hours ? hours : 12;
     const hoursPadded = String(hours).padStart(2, '0');
 
-    return `${day} ${month} ${year}, ${hoursPadded}:${minutes} ${ampm}`;
+    const tzSuffix = timeZone === 'Asia/Kolkata' ? ' IST' : '';
+    return `${day} ${month} ${year}, ${hoursPadded}:${minutes} ${ampm}${tzSuffix}`;
   }
 }
 

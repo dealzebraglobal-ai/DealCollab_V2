@@ -24,7 +24,7 @@ interface DealLogCardProps {
     dealSizeMinCr?: number | null;
     dealSizeMaxCr?: number | null;
     structure?: string | null;
-    metadata?: any;
+    metadata?: Record<string, unknown> | null;
   };
   isExpanded: boolean;
   onToggle: () => void;
@@ -34,7 +34,7 @@ interface DealLogCardProps {
   onRename?: (customTitle: string, remark: string) => void;
 }
 
-function getStructureLabel(deal: { intent?: string; structure?: string | null; metadata?: any }) {
+function getStructureLabel(deal: { intent?: string; structure?: string | null; metadata?: Record<string, unknown> | null }) {
   if (deal.structure) return deal.structure;
   if (deal.metadata?.deal_structure) return String(deal.metadata.deal_structure);
   if (deal.metadata?.dealStructure) return String(deal.metadata.dealStructure);
@@ -55,9 +55,9 @@ function getStructureLabel(deal: { intent?: string; structure?: string | null; m
   }
 }
 
-function getTopLineLabel(deal: { dealSizeMinCr?: number | null; dealSizeMaxCr?: number | null; metadata?: any }) {
-  const min = deal.dealSizeMinCr ?? (deal.metadata?.dealSizeMinCr || deal.metadata?.revenueMinCr);
-  const max = deal.dealSizeMaxCr ?? (deal.metadata?.dealSizeMaxCr || deal.metadata?.revenueMaxCr);
+function getTopLineLabel(deal: { dealSizeMinCr?: number | null; dealSizeMaxCr?: number | null; metadata?: Record<string, unknown> | null }) {
+  const min = deal.dealSizeMinCr ?? (deal.metadata?.dealSizeMinCr as number | undefined || deal.metadata?.revenueMinCr as number | undefined);
+  const max = deal.dealSizeMaxCr ?? (deal.metadata?.dealSizeMaxCr as number | undefined || deal.metadata?.revenueMaxCr as number | undefined);
 
   if (min && max && min !== max) {
     return `₹${min}–${max} Cr`;
@@ -89,6 +89,9 @@ export default function DealLogCard({
   const [remarkDraft, setRemarkDraft] = useState(deal.remark || '');
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (['INPUT', 'TEXTAREA', 'BUTTON'].includes((e.target as HTMLElement).tagName)) {
+      return;
+    }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onToggle();

@@ -452,9 +452,10 @@ export async function extractTextFromFile(
       result = await extractPdf(buffer, requestId);
     }
 
-    // 4. JPG/JPEG Handling — routed through the existing OCR pipeline
-    else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg' || mimeType === 'image/pjpeg') {
-      result = await extractImageText(buffer, mimeType === 'image/pjpeg' ? 'image/jpeg' : mimeType, requestId);
+    // 4. JPG/JPEG/PNG/WEBP Handling — routed through the existing OCR pipeline
+    else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg' || mimeType === 'image/pjpeg' || mimeType === 'image/png' || mimeType === 'image/webp') {
+      const normalizedMime = mimeType === 'image/pjpeg' ? 'image/jpeg' : mimeType;
+      result = await extractImageText(buffer, normalizedMime, requestId);
     }
 
     // 5. Unsupported Handling

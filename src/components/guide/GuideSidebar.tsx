@@ -9,7 +9,7 @@ export default function GuideSidebar() {
   const actions = [
     { label: 'Download PDF', icon: Download, href: '/guide/how-it-works', description: 'Save the core guide for offline reading.' },
     { label: 'Watch Walkthrough', icon: PlayCircle, href: '/guide/how-it-works', description: 'A short walkthrough of the platform.' },
-    { label: 'Contact Support', icon: MessageCircle, href: 'mailto:support@dealcollab.in', description: 'Reach the team directly.' },
+    { label: 'Contact Support', icon: MessageCircle, href: 'mailto:support@dealcollab.org', description: 'Reach the team directly.' },
   ];
 
   return (
@@ -46,7 +46,7 @@ export default function GuideSidebar() {
           </p>
         </div>
         <a
-          href="mailto:support@dealcollab.in"
+          href="mailto:support@dealcollab.org"
           className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#1F1F1F] px-4 py-2.5 text-xs font-medium text-white transition-colors hover:bg-black"
         >
           Email support

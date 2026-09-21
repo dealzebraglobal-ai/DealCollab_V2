@@ -30,7 +30,7 @@ interface UploadProgress {
   currentFileName: string;
 }
 
-const ACCEPTED = '.csv,.pdf,.docx,.doc,.txt,.jpg,.jpeg';
+const ACCEPTED = '.csv,.pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.webp';
 
 export default function BulkUploadModal({ isOpen, onClose, onUploaded }: BulkUploadModalProps) {
   const [files, setFiles] = useState<File[]>([]);
@@ -171,7 +171,7 @@ export default function BulkUploadModal({ isOpen, onClose, onUploaded }: BulkUpl
             <UploadCloud size={24} className="text-[#F97316]" />
           </div>
           <p className="text-sm font-bold text-[#1F2937]">Click to select files</p>
-          <p className="text-xs text-gray-400 mt-1">CSV, PDF, DOCX, DOC, TXT, JPG — up to 25 files, 10MB each</p>
+          <p className="text-xs text-gray-400 mt-1">CSV, PDF, DOCX, DOC, TXT, JPG, PNG — up to 25 files, 10MB each</p>
           <input
             ref={inputRef}
             type="file"
