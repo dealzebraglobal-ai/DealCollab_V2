@@ -45,6 +45,7 @@ export function createBlankState(): RouterState {
     sector:                  null,
     industry:                null,
     sub_sector:              null,
+    serving_sectors:         [],
     geography:               null,
     deal_size:               null,
     revenue:                 null,

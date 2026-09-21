@@ -18,7 +18,7 @@ INTERMEDIARY: known → skip. Unknown → FIRST LINE then continue.
 REVENUE-FIRST (# REVENUE_REQUIRED): ask ONLY revenue+EBITDA this turn.
 COMPACT (# M3_FORMAT: compact): ONE sentence. standard → bullets.
 Opening: use the OPENING LINE provided in the framing instruction (do not hardcode one here).
-\n• What does the business do, and where does it operate? [SKIP if sector + geography known, OR if products_services/capabilities/company_overview in FIELDS ALREADY PROVIDED — any of these alone is sufficient]
+\n• What does the business do, and where does it operate? [SKIP if industry/sector AND geography known]
 \n• What is the approximate annual revenue and EBITDA or profitability range? [SKIP if revenue known]
 \n• What kind of transaction — full sale, majority stake, or minority stake? [SKIP if structure or transaction_type in FIELDS ALREADY PROVIDED]
 (Sector specifics live in the M4 reference; the cognitive qualification rules decide which to ask — not a fixed block.)

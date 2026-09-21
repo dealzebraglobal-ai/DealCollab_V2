@@ -748,6 +748,7 @@ export async function POST(req: NextRequest) {
             sector: updatedState.sector ?? s.sector ?? null,
             industry: updatedState.industry ?? s.industry ?? null,
             sub_sector: updatedState.sub_sector ?? s.sub_sector ?? null,
+            serving_sectors: updatedState.serving_sectors ?? s.serving_sectors ?? [],
             geography: updatedState.geography ?? s.geography ?? null,
             deal_size: s.deal_size ?? null,
             revenue: s.revenue ?? null,

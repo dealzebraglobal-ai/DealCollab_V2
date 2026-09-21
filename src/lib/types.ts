@@ -85,6 +85,7 @@ export interface RouterState {
   // coarse category for legacy filtering; `industry` is what should drive matching/embeddings.
   industry:         string | null;
   sub_sector:       string | null;
+  serving_sectors:  string[];
   geography:        string | null;
   deal_size:        string | null;
   revenue:          string | null;

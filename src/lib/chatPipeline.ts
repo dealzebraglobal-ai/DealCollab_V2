@@ -466,6 +466,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
           sector: s.sector ?? null,
           industry: updatedState.industry ?? s.industry ?? null,
           sub_sector: s.sub_sector ?? null,
+          serving_sectors: updatedState.serving_sectors ?? s.serving_sectors ?? [],
           geography: s.geography ?? null,
           deal_size: s.deal_size ?? null,
           revenue: s.revenue ?? null,

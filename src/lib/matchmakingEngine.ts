@@ -44,6 +44,7 @@ export interface ProposalInput {
   sector: string | null;
   industry?: string | null;   // hybrid: TRUE free-text industry (primary signal for matching)
   sub_sector: string | null;
+  serving_sectors: string[];
   geography: string | null;
   deal_size: string | null;
   revenue: string | null;
@@ -76,6 +77,7 @@ interface Candidate {
   intent: string;
   industry: string | null;
   sectors: string[] | null;
+  serving_sectors: string[] | null;
   geographies: string[] | null;
   deal_size_min_cr: number | null;
   deal_size_max_cr: number | null;
@@ -318,8 +320,14 @@ function applyHardRejections(
   if (source.structure && candidate.deal_structure) {
     const src = source.structure.toLowerCase();
     const cnd = candidate.deal_structure.toLowerCase();
-    if ((src.includes('100%') || src.includes('full buyout')) &&
-      (cnd.includes('minority') || cnd.includes('fundrais'))) {
+    
+    // Check if either side is looking for 100% while the other side is looking for minority
+    const isSourceFullBuyout = src.includes('100%') || src.includes('full buyout');
+    const isSourceMinority = src.includes('minority') || src.includes('fundrais');
+    const isCandidateFullBuyout = cnd.includes('100%') || cnd.includes('full buyout');
+    const isCandidateMinority = cnd.includes('minority') || cnd.includes('fundrais');
+
+    if ((isSourceFullBuyout && isCandidateMinority) || (isCandidateFullBuyout && isSourceMinority)) {
       return { rejected: true, reason: 'HR-3: Full buyout incompatible with minority fundraise' };
     }
   }
@@ -334,7 +342,9 @@ function applyHardRejections(
       source.industry,
       candidate.industry,
       source.sector,
-      candidate.sectors?.[0]
+      candidate.sectors?.[0],
+      source.serving_sectors,
+      candidate.serving_sectors
     );
     if (indComp.level === 'INCOMPATIBLE') {
       return { rejected: true, reason: `HR-4: ${indComp.reason}` };
@@ -386,7 +396,9 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
     source.industry,
     candidate.industry,
     source.sector,
-    candidate.sectors?.[0]
+    candidate.sectors?.[0],
+    source.serving_sectors,
+    candidate.serving_sectors
   );
   let industryScore = 0;
   switch (comp.level) {
@@ -637,6 +649,7 @@ export async function executeMatchmaking(
       .upsert([{
         ...(input.id ? { id: input.id } : {}),
         user_id: input.userId,
+        mandate_id: input.mandateId,
         raw_text: enrichedRawText || storageText.slice(0, 4000),
         normalised_text: storageText,
         document_text: safeDocText,
@@ -644,6 +657,7 @@ export async function executeMatchmaking(
         intent: input.intent,
         industry: input.industry ?? null,
         sectors: input.sector ? [normalizeSector(input.sector)] : [],
+        serving_sectors: input.serving_sectors || [],
         geographies: input.geography ? [input.geography] : [],
         deal_structure: input.structure,
         deal_size_min_cr: parseNum(input.deal_size_min),
@@ -921,20 +935,16 @@ export async function executeMatchmaking(
     });
 
     const topScore = topRows[0]?.final_score ?? 0;
-    console.log(`[M5] ====== COMPLETE: ${topRows.length} matches, top score ${topScore} ======`);
-
+    console.log(`[M5] ====== COMPLETE: ${topRows.length} matches, top score ${topRows[0]?.final_score ?? 0} ======`);
     return {
       proposalId: proposal.id,
       matchCount: topRows.length,
       topScore,
       cards,
-      summary: topRows.length > 0
-        ? `${topRows.length} aligned counterpart${topRows.length > 1 ? 'ies' : 'y'} identified.`
-        : 'No immediate matches. Your mandate runs continuously for 90 days.',
+      summary: (topRows.length > 0) ? `Found ${topRows.length} potential matches for your consideration.` : 'No immediate matches. Your mandate runs continuously for 90 days.',
     };
-
   } catch (err) {
-    console.error('[M5] CRITICAL FAILURE:', err);
-    throw err;
+    console.error('[M5] Matchmaking failed:', err);
+    return null;
   }
 }

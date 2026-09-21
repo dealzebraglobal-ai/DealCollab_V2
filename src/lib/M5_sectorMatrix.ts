@@ -40,7 +40,7 @@ const NORMALIZE_MAP: Record<string, string> = {
   software:      'TECHNOLOGY',
   technology:    'TECHNOLOGY',
   finserv:       'FINTECH',
-  consumer:      'FMCG',
+  consumer:      'CONSUMER',
   fmcg:          'FMCG',
   realestate:    'REAL_ESTATE',
   'real estate': 'REAL_ESTATE',
@@ -120,6 +120,7 @@ function normalizeIndustryKey(raw: string): string {
   if (lower.includes('textile') || lower.includes('linen') || lower.includes('apparel') || lower.includes('garment')) return 'HOME_TEXTILES';
   if (lower.includes('fashion')) return 'FASHION';
   if (lower.includes('cyber') || lower.includes('security')) return 'CYBERSECURITY';
+  if (lower.includes('packaging')) return 'PACKAGING';
 
   return normalizeSector(raw);
 }
@@ -129,6 +130,8 @@ export function getIndustryCompatibility(
   candidateIndustry: string | null | undefined,
   sourceSector?: string | null,
   candidateSector?: string | null,
+  sourceServingSectors?: string[] | null,
+  candidateServingSectors?: string[] | null,
 ): SectorRelation {
   const sInd = (sourceIndustry || sourceSector || '').toLowerCase().trim();
   const cInd = (candidateIndustry || candidateSector || '').toLowerCase().trim();
@@ -158,6 +161,27 @@ export function getIndustryCompatibility(
       level: 'COMPATIBLE',
       penalty: 0,
       reason: `Exact category match: ${sNorm}.`,
+    };
+  }
+
+  // Check if either entity serves the other's core sector
+  const sourceCoreSector = sourceSector ? normalizeSector(sourceSector) : null;
+  const candidateCoreSector = candidateSector ? normalizeSector(candidateSector) : null;
+  const sourceServes = sourceServingSectors?.map(normalizeSector) || [];
+  const candidateServes = candidateServingSectors?.map(normalizeSector) || [];
+
+  if (sourceCoreSector && candidateServes.includes(sourceCoreSector)) {
+    return {
+      level: 'COMPATIBLE',
+      penalty: 0,
+      reason: `Aligned ecosystem: candidate explicitly serves the ${sourceSector} sector.`,
+    };
+  }
+  if (candidateCoreSector && sourceServes.includes(candidateCoreSector)) {
+    return {
+      level: 'COMPATIBLE',
+      penalty: 0,
+      reason: `Aligned ecosystem: source explicitly serves the ${candidateSector} sector.`,
     };
   }
 
@@ -215,11 +239,15 @@ const HARD_INCOMPATIBLE = new Set<string>([
   'FMCG|NBFC',
   'FMCG|DEFENCE',
   'FMCG|PHARMACEUTICALS',
+  'CONSUMER|NBFC',
+  'CONSUMER|DEFENCE',
+  'CONSUMER|PHARMACEUTICALS',
   'EDUCATION|LOGISTICS',
   'EDUCATION|CHEMICALS',
   'REAL_ESTATE|LOGISTICS',
   'DEFENCE|RETAIL',
   'DEFENCE|FMCG',
+  'DEFENCE|CONSUMER',
   'DEFENCE|EDUCATION',
   'CHEMICALS|NBFC',
   'CHEMICALS|RETAIL',
@@ -265,6 +293,10 @@ const COMPATIBLE: Record<string, string> = {
   'MANUFACTURING|FMCG':             'Manufacturer acquires FMCG brand for B2C market access.',
   'FMCG|RETAIL':                    'FMCG brand acquires retail distribution — channel expansion.',
   'RETAIL|FMCG':                    'Retail chain acquires FMCG brand to create private label portfolio.',
+  'CONSUMER|MANUFACTURING':             'Consumer brand acquires manufacturing for in-house production. 2 deals.',
+  'MANUFACTURING|CONSUMER':             'Manufacturer acquires consumer brand for B2C market access.',
+  'CONSUMER|RETAIL':                    'Consumer brand acquires retail distribution — channel expansion.',
+  'RETAIL|CONSUMER':                    'Retail chain acquires consumer brand to create private label portfolio.',
   'REAL_ESTATE|HOTELS':             'Real estate developer acquires hospitality asset.',
   'HOTELS|REAL_ESTATE':             'Hotel chain acquires property for flagship asset ownership.',
   'TECHNOLOGY|EDUCATION':           'Edtech — software platform serving education institutions.',
@@ -284,6 +316,7 @@ const NARROW: Record<string, string> = {
   'LOGISTICS|PHARMACEUTICALS':      'NARROW: Pharma-grade cold chain logistics only. Verify certification.',
   'LOGISTICS|HEALTHCARE':           'NARROW: Medical supply chain only. Verify temperature-controlled capability.',
   'LOGISTICS|FMCG':                 'NARROW: FMCG last-mile delivery. Verify route density.',
+  'LOGISTICS|CONSUMER':             'NARROW: Consumer goods last-mile delivery. Verify route density.',
   'LOGISTICS|MANUFACTURING':        'NARROW: Industrial logistics only. Verify captive client or MSA contracts.',
   'MANUFACTURING|PHARMACEUTICALS':  'NARROW: Contract manufacturing or packaging only.',
   'PHARMACEUTICALS|MANUFACTURING':  'NARROW: Pharma packaging or equipment supplier only.',
@@ -297,6 +330,8 @@ const NARROW: Record<string, string> = {
   'TECHNOLOGY|LOGISTICS':           'NARROW: Logistics-tech — WMS, TMS, route optimisation only.',
   'FMCG|LOGISTICS':                 'NARROW: Last-mile distribution alignment only.',
   'FMCG|HEALTHCARE':                'NARROW: Health FMCG — nutraceuticals, OTC products only.',
+  'CONSUMER|LOGISTICS':             'NARROW: Last-mile distribution alignment only.',
+  'CONSUMER|HEALTHCARE':            'NARROW: Health consumer products — nutraceuticals, OTC products only.',
   'CHEMICALS|AGRICULTURE':          'NARROW: Agrochemicals only. Verify product category.',
   'MANUFACTURING|LOGISTICS':        'NARROW: Captive logistics for manufacturing output only.',
 };

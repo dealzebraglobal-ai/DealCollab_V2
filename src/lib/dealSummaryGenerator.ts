@@ -8,7 +8,8 @@
  * 2. Uses the complete available mandate and candidate row data (intent, industry, sector,
  *    sub-sector, geography, revenue, deal size, business model, transaction structure,
  *    operating parameters from metadata/industry_data).
- * 3. Explains WHY it matches: aligned criteria, unavailable criteria, and partial alignments.
+ * 3. States fit as facts side by side (both sides' values, ranges checked at both ends).
+ *    Never asserts alignment and never describes the counterparty with the viewer's data.
  * 4. Deterministic sanitization layer: strictly redacts names, emails, phone numbers,
  *    WhatsApp handles, internal IDs, UUIDs, and document URLs BEFORE summary rendering.
  * 5. Preserves Identity Protected model — never names the counterparty company.
@@ -23,6 +24,7 @@ export interface MandateSummaryInput {
   industry?: string | null;
   sector?: string | null;
   sectors?: string[] | null;
+  serving_sectors?: string[] | null;
   sub_sector?: string | null;
   geography?: string | null;
   geographies?: string[] | null;
@@ -46,6 +48,7 @@ export interface CandidateSummaryInput {
   intent?: string | null;
   industry?: string | null;
   sectors?: string[] | null;
+  serving_sectors?: string[] | null;
   geographies?: string[] | null;
   deal_size_min_cr?: number | null;
   deal_size_max_cr?: number | null;
@@ -166,210 +169,172 @@ function formatBusinessModel(model: string | null | undefined): string | null {
 
 // ─────────────────────────────────────────────────────────────
 // FULL-FLEDGED DEAL INTELLIGENCE SUMMARY GENERATOR
+// Truth rules — each one fixes a way the previous version misled users:
+//   1. The counterparty is described ONLY from its own row. No fallback to the
+//      viewer's mandate: a missing field is reported as not disclosed.
+//   2. Fit is stated as facts side by side, with ranges checked against BOTH
+//      ends. Nothing asserts that the opportunity "aligns strongly".
+//   3. A single mandate's stored brief has nothing to be compared against, so it
+//      carries no fit section. (It used to compare the row with itself.)
 // ─────────────────────────────────────────────────────────────
+
+const TX_TYPE: Record<string, string> = {
+  SELL_SIDE: 'sell-side divestment / equity acquisition',
+  BUY_SIDE: 'strategic buy-side acquisition',
+  FUNDRAISING: 'growth equity funding / structured capital expansion',
+  DEBT: 'debt financing / structured credit facility',
+  STRATEGIC_PARTNERSHIP: 'strategic partnership / joint venture',
+};
+
+/** Revenue and deal-size figures from the counterparty's own row (columns first, then its own metadata). */
+function candidateFigures(candidate: CandidateSummaryInput) {
+  const m = candidate.metadata || {};
+  return {
+    revMin: parseNum(candidate.revenue_min_cr) ?? parseNum(m.revenue_min_cr),
+    revMax: parseNum(candidate.revenue_max_cr) ?? parseNum(m.revenue_max_cr),
+    sizeMin: parseNum(candidate.deal_size_min_cr) ?? parseNum(m.deal_size_min_cr),
+    sizeMax: parseNum(candidate.deal_size_max_cr) ?? parseNum(m.deal_size_max_cr),
+  };
+}
+
+/** Relation between the counterparty's figure/range and the viewer's, checked against both ends. */
+function compareRange(cMin: number | null, cMax: number | null, sMin: number | null, sMax: number | null): string | null {
+  if (sMin == null && sMax == null) return null; // viewer stated nothing to compare against
+  const yours = formatAmountCr(sMin, sMax) as string;
+  if (cMin == null && cMax == null) return `not disclosed (yours: ${yours})`;
+  const theirs = formatAmountCr(cMin, cMax) as string;
+  const lo = (cMin ?? cMax) as number;
+  const hi = (cMax ?? cMin) as number;
+  const sLo = sMin ?? -Infinity;
+  const sHi = sMax ?? Infinity;
+  let verdict: string;
+  if (lo > sHi) verdict = 'above your range';
+  else if (hi < sLo) verdict = 'below your range';
+  else if (lo >= sLo && hi <= sHi) verdict = 'within your range';
+  else if (sLo >= lo && sHi <= hi) verdict = 'covers your range';
+  else verdict = 'partly overlaps your range';
+  return `${theirs} vs your ${yours}, ${verdict}`;
+}
+
+/** Overview, profile and considerations, built from the counterparty's own fields only. */
+function describeCounterparty(candidate: CandidateSummaryInput): { overview: string; profile: string; considerations: string } {
+  const cMeta = candidate.metadata || {};
+  const txType = (candidate.intent && TX_TYPE[candidate.intent]) || 'strategic M&A transaction';
+
+  // Industry first; the coarse sector tag only when no industry is recorded.
+  const industry = normalizeStr(candidate.industry);
+  const sector = normalizeStr(candidate.sectors?.[0]);
+  const where = industry ? ` in the ${cleanLabel(industry)} space` : sector ? ` in the ${cleanLabel(sector)} sector` : '';
+
+  let overview = `### Opportunity Overview\nThis is a ${txType} opportunity${where}.`;
+  const serving = (candidate.serving_sectors ?? []).map(cleanLabel).filter(Boolean).join(', ');
+  if (serving) overview += ` The business serves clients in the ${serving} sector(s).`;
+  const geo = normalizeStr(candidate.geographies?.[0]);
+  overview += geo ? ` Location: ${formatGeo(geo)}.` : ' Location: not disclosed.';
+
+  // For a buy-side mandate these figures describe the TARGET, not the buyer itself.
+  const isBuyer = candidate.intent === 'BUY_SIDE';
+  const f = candidateFigures(candidate);
+  const revStr = formatAmountCr(f.revMin, f.revMax);
+  const sizeStr = formatAmountCr(f.sizeMin, f.sizeMax);
+  if (revStr) overview += isBuyer ? ` Target revenue: ${revStr}.` : ` Reported annual revenue: ${revStr}.`;
+  if (sizeStr) overview += isBuyer ? ` Target deal size: ${sizeStr}.` : ` Deal size: ${sizeStr}.`;
+
+  const profileParts: string[] = [];
+  const businessModel = normalizeStr(cMeta.business_model);
+  const formattedModel = formatBusinessModel(businessModel || normalizeStr(cMeta.model));
+  if (formattedModel) profileParts.push(`operating model featuring ${formattedModel}`);
+
+  const hasContractMfg = Boolean(
+    cMeta.contract_manufacturing ||
+    businessModel?.includes('contract_manufacturing') ||
+    candidate.raw_text?.toLowerCase().includes('contract manufacturing')
+  );
+  if (hasContractMfg && !formattedModel?.includes('contract manufacturing')) {
+    profileParts.push('contract manufacturing operations');
+  }
+
+  const capacity = normalizeStr(cMeta.capacity) || normalizeStr(cMeta.installed_capacity) || normalizeStr(cMeta.manufacturing_capacity);
+  if (capacity) profileParts.push(`production capacity of ${capacity}`);
+
+  const channel = normalizeStr(cMeta.channel_mix) || normalizeStr(cMeta.distribution_channel) || normalizeStr(cMeta.channel);
+  if (channel) profileParts.push(`${channel} distribution channels`);
+
+  const certs = normalizeStr(cMeta.certifications) || normalizeStr(cMeta.regulatory_approvals);
+  if (certs) profileParts.push(`compliance credentials (${certs})`);
+
+  let profile = `### Business & Transaction Profile\n` + (profileParts.length > 0
+    ? `Disclosed operating attributes: ${profileParts.join(', ')}.`
+    : `Operating details were not disclosed.`);
+  const structure = normalizeStr(candidate.deal_structure);
+  profile += structure ? ` Stated transaction structure: ${structure}.` : ` Transaction structure: not disclosed.`;
+
+  const considerationParts: string[] = [];
+  const ebitda = normalizeStr(cMeta.ebitda) || normalizeStr(cMeta.profitability) || normalizeStr(cMeta.margins);
+  if (ebitda) {
+    considerationParts.push(`Profitability profile reflects ${ebitda}`);
+  } else {
+    considerationParts.push('EBITDA and operating margin details were not disclosed in the preliminary candidate record and will require review during bilateral discussions');
+  }
+  const clientConc = normalizeStr(cMeta.client_concentration) || normalizeStr(cMeta.client_profile);
+  if (clientConc) considerationParts.push(`Customer base is reported as ${clientConc}`);
+  const considerations = `### Key Deal Considerations\n` + considerationParts.join('. ') + '.';
+
+  return { overview, profile, considerations };
+}
+
+/** Side-by-side facts against the viewer's mandate. Relations are stated only where both sides disclosed a value. */
+function assessFit(source: MandateSummaryInput, candidate: CandidateSummaryInput, result: MatchingResultSummaryInput): string {
+  const lines: string[] = [];
+
+  const sInd = normalizeStr(source.industry);
+  const cInd = normalizeStr(candidate.industry);
+  if (sInd) {
+    if (!cInd) lines.push(`Industry: not disclosed (your target: ${cleanLabel(sInd)})`);
+    else if (cInd.toLowerCase() === sInd.toLowerCase()) lines.push(`Industry: ${cleanLabel(cInd)}, same as your target`);
+    else lines.push(`Industry: ${cleanLabel(cInd)} vs your target ${cleanLabel(sInd)}`);
+  }
+
+  const sGeo = normalizeStr(source.geography);
+  const cGeo = normalizeStr(candidate.geographies?.[0]);
+  if (sGeo) lines.push(cGeo ? `Location: ${formatGeo(cGeo)} vs your target ${sGeo}` : `Location: not disclosed (your target: ${sGeo})`);
+
+  const f = candidateFigures(candidate);
+  const rev = compareRange(f.revMin, f.revMax, parseNum(source.revenue_min), parseNum(source.revenue_max));
+  if (rev) lines.push(`Revenue: ${rev}`);
+  const size = compareRange(f.sizeMin, f.sizeMax, parseNum(source.deal_size_min), parseNum(source.deal_size_max));
+  if (size) lines.push(`Deal size: ${size}`);
+
+  if (result.industryCompatibility === 'NARROW' || result.industryCompatibility === 'INCOMPATIBLE') {
+    lines.push(`The matching engine rated industry fit as ${result.industryCompatibility.toLowerCase()}; verify relevance before sending an EOI`);
+  }
+
+  return `### Fit Against Your Mandate\n` + (lines.length > 0
+    ? `${lines.join('. ')}.`
+    : 'No criteria were disclosed on both sides to compare.');
+}
 
 export function generateFullDealSummary(
   source: MandateSummaryInput,
   candidate: CandidateSummaryInput,
   result: MatchingResultSummaryInput = {}
 ): string {
-  const sections: string[] = [];
-
-  // Extract structured values
-  const sIntent = source.intent || 'BUY_SIDE';
-  const cIntent = candidate.intent || (sIntent === 'BUY_SIDE' ? 'SELL_SIDE' : 'BUY_SIDE');
-
-  const rawIndustry = candidate.industry || source.industry || candidate.sectors?.[0] || source.sector || 'Target Business';
-  const rawSector = candidate.sectors?.[0] || source.sector || rawIndustry;
-  const targetIndustry = cleanLabel(rawIndustry);
-  const targetSector = cleanLabel(rawSector);
-  const targetGeo = formatGeo(candidate.geographies?.[0] || source.geography);
-
-  const cRevMin = candidate.revenue_min_cr != null ? candidate.revenue_min_cr : parseNum(candidate.metadata?.revenue_min_cr);
-  const cRevMax = candidate.revenue_max_cr != null ? candidate.revenue_max_cr : parseNum(candidate.metadata?.revenue_max_cr);
-  const cSizeMin = candidate.deal_size_min_cr != null ? candidate.deal_size_min_cr : parseNum(candidate.metadata?.deal_size_min_cr);
-  const cSizeMax = candidate.deal_size_max_cr != null ? candidate.deal_size_max_cr : parseNum(candidate.metadata?.deal_size_max_cr);
-
-  const sRevMin = parseNum(source.revenue_min);
-  const sRevMax = parseNum(source.revenue_max);
-  const sSizeMin = parseNum(source.deal_size_min);
-  const sSizeMax = parseNum(source.deal_size_max);
-
-  const candidateRevStr = formatAmountCr(cRevMin, cRevMax);
-  const candidateSizeStr = formatAmountCr(cSizeMin, cSizeMax);
-  const sourceRevStr = formatAmountCr(sRevMin, sRevMax);
-  const sourceSizeStr = formatAmountCr(sSizeMin, sSizeMax);
-
-  const cMeta = candidate.metadata || {};
-  const sMeta = source.industry_data || {};
-
-  // ─────────────────────────────────────────────────────────────
-  // 1. MATCH OVERVIEW
-  // ─────────────────────────────────────────────────────────────
-  const txTypeMap: Record<string, string> = {
-    SELL_SIDE: 'sell-side divestment / equity acquisition',
-    BUY_SIDE: 'strategic buy-side acquisition',
-    FUNDRAISING: 'growth equity funding / structured capital expansion',
-    DEBT: 'debt financing / structured credit facility',
-    STRATEGIC_PARTNERSHIP: 'strategic partnership / joint venture',
-  };
-  const txType = txTypeMap[cIntent] || 'strategic M&A transaction';
-
-  let overview = `### Strategic Acquisition & Growth Opportunity\nThis is a ${txType} opportunity in the ${targetIndustry} space within the broader ${targetSector} sector. The opportunity centers on established operations located in ${targetGeo}, serving commercial clients and market demand across the region.`;
-  
-  if (candidateRevStr || candidateSizeStr) {
-    const scaleParts: string[] = [];
-    if (candidateRevStr) scaleParts.push(`annual revenue of ${candidateRevStr}`);
-    if (candidateSizeStr) scaleParts.push(`valuation / deal scale of ${candidateSizeStr}`);
-    overview += ` Reported operational scale indicates ${scaleParts.join(' with a ')}.`;
-  }
-  sections.push(overview);
-
-  // ─────────────────────────────────────────────────────────────
-  // 2. BUSINESS & TRANSACTION PROFILE
-  // ─────────────────────────────────────────────────────────────
-  const profileParts: string[] = [];
-
-  // Business Model & Operating Attributes
-  const rawModel = (cMeta.business_model as string) || (sMeta.business_model as string) || (cMeta.model as string);
-  const formattedModel = formatBusinessModel(rawModel);
-  if (formattedModel) {
-    profileParts.push(`operating model featuring ${formattedModel}`);
-  }
-
-  // Contract Manufacturing
-  const hasContractMfg = Boolean(
-    cMeta.contract_manufacturing ||
-    sMeta.contract_manufacturing ||
-    (cMeta.business_model as string)?.includes('contract_manufacturing') ||
-    candidate.raw_text?.toLowerCase().includes('contract manufacturing')
-  );
-  if (hasContractMfg && !formattedModel?.includes('contract manufacturing')) {
-    profileParts.push('established Contract Manufacturing networks');
-  }
-
-  // Capacity / Facility
-  const capacity = normalizeStr(cMeta.capacity) || normalizeStr(cMeta.installed_capacity) || normalizeStr(cMeta.manufacturing_capacity);
-  if (capacity) {
-    profileParts.push(`production capacity of ${capacity}`);
-  }
-
-  // Distribution / Channels
-  const channel = normalizeStr(cMeta.channel_mix) || normalizeStr(cMeta.distribution_channel) || normalizeStr(cMeta.channel);
-  if (channel) {
-    profileParts.push(`structured ${channel} distribution channels`);
-  }
-
-  // Regulatory / Certifications
-  const certs = normalizeStr(cMeta.certifications) || normalizeStr(cMeta.regulatory_approvals);
-  if (certs) {
-    profileParts.push(`established compliance credentials (${certs})`);
-  }
-
-  // Transaction structure
-  const structure = candidate.deal_structure || source.structure || 'majority / 100% buyout';
-  let profileSentence = `### Business & Transaction Profile\n` + (profileParts.length > 0
-    ? `The counterparty profile reflects an established business with ${profileParts.join(', ')}. `
-    : `The counterparty operates a specialized enterprise focused on consistent commercial delivery. `);
-
-  profileSentence += `Preferred transaction structure involves ${structure}.`;
-  sections.push(profileSentence);
-
-  // ─────────────────────────────────────────────────────────────
-  // 3. STRATEGIC FIT & ALIGNMENT
-  // ─────────────────────────────────────────────────────────────
-  const alignments: string[] = [];
-
-  // Industry fit
-  if (candidate.industry && source.industry) {
-    const sInd = source.industry.toLowerCase();
-    const cInd = candidate.industry.toLowerCase();
-    if (sInd === cInd || sInd.includes(cInd) || cInd.includes(sInd)) {
-      alignments.push(`direct sector alignment on ${targetIndustry}`);
-    } else {
-      alignments.push(`complementary vertical focus in ${targetIndustry}`);
-    }
-  } else if (targetIndustry) {
-    alignments.push(`targeted relevance to the mandate's ${targetIndustry} requirements`);
-  }
-
-  // Geography fit
-  if (source.geography && candidate.geographies?.length) {
-    const sGeo = source.geography.toLowerCase();
-    const cGeos = candidate.geographies.map(g => g.toLowerCase());
-    if (cGeos.some(g => g.includes(sGeo) || sGeo.includes(g) || sGeo === 'pan-india' || sGeo === 'india')) {
-      alignments.push(`geographic presence corresponding to the target ${source.geography} footprint`);
-    }
-  }
-
-  // Financial alignment
-  if (sRevMin != null && cRevMin != null) {
-    if (cRevMin >= sRevMin) {
-      alignments.push(`reported revenue (${candidateRevStr}) satisfying the mandate's minimum threshold (${sourceRevStr})`);
-    } else {
-      alignments.push(`revenue scale approaching mandate parameters`);
-    }
-  } else if (sSizeMin != null && cSizeMin != null) {
-    alignments.push(`deal ticket sizing aligned with the targeted ${sourceSizeStr} range`);
-  }
-
-  // Business model alignment (e.g. Contract Manufacturing)
-  const sCm = (sMeta.business_model as string)?.includes('contract_manufacturing') || JSON.stringify(source.special_conditions || []).includes('contract_manufacturing');
-  const cCm = (cMeta.business_model as string)?.includes('contract_manufacturing') || candidate.normalised_text?.toLowerCase().includes('contract manufacturing');
-  if (sCm && cCm) {
-    alignments.push('specific alignment on contract manufacturing exposure matching stated mandate preferences');
-  }
-
-  // Strategic scoring alignment (filter out generic or duplicate reasons)
-  if (result.matchReason) {
-    const rawReason = result.matchReason.replace(/\.$/, '').trim();
-    // If rawReason just echoes sector/geography (e.g. "FMCG in pan-India. New counterparty mandate aligned..."), extract the clean action clause
-    const parts = rawReason.split(/\.\s+/);
-    const cleanClause = parts.length > 1 ? parts.slice(1).join('. ') : rawReason;
-    if (cleanClause && !cleanClause.toLowerCase().includes('aligned with your active position')) {
-      alignments.push(`strategic rationale: ${cleanClause}`);
-    } else if (result.archetype) {
-      alignments.push(`archetype alignment (${result.archetype.replace(/_/g, ' ').toLowerCase()})`);
-    }
-  } else if (result.archetype) {
-    alignments.push(`archetype alignment (${result.archetype.replace(/_/g, ' ').toLowerCase()})`);
-  }
-
-  const fitText = `### Strategic Fit & Market Synergy\nThe opportunity aligns strongly with the sponsor's mandate parameters. Primary drivers of compatibility include ${alignments.length > 0 ? alignments.join(', ') : 'sector focus and operational scope'}.`;
-  sections.push(fitText);
-
-  // ─────────────────────────────────────────────────────────────
-  // 4. MATCH CONSIDERATIONS & DATA AVAILABILITY
-  // ─────────────────────────────────────────────────────────────
-  const considerations: string[] = [];
-
-  const ebitda = normalizeStr(cMeta.ebitda) || normalizeStr(cMeta.profitability) || normalizeStr(cMeta.margins);
-  if (ebitda) {
-    considerations.push(`Profitability profile reflects ${ebitda}`);
-  } else {
-    considerations.push('EBITDA and operating margin details were not disclosed in the preliminary candidate record and will require review during bilateral discussions');
-  }
-
-  const clientConc = normalizeStr(cMeta.client_concentration) || normalizeStr(cMeta.client_profile);
-  if (clientConc) {
-    considerations.push(`Customer base is reported as ${clientConc}`);
-  }
-
-  const considerationText = `### Key Deal Considerations\n` + considerations.join('. ') + '.';
-  sections.push(considerationText);
-
-  // Combine and sanitize
-  const rawSummary = sections.join('\n\n');
-  return sanitizeText(rawSummary);
+  const d = describeCounterparty(candidate);
+  return sanitizeText([d.overview, d.profile, assessFit(source, candidate, result), d.considerations].join('\n\n'));
 }
 
 /**
- * Builds an anonymized executive brief for a mandate row to store in summary_text / metadata
+ * Builds an anonymized executive brief for a mandate row to store in summary_text / metadata.
+ * Describes the mandate only: a single mandate has nothing to be compared against.
+ * (Previously it passed the mandate in as its own counterparty, which produced
+ * self-confirming fit claims and an inverted intent.)
  */
 export function buildEnhancedMandateBrief(input: MandateSummaryInput): string {
-  return generateFullDealSummary(input, {
+  const d = describeCounterparty({
+    intent: input.intent,
     industry: input.industry,
     sectors: input.sector ? [input.sector] : [],
+    serving_sectors: input.serving_sectors,
     geographies: input.geography ? [input.geography] : [],
     deal_size_min_cr: parseNum(input.deal_size_min),
     deal_size_max_cr: parseNum(input.deal_size_max),
@@ -378,4 +343,5 @@ export function buildEnhancedMandateBrief(input: MandateSummaryInput): string {
     deal_structure: input.structure,
     metadata: input.industry_data,
   });
+  return sanitizeText([d.overview, d.profile, d.considerations].join('\n\n'));
 }

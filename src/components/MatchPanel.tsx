@@ -197,9 +197,14 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
                 <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
                     <p className="text-sm font-medium text-gray-900">No immediate matches found.</p>
                     <p className="text-xs text-gray-600 mt-1">Your mandate has been added to our queue. We will notify you via email when a suitable counterparty joins the platform.</p>
-                    <button onClick={onStartOver} className="mt-3 text-xs text-gray-500 underline w-full text-left">
-                        Start over with a new mandate
-                    </button>
+                    <div className="flex flex-col gap-2 mt-3">
+                        <button onClick={fetchMatches} className="text-xs text-blue-600 underline w-full text-left">
+                            Refresh matches
+                        </button>
+                        <button onClick={onStartOver} className="text-xs text-gray-500 underline w-full text-left">
+                            Start over with a new mandate
+                        </button>
+                    </div>
                 </div>
             );
         }
