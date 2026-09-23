@@ -88,6 +88,27 @@ export async function GET(
     if (chatState.proposal_id) {
       proposalId = chatState.proposal_id as string;
       console.log(`[chat/${id}] proposalId from state: ${proposalId}`);
+    } else if (chatState.is_complete) {
+      // Safe recovery for sessions completed when proposal_id was not written to state:
+      // STRICT USER ISOLATION: query only dbUserId proposals, within 10 mins of chat timestamp
+      const chatTime = new Date(chat.updated_at || chat.created_at).getTime();
+      const { data: userProps } = await supabase
+        .from('proposals')
+        .select('id, created_at, intent')
+        .eq('user_id', dbUserId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (userProps && userProps.length > 0) {
+        const matchingProp = userProps.find(p => {
+          const propTime = new Date(p.created_at).getTime();
+          return Math.abs(propTime - chatTime) < 10 * 60 * 1000;
+        });
+        if (matchingProp) {
+          proposalId = matchingProp.id;
+          console.log(`[chat/${id}] proposalId recovered via session timestamp: ${proposalId}`);
+        }
+      }
     } else {
       console.log(`[chat/${id}] no proposalId in state — frontend sessionStorage fallback will handle this`);
     }

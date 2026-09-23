@@ -81,10 +81,13 @@ const HEADER_ALIASES: Record<string, string> = {
   intent: 'intent', deal_type: 'intent', type: 'intent', transaction_type: 'intent',
   sector: 'sector', industry: 'industry',
   sub_sector: 'sub_sector', subsector: 'sub_sector',
+  serving_sectors: 'serving_sectors', serving_sector: 'serving_sectors', serves: 'serving_sectors',
+  client_sectors: 'serving_sectors', target_industries: 'serving_sectors',
   geography: 'geography', location: 'geography', city: 'geography', region: 'geography',
   deal_size: 'deal_size', ticket_size: 'deal_size', investment_size: 'deal_size', size: 'deal_size',
   revenue: 'revenue', annual_revenue: 'revenue', turnover: 'revenue',
   structure: 'structure', transaction_structure: 'structure', deal_structure: 'structure',
+  buyer_type: 'buyer_type', investor_type: 'buyer_type', acquirer_type: 'buyer_type',
   intent_focus: 'intent_focus', rationale: 'intent_focus', purpose: 'intent_focus',
   title: 'title', mandate_title: 'title', company: 'title', company_name: 'title',
   description: 'description', raw_text: 'description', summary: 'description', notes: 'description', details: 'description',
@@ -111,22 +114,29 @@ function buildProposalInputFromRow(row: Record<string, string>, userId: string):
     ? (rawSector as SectorKey)
     : detectSectorFromText(rawIndustry ? `${rawIndustry} ${description}` : description);
 
+  const rawServingSectors = row.serving_sectors
+    ? row.serving_sectors.split(/[,;|]/).map(s => s.trim()).filter(Boolean)
+    : [];
+
   const sizeParsed = normalizeSize(row.deal_size || '');
   const revenueParsed = normalizeSize(row.revenue || '');
 
   const input: ProposalInput = {
-    mandateId: crypto.randomUUID(),
+    // Was crypto.randomUUID() — a fabricated id that (almost) never exists in `mandates`, which
+    // throws FK constraint 23503 on the proposals insert inside executeMatchmaking. No mandates
+    // row is created for bulk-uploaded rows, so this must be null (mandate_id is a nullable FK).
     userId,
     intent,
     raw_text: description,
     sector,
     industry: rawIndustry || (sector ? String(sector) : null),
     sub_sector: row.sub_sector || null,
-    serving_sectors: [],
+    serving_sectors: rawServingSectors,
     geography: row.geography || null,
     deal_size: row.deal_size || null,
     revenue: row.revenue || null,
     structure: row.structure || detectStructureFromText(description),
+    buyer_type: row.buyer_type || null,
     intent_focus: row.intent_focus || null,
     industry_data: {
       ...(row.title ? { title: row.title } : {}),
@@ -306,14 +316,15 @@ export async function POST(req: NextRequest) {
         }
 
         const input: ProposalInput = {
-          mandateId: crypto.randomUUID(),
+          // See the other buildProposalInputFromRow() site above — fabricating a random
+          // mandate_id throws FK constraint 23503; no mandates row exists for this path.
           userId,
           intent,
           raw_text: cleanText,
           sector: state.sector,
           industry: state.industry,
           sub_sector: state.sub_sector,
-          serving_sectors: [],
+          serving_sectors: state.serving_sectors || [],
           geography: state.geography,
           deal_size: dealSizeText,
           revenue: revenueText,

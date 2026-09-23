@@ -249,9 +249,10 @@ export default function Home() {
       console.log(`[home] chat complete=${chatData.is_complete} proposalId=${chatData.proposalId} chatId=${chatData.chatId || activeChatId}`);
 
       if (!activeChatId && chatData.chatId) {
-        // BUG #2 fix: when a brand-new session is created, clear any proposalId from
-        // the previous session so stale MatchPanel cards don't show in the new chat.
-        setActiveProposalId(null);
+        // Clear any stale proposalId only if this response didn't produce a new proposal
+        if (!chatData.proposalId) {
+          setActiveProposalId(null);
+        }
         setActiveChatId(chatData.chatId);
         fetchSessions();
       }

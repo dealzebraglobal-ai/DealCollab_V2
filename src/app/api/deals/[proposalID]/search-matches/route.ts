@@ -56,7 +56,9 @@ export async function POST(
 
     const result = await executeMatchmaking({
       id: proposalID,
-      mandateId: p.mandate_id ?? crypto.randomUUID(),
+      // Was `p.mandate_id ?? crypto.randomUUID()` — a fabricated id almost never exists in
+      // `mandates`, throwing FK constraint 23503 on re-insert. mandate_id is a nullable FK.
+      mandateId: p.mandate_id ?? null,
       userId: p.user_id,
       intent: p.intent,
       raw_text: p.raw_text || '',
@@ -75,6 +77,7 @@ export async function POST(
       deal_size_max: p.deal_size_max_cr?.toString() ?? null,
       revenue_min: p.revenue_min_cr?.toString() ?? null,
       revenue_max: p.revenue_max_cr?.toString() ?? null,
+      buyer_type: p.buyer_type ?? ((p.metadata as Record<string, unknown>)?.buyer_type as string) ?? null,
       document_url: p.document_url ?? null,
       document_text: p.document_text ?? null,
       source: 'BULK',

@@ -133,7 +133,7 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
     // Use a separate effect to trigger the next poll based on current data
     useEffect(() => {
         let timerId: NodeJS.Timeout;
-        if (data && data.matchCount === 0 && pollsCount < 20) {
+        if (data && data.matchCount === 0 && data.isSearching === true && pollsCount < 20) {
             timerId = setTimeout(() => {
                 setPollsCount(p => p + 1);
                 fetchMatches();
@@ -182,7 +182,7 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
     if (!data || !data.matches) return null;
 
     if (data.matchCount === 0) {
-        if (data.isSearching !== false && pollsCount < 20) {
+        if (data.isSearching === true && pollsCount < 20) {
             return (
                 <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 animate-pulse">
                     <div className="flex items-center gap-2">

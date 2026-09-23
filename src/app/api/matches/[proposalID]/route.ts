@@ -96,19 +96,20 @@ export async function GET(
 
         const { data: proposal } = await supabase
             .from('proposals')
-            .select('id, user_id, intent, sectors, geographies, status')
+            .select('id, user_id, intent, sectors, geographies, status, mandate_id, created_at')
             .eq('id', proposalID)
             .maybeSingle();
 
         if (!proposal) {
             return NextResponse.json({
+                proposalId: proposalID,
                 proposalID,
                 matchCount: 0,
-                isSearching: true,
+                isSearching: false,
                 matches: [],
                 tokensRequired: 50,
                 userTokens: userRow.tokens ?? 0,
-                message: 'Initializing search...',
+                message: 'Mandate initializing...',
             });
         }
 
@@ -117,7 +118,7 @@ export async function GET(
         }
 
         // Fetch top matches (already scored and ranked by executeMatchmaking)
-        const { data: matches, error: matchErr } = await supabase
+        let { data: matches, error: matchErr } = await supabase
             .from('proposal_matches')
             .select(`
         id,
@@ -138,6 +139,37 @@ export async function GET(
             return NextResponse.json({ error: matchErr.message }, { status: 500 });
         }
 
+        // Fallback: If 0 matches under this proposalId, check if sibling proposals under the same mandate_id have matches
+        if ((!matches || matches.length === 0) && proposal.mandate_id) {
+            const { data: siblingProps } = await supabase
+                .from('proposals')
+                .select('id')
+                .eq('mandate_id', proposal.mandate_id)
+                .neq('id', proposalID);
+            if (siblingProps && siblingProps.length > 0) {
+                const sibIds = siblingProps.map(p => p.id);
+                const { data: sibMatches } = await supabase
+                    .from('proposal_matches')
+                    .select(`
+                id,
+                matched_proposal_id,
+                final_score,
+                similarity_score,
+                match_reason,
+                match_archetype,
+                status
+              `)
+                    .in('proposal_id', sibIds)
+                    .neq('status', 'EXPIRED')
+                    .order('final_score', { ascending: false })
+                    .limit(TOP_N);
+                if (sibMatches && sibMatches.length > 0) {
+                    console.log(`[MATCHES_API] Recovered ${sibMatches.length} matches from sibling proposals under mandate ${proposal.mandate_id}`);
+                    matches = sibMatches;
+                }
+            }
+        }
+
         if (!matches || matches.length === 0) {
             // Check if the engine already queued this for async re-match (meaning it found 0 matches)
             const { data: savedSearch } = await supabase
@@ -146,16 +178,21 @@ export async function GET(
                 .eq('proposal_id', proposalID)
                 .maybeSingle();
 
+            const isFreshlyCreated = proposal.created_at
+                ? (Date.now() - new Date(proposal.created_at).getTime()) < 60000
+                : false;
+
             return NextResponse.json({
+                proposalId: proposalID,
                 proposalID,
                 matchCount: 0,
-                isSearching: !savedSearch,
+                isSearching: !savedSearch && isFreshlyCreated,
                 matches: [],
                 tokensRequired: 50,
                 userTokens: userRow.tokens ?? 0,
                 message: savedSearch
                     ? 'No immediate matches found. Your mandate is queued — you will be notified when an aligned counterparty joins.'
-                    : 'Searching for aligned counterparties...',
+                    : (isFreshlyCreated ? 'Searching for aligned counterparties...' : 'No immediate matches found. Your mandate is active.'),
             });
         }
 
@@ -271,7 +308,9 @@ export async function GET(
 
         return NextResponse.json({
             proposalID,
+            proposalId: proposalID,
             matchCount: enriched.length,
+            isSearching: false,
             matches: enriched,
             tokensRequired: 50,
             userTokens: userRow.tokens ?? 0,

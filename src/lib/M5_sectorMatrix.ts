@@ -1,5 +1,5 @@
 /**
- * DealCollab — M5: Sector Compatibility Matrix
+ * DealSage Chain — M5: Sector Compatibility Matrix
  * =============================================
  * Source: DC-KB-003 v1.0 — derived from 348 real Indian M&A transactions
  * Place at: src/lib/M5_sectorMatrix.ts
@@ -130,8 +130,6 @@ export function getIndustryCompatibility(
   candidateIndustry: string | null | undefined,
   sourceSector?: string | null,
   candidateSector?: string | null,
-  sourceServingSectors?: string[] | null,
-  candidateServingSectors?: string[] | null,
 ): SectorRelation {
   const sInd = (sourceIndustry || sourceSector || '').toLowerCase().trim();
   const cInd = (candidateIndustry || candidateSector || '').toLowerCase().trim();
@@ -161,27 +159,6 @@ export function getIndustryCompatibility(
       level: 'COMPATIBLE',
       penalty: 0,
       reason: `Exact category match: ${sNorm}.`,
-    };
-  }
-
-  // Check if either entity serves the other's core sector
-  const sourceCoreSector = sourceSector ? normalizeSector(sourceSector) : null;
-  const candidateCoreSector = candidateSector ? normalizeSector(candidateSector) : null;
-  const sourceServes = sourceServingSectors?.map(normalizeSector) || [];
-  const candidateServes = candidateServingSectors?.map(normalizeSector) || [];
-
-  if (sourceCoreSector && candidateServes.includes(sourceCoreSector)) {
-    return {
-      level: 'COMPATIBLE',
-      penalty: 0,
-      reason: `Aligned ecosystem: candidate explicitly serves the ${sourceSector} sector.`,
-    };
-  }
-  if (candidateCoreSector && sourceServes.includes(candidateCoreSector)) {
-    return {
-      level: 'COMPATIBLE',
-      penalty: 0,
-      reason: `Aligned ecosystem: source explicitly serves the ${candidateSector} sector.`,
     };
   }
 
@@ -413,3 +390,119 @@ export function detectFraudSignals(text: string): string[] {
   const lower = text.toLowerCase();
   return FRAUD_SIGNAL_LIST.filter(s => lower.includes(s));
 }
+
+// ─────────────────────────────────────────────────────────────
+// V2 INDUSTRY COMPATIBILITY RESOLVER (used by matchmakingEngine)
+// ─────────────────────────────────────────────────────────────
+
+export interface IndustryCompatibilityResult {
+  level: 'EXACT' | 'COMPATIBLE' | 'NARROW' | 'SERVING_SECTOR_MATCH' | 'COARSE_SECTOR_MATCH' | 'GENERAL_FALLBACK' | 'INCOMPATIBLE';
+  score: number;
+  penalty: number;
+  reason: string;
+  archetype: string;
+  isGeneralFallback: boolean;
+}
+
+export interface IndustryQuery {
+  industry?: string | null;
+  sector?: string | null;
+  sectors?: string[] | null;
+  serving_sectors?: string[] | null;
+}
+
+export function resolveIndustryCompatibility(source: IndustryQuery, target: IndustryQuery): IndustryCompatibilityResult {
+  const sSectorNorm = source.sector ? normalizeSector(source.sector) : 'GENERAL';
+  const cSectorNorm = target.sector ? normalizeSector(target.sector) : (target.sectors?.[0] ? normalizeSector(target.sectors[0]) : 'GENERAL');
+
+  // 1. Direct Industry alignment using the existing matrix function
+  const baseCompat = getIndustryCompatibility(
+    source.industry, 
+    target.industry, 
+    source.sector, 
+    target.sector || target.sectors?.[0]
+  );
+
+  // If hard incompatible, return immediately
+  if (baseCompat.level === 'INCOMPATIBLE') {
+    return {
+      level: 'INCOMPATIBLE',
+      score: 0,
+      penalty: baseCompat.penalty,
+      reason: baseCompat.reason,
+      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
+      isGeneralFallback: false
+    };
+  }
+
+  // 2. Check serving_sectors (cross-sector capability)
+  const cServesS = target.serving_sectors?.map(s => normalizeSector(s)).includes(sSectorNorm);
+  const sServesC = source.serving_sectors?.map(s => normalizeSector(s)).includes(cSectorNorm);
+  
+  if (cServesS || sServesC) {
+    return {
+      level: 'SERVING_SECTOR_MATCH',
+      score: 0.85,
+      penalty: 0,
+      reason: `Cross-sector capability: explicit alignment with target sector.`,
+      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
+      isGeneralFallback: false
+    };
+  }
+
+  // 3. Process the base compat from getIndustryCompatibility
+  if (baseCompat.level === 'COMPATIBLE') {
+    if (baseCompat.reason.includes('Exact')) {
+      return {
+        level: 'EXACT',
+        score: 1.0,
+        penalty: 0,
+        reason: baseCompat.reason,
+        archetype: MATCH_ARCHETYPES.BOLT_ON,
+        isGeneralFallback: false
+      };
+    } else {
+      return {
+        level: 'COMPATIBLE',
+        score: 0.90,
+        penalty: 0,
+        reason: baseCompat.reason,
+        archetype: MATCH_ARCHETYPES.BOLT_ON,
+        isGeneralFallback: false
+      };
+    }
+  }
+
+  if (baseCompat.level === 'NARROW') {
+    return {
+      level: 'NARROW',
+      score: 0.70,
+      penalty: baseCompat.penalty,
+      reason: baseCompat.reason,
+      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
+      isGeneralFallback: false
+    };
+  }
+
+  // 4. Coarse sector match
+  if (sSectorNorm !== 'GENERAL' && sSectorNorm === cSectorNorm) {
+    return {
+      level: 'COARSE_SECTOR_MATCH',
+      score: 0.60,
+      penalty: 0.10,
+      reason: `Coarse sector alignment within ${sSectorNorm}.`,
+      archetype: MATCH_ARCHETYPES.BOLT_ON,
+      isGeneralFallback: false
+    };
+  }
+
+  // 5. General fallback
+  return {
+    level: 'GENERAL_FALLBACK',
+    score: 0.30,
+    penalty: 0.15,
+    reason: baseCompat.reason.includes('General') ? baseCompat.reason : `General or weakly constrained industry alignment.`,
+    archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
+    isGeneralFallback: true
+  };
+}

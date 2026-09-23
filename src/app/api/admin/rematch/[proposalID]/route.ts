@@ -47,7 +47,11 @@ export async function POST(
         await supabase.from('proposal_matches').delete().eq('proposal_id', proposalID);
 
         const result = await executeMatchmaking({
-            mandateId: p.id,
+            id: proposalID,
+            // Was `p.mandate_id ?? p.id` — fabricating a mandate id from the proposal's own id
+            // throws FK constraint 23503 on re-insert whenever the proposal genuinely has no
+            // mandates row (legacy/bulk-imported rows), since that id never exists in `mandates`.
+            mandateId: p.mandate_id ?? null,
             userId: p.user_id,
             intent: p.intent,
             raw_text: p.raw_text || '',
@@ -59,6 +63,7 @@ export async function POST(
             deal_size: null,
             revenue: null,
             structure: p.deal_structure,
+            buyer_type: p.buyer_type ?? ((p.metadata as Record<string, unknown>)?.buyer_type as string) ?? null,
             intent_focus: null,
             industry_data: (p.metadata as Record<string, unknown>) ?? {},
             special_conditions: p.special_conditions || [],

@@ -83,6 +83,11 @@ export interface SavedSearchInput {
     revenue_min: string | null;
     revenue_max: string | null;
     special_conditions?: string[];
+    serving_sectors?: string[];
+    buyer_type?: string | null;
+    inferred_buyer_type?: string | null;
+    currency?: string | null;
+    urgency?: string | null;
 }
 
 export interface SavedSearchRecord {

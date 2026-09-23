@@ -6,9 +6,9 @@
  * V2 Philosophy: "Semantic meaning is truth"
  *
  * Scoring weights:
- *   SEMANTIC   45% — cosine similarity (pgvector)
- *   INDUSTRY   35% — sector compatibility (DC-KB-003 via M5_sectorMatrix)
- *   FINANCIAL  10% — deal size Jaccard overlap
+ *   SEMANTIC   55% — cosine similarity (pgvector)
+ *   INDUSTRY   25% — industry-first compatibility (DC-KB-003 via M5_sectorMatrix)
+ *   FINANCIAL  10% — deal size & revenue overlap
  *   GEOGRAPHY   5% — geography match
  *   FRESHNESS   5% — recency of proposal
  *
@@ -27,35 +27,51 @@
 
 import OpenAI from 'openai';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
-import { getSectorCompatibility, getIndustryCompatibility, normalizeSector, MATCH_ARCHETYPES, detectFraudSignals } from './M5_sectorMatrix';
-import { buildReciprocalRow, buildBlindNotification, buildSavedSearchRecord, type MatchRow, type NotificationRecord } from './M5_persistence';
+import {
+  normalizeSector,
+  MATCH_ARCHETYPES,
+  detectFraudSignals,
+  resolveIndustryCompatibility
+} from './M5_sectorMatrix';
+import {
+  buildReciprocalRow,
+  buildBlindNotification,
+  buildSavedSearchRecord,
+  type MatchRow,
+  type NotificationRecord
+} from './M5_persistence';
 import { deliverNotificationEmail, type NotificationRow } from './email/notifications/delivery';
-import { generateFullDealSummary, buildEnhancedMandateBrief } from './dealSummaryGenerator';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────
 
 export interface ProposalInput {
-  mandateId: string;
+  mandateId?: string;
   userId: string;
   intent: string;
   raw_text: string;
   sector: string | null;
-  industry?: string | null;   // hybrid: TRUE free-text industry (primary signal for matching)
-  sub_sector: string | null;
-  serving_sectors: string[];
+  industry?: string | null;   // Primary business identity
+  sub_sector?: string | null;
+  serving_sectors?: string[] | null;  // Explicit cross-sector capabilities
   geography: string | null;
-  deal_size: string | null;
-  revenue: string | null;
-  structure: string | null;
-  intent_focus: string | null;
-  industry_data: Record<string, unknown>;
-  special_conditions: string[];
-  deal_size_min: string | null;
-  deal_size_max: string | null;
-  revenue_min: string | null;
-  revenue_max: string | null;
+  geographies?: string[] | null;
+  deal_size?: string | null;
+  revenue?: string | null;
+  structure?: string | null;
+  deal_structure?: string | null;
+  intent_focus?: string | null;
+  industry_data?: Record<string, unknown>;
+  special_conditions?: string[];
+  deal_size_min?: string | null;
+  deal_size_max?: string | null;
+  deal_size_min_cr?: number | string | null;
+  deal_size_max_cr?: number | string | null;
+  revenue_min?: string | null;
+  revenue_max?: string | null;
+  revenue_min_cr?: number | string | null;
+  revenue_max_cr?: number | string | null;
   currency?: string | null;
   urgency?: string | null;
   buyer_type?: string | null;
@@ -71,7 +87,7 @@ export interface ProposalInput {
   source?: string;   // proposals.source — defaults to 'WEB' when omitted (chat flow)
 }
 
-interface Candidate {
+export interface Candidate {
   id: string;
   user_id: string | null;
   intent: string;
@@ -84,32 +100,30 @@ interface Candidate {
   revenue_min_cr: number | null;
   revenue_max_cr: number | null;
   deal_structure: string | null;
+  buyer_type: string | null;
+  inferred_buyer_type: string | null;
+  special_conditions?: string[] | null;
   normalised_text: string;
   raw_text?: string | null;
-  metadata?: Record<string, unknown> | null;
   similarity: number;
-  advisor_name?: string | null;
-  contact_phone?: string | null;
+  advisor_name: string | null;
+  contact_phone: string | null;
   fraud_flags: string[] | null;
   quality_tier: number;
-  is_shell: boolean;
+  is_shell?: boolean;
+  status?: string | null;
   created_at: string;
 }
 
 export interface MatchCard {
   matchedProposalId: string;
   sector: string | null;
-  industry: string | null;
   geography: string | null;
   sizeRange: string | null;
-  revenueRange: string | null;
-  transactionType: string | null;
   finalScore: number;
   scoreLabel: 'High' | 'Good' | 'Possible';
   matchReason: string;
-  dealSummary: string;
   archetype: string;
-  isIdentityProtected: boolean;
 }
 
 export interface MatchmakingResult {
@@ -126,10 +140,10 @@ export interface MatchmakingResult {
 
 // Single-target reverse used only for building the reversed query EMBEDDING TEXT
 // (so a FUNDRAISING company's query text sounds like BUY_SIDE to attract investors)
-const REVERSE_INTENT: Record<string, string> = {
+export const REVERSE_INTENT: Record<string, string> = {
   BUY_SIDE: 'SELL_SIDE',
   SELL_SIDE: 'BUY_SIDE',
-  FUNDRAISING: 'BUY_SIDE',   // FIX: was 'INVESTMENT' — not a valid intent in this system
+  FUNDRAISING: 'BUY_SIDE',
   DEBT: 'DEBT',
   STRATEGIC_PARTNERSHIP: 'STRATEGIC_PARTNERSHIP',
 };
@@ -137,7 +151,7 @@ const REVERSE_INTENT: Record<string, string> = {
 // Multi-target map: the actual counterparty intents the SQL should search for.
 // Authoritative — mirrors scoringEngine.ts INTENT_FLIP exactly.
 // Used for: (a) match_proposals RPC 'match_intents' param, (b) HR-1 check.
-const COUNTERPARTY_INTENTS: Record<string, string[]> = {
+export const COUNTERPARTY_INTENTS: Record<string, string[]> = {
   BUY_SIDE: ['SELL_SIDE', 'FUNDRAISING'],
   SELL_SIDE: ['BUY_SIDE'],
   FUNDRAISING: ['BUY_SIDE'],
@@ -149,11 +163,7 @@ const COUNTERPARTY_INTENTS: Record<string, string[]> = {
 // V2 SCORING WEIGHTS
 // ─────────────────────────────────────────────────────────────
 
-// Hybrid rebalance: the TRUE industry is now embedded, so semantic similarity carries the
-// real industry signal. Lean on it more and treat the coarse sector-compatibility as a lighter
-// sanity signal. These are the single tuning point — adjust after live validation if needed.
-// (Previously SEMANTIC 0.45 / INDUSTRY 0.35.)
-const W = {
+export const W = {
   SEMANTIC: 0.55,
   INDUSTRY: 0.25,
   FINANCIAL: 0.10,
@@ -182,9 +192,14 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
   // matching keys on the real industry (e.g. "Freshwater Aquaculture"), not the coarse bucket.
   if (input.industry) parts.push(input.industry);
 
+  if (input.serving_sectors && input.serving_sectors.length > 0) {
+    parts.push(`serves: ${input.serving_sectors.join(', ')}`);
+  }
+
   if (input.sub_sector) parts.push(input.sub_sector);
   if (input.geography) parts.push(input.geography);
-  if (input.structure) parts.push(input.structure);
+  if (input.structure || input.deal_structure) parts.push(input.structure || input.deal_structure || '');
+  if (input.buyer_type) parts.push(`buyer_type: ${input.buyer_type}`);
   if (input.intent_focus) parts.push(input.intent_focus);
 
   /**
@@ -193,12 +208,6 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
    * Why this exists:
    * - If min and max are same, show a single value.
    * - If min and max are different, show a range.
-   *
-   * Examples:
-   * - min=30, max=30   → "revenue 30 crore"
-   * - min=30, max=50   → "revenue 30 to 50 crore"
-   * - min=150, max=150 → "deal size 150 crore"
-   * - min=150, max=200 → "deal size 150 to 200 crore"
    */
   const formatCrSignal = (
     label: 'deal size' | 'revenue',
@@ -215,16 +224,6 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
     return `${label} ${min} to ${max} crore`;
   };
 
-  /**
-   * Fallback for raw text values.
-   *
-   * Example:
-   * input.revenue = "₹30 Cr"
-   * → "revenue 30 crore"
-   *
-   * input.deal_size = "₹150-200 Cr"
-   * → "deal size 150 to 200 crore"
-   */
   const formatRawFinancialSignal = (
     label: 'deal size' | 'revenue',
     raw: string | null,
@@ -242,21 +241,21 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
   };
 
   // Financial signals as clean tokens
-  const sMin = parseNum(input.deal_size_min);
-  const sMax = parseNum(input.deal_size_max);
+  const sMin = parseNum(input.deal_size_min ?? (input.deal_size_min_cr ? String(input.deal_size_min_cr) : null));
+  const sMax = parseNum(input.deal_size_max ?? (input.deal_size_max_cr ? String(input.deal_size_max_cr) : null));
   const dealSizeSignal =
     formatCrSignal('deal size', sMin, sMax) ||
-    formatRawFinancialSignal('deal size', input.deal_size);
+    formatRawFinancialSignal('deal size', input.deal_size ?? null);
 
   if (dealSizeSignal) {
     parts.push(dealSizeSignal);
   }
 
-  const rMin = parseNum(input.revenue_min);
-  const rMax = parseNum(input.revenue_max);
+  const rMin = parseNum(input.revenue_min ?? (input.revenue_min_cr ? String(input.revenue_min_cr) : null));
+  const rMax = parseNum(input.revenue_max ?? (input.revenue_max_cr ? String(input.revenue_max_cr) : null));
   const revenueSignal =
     formatCrSignal('revenue', rMin, rMax) ||
-    formatRawFinancialSignal('revenue', input.revenue);
+    formatRawFinancialSignal('revenue', input.revenue ?? null);
 
   if (revenueSignal) {
     parts.push(revenueSignal);
@@ -277,7 +276,7 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
 // PHASE 2/3: EMBEDDING GENERATION
 // ─────────────────────────────────────────────────────────────
 
-async function embed(text: string): Promise<number[]> {
+export async function embed(text: string): Promise<number[]> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('[EMBEDDING] OPENAI_API_KEY not configured');
   }
@@ -294,70 +293,80 @@ async function embed(text: string): Promise<number[]> {
 // HR-1 to HR-8 — any rejection = discard candidate, no score computed
 // ─────────────────────────────────────────────────────────────
 
-function applyHardRejections(
+export function applyHardRejections(
   source: ProposalInput,
   candidate: Candidate,
 ): { rejected: boolean; reason?: string } {
 
   // HR-1: Intent polarity mismatch (multi-target aware)
-  // Uses COUNTERPARTY_INTENTS array so BUY_SIDE accepts both SELL_SIDE and FUNDRAISING.
   const expectedIntents = COUNTERPARTY_INTENTS[source.intent] ?? [];
   if (expectedIntents.length > 0 && !expectedIntents.includes(candidate.intent)) {
     return { rejected: true, reason: `HR-1: ${candidate.intent} not in expected [${expectedIntents.join(', ')}]` };
   }
 
-  // HR-2: 10× deal size ceiling
-  const sMax = parseNum(source.deal_size_max) ?? 0;
+  // HR-2: Deal size ceiling
+  const sMax = parseNum(source.deal_size_max ?? (source.deal_size_max_cr ? String(source.deal_size_max_cr) : null)) ?? 0;
   const cMax = candidate.deal_size_max_cr ?? 0;
   if (sMax > 0 && cMax > 0) {
-    const ratio = Math.max(sMax, cMax) / Math.max(Math.min(sMax, cMax), 0.01);
-    if (ratio > 10) {
-      return { rejected: true, reason: `HR-2: Size ratio ${ratio.toFixed(0)}× exceeds 10× ceiling` };
+    if (source.intent === 'BUY_SIDE' && candidate.intent === 'SELL_SIDE') {
+      if (cMax > sMax * 5) {
+        return { rejected: true, reason: `HR-2: Seller ask ${cMax} Cr exceeds 5x buyer budget ceiling (${sMax} Cr)` };
+      }
+    } else {
+      const ratio = Math.max(sMax, cMax) / Math.max(Math.min(sMax, cMax), 0.01);
+      if (ratio > 10) {
+        return { rejected: true, reason: `HR-2: Size ratio ${ratio.toFixed(0)}x exceeds 10x ceiling` };
+      }
     }
   }
 
-  // HR-3: Full buyout vs minority fundraise
-  if (source.structure && candidate.deal_structure) {
-    const src = source.structure.toLowerCase();
-    const cnd = candidate.deal_structure.toLowerCase();
-    
-    // Check if either side is looking for 100% while the other side is looking for minority
-    const isSourceFullBuyout = src.includes('100%') || src.includes('full buyout');
-    const isSourceMinority = src.includes('minority') || src.includes('fundrais');
-    const isCandidateFullBuyout = cnd.includes('100%') || cnd.includes('full buyout');
-    const isCandidateMinority = cnd.includes('minority') || cnd.includes('fundrais');
+  // HR-3: Deal structure & Fundraising compatibility
+  const src = (source.structure || source.deal_structure || '').toLowerCase();
+  const cnd = (candidate.deal_structure || '').toLowerCase();
 
-    if ((isSourceFullBuyout && isCandidateMinority) || (isCandidateFullBuyout && isSourceMinority)) {
-      return { rejected: true, reason: 'HR-3: Full buyout incompatible with minority fundraise' };
+  const sourceFullAcquisition = src.includes('100%') || src.includes('full buyout') || src.includes('majority') || src.includes('acquisition') || src.includes('slump sale') || src.includes('asset sale');
+  const candidateFullAcquisition = cnd.includes('100%') || cnd.includes('full buyout') || cnd.includes('majority') || cnd.includes('acquisition') || cnd.includes('slump sale') || cnd.includes('asset sale');
+  const sourceFundraise = source.intent === 'FUNDRAISING' || src.includes('minority') || src.includes('fundrais') || src.includes('convertible') || src.includes('debenture') || src.includes('ccd') || src.includes('equity');
+  const candidateFundraise = candidate.intent === 'FUNDRAISING' || cnd.includes('minority') || cnd.includes('fundrais') || cnd.includes('convertible') || cnd.includes('debenture') || cnd.includes('ccd') || cnd.includes('equity');
+
+  // If source is doing a fundraise without full buyout permission:
+  if (sourceFundraise && !sourceFullAcquisition) {
+    if (candidateFullAcquisition || (candidate.intent === 'BUY_SIDE' && (cnd.includes('100%') || cnd.includes('majority')))) {
+      return { rejected: true, reason: 'HR-3: Majority/100% buyout acquisition buyer incompatible with convertible debenture / equity fundraise' };
     }
   }
 
-  // HR-4: Structured Industry & Sector Incompatibility Gate
-  // If structured industry is available on candidate, gate using structured industry compatibility.
-  // Toys mandate vs Sheet Metal candidate MUST be rejected immediately.
-  const srcInd = source.industry || source.sector;
-  const candInd = candidate.industry || candidate.sectors?.[0];
-  if (srcInd && candInd) {
-    const indComp = getIndustryCompatibility(
-      source.industry,
-      candidate.industry,
-      source.sector,
-      candidate.sectors?.[0],
-      source.serving_sectors,
-      candidate.serving_sectors
-    );
-    if (indComp.level === 'INCOMPATIBLE') {
-      return { rejected: true, reason: `HR-4: ${indComp.reason}` };
-    }
-  } else if (source.sector && candidate.sectors?.[0]) {
-    const comp = getSectorCompatibility(source.sector, candidate.sectors[0]);
-    if (comp.level === 'INCOMPATIBLE') {
-      return { rejected: true, reason: `HR-4: ${comp.reason}` };
+  // Symmetrically, if candidate is fundraise without full buyout permission and source is full buyout:
+  if (candidateFundraise && !candidateFullAcquisition) {
+    if (sourceFullAcquisition || (source.intent === 'BUY_SIDE' && (src.includes('100%') || src.includes('majority')))) {
+      return { rejected: true, reason: 'HR-3: Full buyout mandate incompatible with minority fundraise / convertible debenture' };
     }
   }
 
-  // HR-6: Advisor flood cap — max 2 results per contact_phone
-  // (tracked externally in phoneCount map in main engine)
+  // HR-4: Industry-first compatibility
+  const comp = resolveIndustryCompatibility(
+    {
+      industry: source.industry,
+      sector: source.sector,
+      sectors: source.sector ? [source.sector] : [],
+      serving_sectors: source.serving_sectors,
+    },
+    {
+      industry: candidate.industry,
+      sector: candidate.sectors?.[0] ?? null,
+      sectors: candidate.sectors,
+      serving_sectors: candidate.serving_sectors,
+    }
+  );
+
+  if (comp.level === 'INCOMPATIBLE') {
+    return { rejected: true, reason: `HR-4: ${comp.reason}` };
+  }
+
+  // HR-5: Active status check
+  if (candidate.status && candidate.status !== 'ACTIVE') {
+    return { rejected: true, reason: 'HR-5: Candidate mandate is not ACTIVE' };
+  }
 
   // HR-7: Shell company filtering (NM5)
   if (!source.is_shell_query && candidate.is_shell === true) {
@@ -366,7 +375,7 @@ function applyHardRejections(
 
   // HR-8: Fraud signal rejection
   const fraudInFlags = (candidate.fraud_flags ?? []);
-  const fraudInText = detectFraudSignals(candidate.normalised_text ?? '');
+  const fraudInText = detectFraudSignals(candidate.normalised_text ?? (candidate.raw_text ?? ''));
   if (fraudInFlags.length > 0 || fraudInText.length > 0) {
     return { rejected: true, reason: 'HR-8: Fraud signals detected' };
   }
@@ -378,40 +387,59 @@ function applyHardRejections(
 // PHASE 8: V2 COMPOSITE SCORING
 // ─────────────────────────────────────────────────────────────
 
-interface ScoreResult {
+export interface ScoreResult {
   finalScore: number;
-  breakdown: Record<string, number>;
+  breakdown: {
+    semanticScore: number;
+    industryScore: number;
+    financialScore: number;
+    geoScore: number;
+    freshnessScore: number;
+  };
   matchReason: string;
   archetype: string;
 }
 
-function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreResult {
+export function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreResult {
+  // SEMANTIC (55%) — raw cosine similarity from pgvector
+  let semanticScore = Math.max(0, Math.min(1, candidate.similarity));
 
-  // SEMANTIC (45%) — raw cosine similarity from pgvector
-  const semanticScore = Math.max(0, Math.min(1, candidate.similarity));
-
-  // INDUSTRY ALIGNMENT — structured industry compatibility
-  // Compares structured candidate industry and source industry/sector
-  const comp = getIndustryCompatibility(
-    source.industry,
-    candidate.industry,
-    source.sector,
-    candidate.sectors?.[0],
-    source.serving_sectors,
-    candidate.serving_sectors
+  // INDUSTRY ALIGNMENT (25%) — Industry-first hierarchy
+  const comp = resolveIndustryCompatibility(
+    {
+      industry: source.industry,
+      sector: source.sector,
+      sectors: source.sector ? [source.sector] : [],
+      serving_sectors: source.serving_sectors,
+    },
+    {
+      industry: candidate.industry,
+      sector: candidate.sectors?.[0] ?? null,
+      sectors: candidate.sectors,
+      serving_sectors: candidate.serving_sectors,
+    }
   );
-  let industryScore = 0;
-  switch (comp.level) {
-    case 'COMPATIBLE': industryScore = 1.0; break;
-    case 'NARROW': industryScore = 0.45; break;
-    default: industryScore = 0.1;
+  const industryScore = comp.score;
+
+  // INDUSTRY QUALITY GATE
+  // Semantic similarity cannot compensate for a clear operating industry mismatch.
+  // If the candidate merely serves the sector or is only a broad match, cap semantic influence.
+  if (
+    comp.level === 'SERVING_SECTOR_MATCH' ||
+    comp.level === 'COARSE_SECTOR_MATCH' ||
+    comp.level === 'GENERAL_FALLBACK' ||
+    comp.level === 'INCOMPATIBLE'
+  ) {
+    semanticScore = Math.min(semanticScore, 0.75);
   }
 
-  // FINANCIAL (10%) — deal size Jaccard overlap
-  const sMin = parseNum(source.deal_size_min) ?? 0;
-  const sMax = parseNum(source.deal_size_max) ?? sMin;
-  const cMin = candidate.deal_size_min_cr ?? 0;
-  const cMax = candidate.deal_size_max_cr ?? cMin;
+  // FINANCIAL (10%) — compare deal size when present, otherwise revenue.
+  const sMin = parseNum(source.deal_size_min ?? (source.deal_size_min_cr ? String(source.deal_size_min_cr) : null)) ??
+    parseNum(source.revenue_min ?? (source.revenue_min_cr ? String(source.revenue_min_cr) : null)) ?? 0;
+  const sMax = parseNum(source.deal_size_max ?? (source.deal_size_max_cr ? String(source.deal_size_max_cr) : null)) ??
+    parseNum(source.revenue_max ?? (source.revenue_max_cr ? String(source.revenue_max_cr) : null)) ?? sMin;
+  const cMin = candidate.deal_size_min_cr ?? candidate.revenue_min_cr ?? 0;
+  const cMax = candidate.deal_size_max_cr ?? candidate.revenue_max_cr ?? cMin;
 
   let financialScore = 0.5; // neutral when data unavailable
   if (sMax > 0 && cMax > 0) {
@@ -423,7 +451,7 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
   }
 
   // GEOGRAPHY (5%) — geo string matching
-  const srcGeo = (source.geography ?? '').toLowerCase();
+  const srcGeo = (source.geography ?? source.geographies?.[0] ?? '').toLowerCase();
   const cndGeos = (candidate.geographies ?? []).map(g => g.toLowerCase());
   let geoScore = 0;
   if (srcGeo && cndGeos.length) {
@@ -443,7 +471,7 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
     else freshnessScore = 0.3;
   }
 
-  // COMPOSITE
+  // COMPOSITE (55 / 25 / 10 / 5 / 5)
   let finalScore =
     semanticScore * W.SEMANTIC * 100 +
     industryScore * W.INDUSTRY * 100 +
@@ -451,35 +479,32 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
     geoScore * W.GEOGRAPHY * 100 +
     freshnessScore * W.FRESHNESS * 100;
 
-  // ADJUSTMENTS
-  if (comp.level === 'NARROW') finalScore -= 10;
-  if (geoScore === 1.0) finalScore += 8;
-  else if (geoScore === 0.5) finalScore += 4;
+  // ADJUSTMENTS & SAFEGUARDS
+  if (comp.penalty > 0) finalScore -= (comp.penalty * 100 * 0.5);
+
+  // Safeguard: location alone must not push unrelated / generic candidates into results
+  if (comp.isGeneralFallback || industryScore <= 0.2) {
+    if (geoScore === 1.0) finalScore += 2;
+    if (semanticScore < 0.65) finalScore -= 10;
+  } else {
+    if (geoScore === 1.0) finalScore += 8;
+    else if (geoScore === 0.5) finalScore += 4;
+  }
+
   if (candidate.quality_tier === 1) finalScore += 5;
   else if (candidate.quality_tier === 2) finalScore += 2;
 
   finalScore = Math.max(0, Math.min(100, Math.round(finalScore)));
 
   // ARCHETYPE
-  let archetype: string = MATCH_ARCHETYPES.CROSS_SECTOR;
-  const srcNorm = normalizeSector((source.sector ?? source.industry) ?? '');
-  const cndNorm = normalizeSector(candidate.sectors?.[0] ?? '');
-  if (!(source.sector ?? source.industry) || srcNorm === cndNorm) {
-    archetype = MATCH_ARCHETYPES.BOLT_ON;
-  } else if (comp.reason.includes('licence') || comp.reason.includes('Licence')) {
-    archetype = MATCH_ARCHETYPES.LICENSE;
-  } else if (comp.reason.includes('Vertical') || comp.reason.includes('backward integration')) {
-    archetype = MATCH_ARCHETYPES.VERTICAL;
-  } else if (comp.reason.includes('software') || comp.reason.includes('Tech')) {
-    archetype = MATCH_ARCHETYPES.TECH_ENABLER;
-  }
+  const archetype = comp.archetype || MATCH_ARCHETYPES.CROSS_SECTOR;
 
   // MATCH REASON — anonymous, shown on match card
-  const sectorLabel = candidate.sectors?.[0] ?? 'target sector';
+  const indLabel = candidate.industry || candidate.sectors?.[0] || 'target sector';
   const geoLabel = candidate.geographies?.[0] ?? 'matched region';
   const sizeLabel = formatSizeRange(cMin, cMax);
   const reasonParts = [
-    `${sectorLabel} in ${geoLabel}${sizeLabel ? ` · ${sizeLabel}` : ''}.`,
+    `${indLabel} in ${geoLabel}${sizeLabel ? ` · ${sizeLabel}` : ''}.`,
     comp.reason.split('.')[0] + '.',
   ];
   if (financialScore > 0.7) reasonParts.push('Strong financial alignment.');
@@ -498,13 +523,14 @@ function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreRes
 // HELPERS
 // ─────────────────────────────────────────────────────────────
 
-function parseNum(val: string | null | undefined): number | null {
-  if (!val) return null;
+export function parseNum(val: string | number | null | undefined): number | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
   const n = parseFloat(val);
   return isNaN(n) ? null : n;
 }
 
-function formatSizeRange(min: number, max: number): string | null {
+export function formatSizeRange(min: number, max: number): string | null {
   if (!min && !max) return null;
   if (min === max) return `₹${min} Cr`;
   if (!min) return `Up to ₹${max} Cr`;
@@ -512,13 +538,13 @@ function formatSizeRange(min: number, max: number): string | null {
   return `₹${min}–${max} Cr`;
 }
 
-function getScoreLabel(score: number): 'High' | 'Good' | 'Possible' {
+export function getScoreLabel(score: number): 'High' | 'Good' | 'Possible' {
   if (score >= 75) return 'High';
   if (score >= 55) return 'Good';
   return 'Possible';
 }
 
-function sameState(geo1: string, geo2: string): boolean {
+export function sameState(geo1: string, geo2: string): boolean {
   const groups = [
     ['mumbai', 'pune', 'nashik', 'nagpur', 'maharashtra', 'mh'],
     ['ahmedabad', 'surat', 'gujarat', 'rajkot', 'vadodara', 'gj'],
@@ -532,20 +558,20 @@ function sameState(geo1: string, geo2: string): boolean {
   return groups.some(g => g.some(k => geo1.includes(k)) && g.some(k => geo2.includes(k)));
 }
 
-function computeQualityScore(input: ProposalInput): number {
+export function computeQualityScore(input: ProposalInput): number {
   let s = 0;
   if (input.intent) s += 2;
-  if (input.sector) s += 2;
+  if (input.sector || input.industry) s += 2;
   if (input.geography) s += 1;
-  if (input.deal_size_min || input.deal_size_max) s += 1;
-  if (input.revenue_min || input.revenue_max) s += 1;
-  if (input.structure) s += 1;
+  if (input.deal_size_min || input.deal_size_max || input.deal_size_min_cr || input.deal_size_max_cr) s += 1;
+  if (input.revenue_min || input.revenue_max || input.revenue_min_cr || input.revenue_max_cr) s += 1;
+  if (input.structure || input.deal_structure) s += 1;
   if (input.intent_focus) s += 1;
   if (Object.keys(input.industry_data ?? {}).length > 0) s += 1;
   return Math.min(s, 10);
 }
 
-function computeQualityTier(input: ProposalInput): number {
+export function computeQualityTier(input: ProposalInput): number {
   const s = computeQualityScore(input);
   if (s >= 8) return 1;
   if (s >= 5) return 2;
@@ -561,37 +587,115 @@ function computeQualityTier(input: ProposalInput): number {
 // ─────────────────────────────────────────────────────────────
 
 export function buildMandateSummary(input: ProposalInput): string {
-  return buildEnhancedMandateBrief({
-    intent: input.intent,
-    industry: input.industry,
-    sector: input.sector,
-    sub_sector: input.sub_sector,
-    geography: input.geography,
-    deal_size_min: input.deal_size_min,
-    deal_size_max: input.deal_size_max,
-    revenue_min: input.revenue_min,
-    revenue_max: input.revenue_max,
-    structure: input.structure,
-    intent_focus: input.intent_focus,
-    industry_data: input.industry_data,
-    special_conditions: input.special_conditions,
-    currency: input.currency,
-    urgency: input.urgency,
-    buyer_type: input.buyer_type,
-    raw_text: input.raw_text,
-  });
+  const intentMap: Record<string, string> = {
+    SELL_SIDE: 'sell-side divestment',
+    BUY_SIDE: 'strategic acquisition',
+    FUNDRAISING: 'growth capital fundraise',
+    DEBT: 'debt financing',
+    STRATEGIC_PARTNERSHIP: 'strategic partnership',
+  };
+  const intentLabel = intentMap[input.intent] ?? 'strategic transaction';
+  const sectorRaw = input.industry ?? input.sector ?? 'business';
+  const sector = sectorRaw.replace(/_/g, ' ');
+  const subSector = input.sub_sector === 'shell_company' ? 'dormant/shell company' : (input.sub_sector?.replace(/_/g, ' ') ?? null);
+  const geo = input.geography;
+
+  const sentences: string[] = [];
+
+  // — Opener
+  const geoStr = geo ? `${geo}-based ` : '';
+  const subStr = subSector && subSector !== sector ? ` (${subSector})` : '';
+  sentences.push(
+    `${cap(intentLabel)} opportunity in the ${geoStr}${sector}${subStr} sector.`
+  );
+
+  // — Deal parameters
+  const paramParts: string[] = [];
+  const sMin = parseNum(input.deal_size_min ?? (input.deal_size_min_cr ? String(input.deal_size_min_cr) : null));
+  const sMax = parseNum(input.deal_size_max ?? (input.deal_size_max_cr ? String(input.deal_size_max_cr) : null));
+  if (sMin !== null || sMax !== null) {
+    paramParts.push(
+      sMin !== null && sMax !== null && sMin !== sMax
+        ? `deal size ₹${sMin}–${sMax} Cr`
+        : `deal size ₹${sMax ?? sMin} Cr`
+    );
+  } else if (input.deal_size) {
+    paramParts.push(`deal size of ${input.deal_size}`);
+  }
+  const rMin = parseNum(input.revenue_min ?? (input.revenue_min_cr ? String(input.revenue_min_cr) : null));
+  const rMax = parseNum(input.revenue_max ?? (input.revenue_max_cr ? String(input.revenue_max_cr) : null));
+  if (rMin !== null || rMax !== null) {
+    paramParts.push(
+      rMin !== null && rMax !== null && rMin !== rMax
+        ? `annual revenue ₹${rMin}–${rMax} Cr`
+        : `annual revenue ₹${rMax ?? rMin} Cr`
+    );
+  } else if (input.revenue) {
+    paramParts.push(`revenue of ${input.revenue}`);
+  }
+  if (input.structure || input.deal_structure) paramParts.push(`${input.structure || input.deal_structure} transaction structure`);
+  if (paramParts.length > 0) {
+    sentences.push(`The mandate involves ${paramParts.join(', ')}.`);
+  }
+
+  // — Operational highlights from industry_data
+  const id = input.industry_data ?? {};
+  const strOf = (v: unknown): string | null =>
+    typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
+
+  const highlights: string[] = [];
+  const capacity = strOf(id.capacity) ?? strOf(id.installed_capacity) ?? strOf(id.production_capacity);
+  const employees = strOf(id.employees) ?? strOf(id.workforce) ?? strOf(id.headcount);
+  const ebitda = strOf(id.ebitda) ?? strOf(id.profitability) ?? strOf(id.margins);
+  const channel = strOf(id.distribution_channel) ?? strOf(id.channel) ?? strOf(id.sales_channel);
+  const model = strOf(id.business_model) ?? strOf(id.model) ?? strOf(id.revenue_model);
+  const clients = strOf(id.clients) ?? strOf(id.customer_count) ?? strOf(id.customers);
+  const beds = strOf(id.beds) ?? strOf(id.bed_count);
+  const hospitals = strOf(id.hospitals) ?? strOf(id.hospital_count);
+  const sku = strOf(id.sku_count) ?? strOf(id.product_range) ?? strOf(id.product_count);
+  const arr = strOf(id.arr) ?? strOf(id.arpu) ?? strOf(id.mrr);
+  const growth = strOf(id.growth_rate) ?? strOf(id.yoy_growth) ?? strOf(id.growth);
+  const patents = strOf(id.patents) ?? strOf(id.ip);
+
+  if (capacity) highlights.push(`production capacity of ${capacity}`);
+  if (employees) highlights.push(`workforce of ${employees}`);
+  if (ebitda) highlights.push(`${ebitda} EBITDA / profitability profile`);
+  if (channel) highlights.push(`${channel} distribution channel`);
+  if (model) highlights.push(`${model} business model`);
+  if (clients) highlights.push(`${clients} active clients or customers`);
+  if (hospitals) highlights.push(`$${hospitals} hospital facilities`);
+  if (beds) highlights.push(`${beds} operational beds`);
+  if (sku) highlights.push(`${sku} SKU / product range`);
+  if (arr) highlights.push(`ARR / revenue run-rate of ${arr}`);
+  if (growth) highlights.push(`${growth} revenue growth trajectory`);
+  if (patents) highlights.push(`${patents} patents or IP assets`);
+
+  if (highlights.length > 0) {
+    sentences.push(`Key operational attributes include ${highlights.slice(0, 4).join(', ')}.`);
+  }
+
+  // — Counterparty profile
+  const counterpartyFallback: Record<string, string> = {
+    SELL_SIDE: 'strategic operators and private investment groups seeking expansion within the sector',
+    BUY_SIDE: 'business owners, promoters, and intermediaries representing viable sell-side opportunities',
+    FUNDRAISING: 'institutional investors, family offices, and growth-stage equity funds',
+    DEBT: 'NBFCs, private credit funds, and structured debt providers',
+    STRATEGIC_PARTNERSHIP: 'aligned strategic counterparties seeking mutually beneficial business collaboration',
+  };
+  const counterpartyDesc = input.intent_focus
+    ? input.intent_focus.charAt(0).toLowerCase() + input.intent_focus.slice(1)
+    : counterpartyFallback[input.intent] ?? 'aligned strategic counterparties';
+  const geoSuffix = geo ? ` operating in or around ${geo}` : ' across India';
+  sentences.push(`Ideal counterparties include ${counterpartyDesc}${geoSuffix}.`);
+
+  const summary = sentences.join(' ');
+  console.log(`[M5] Mandate summary generated (${summary.split(' ').length} words): ${summary.slice(0, 80)}...`);
+  return summary;
 }
 
-function cap(s: string): string {
+export function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-
-// ─────────────────────────────────────────────────────────────
-// ASYNC RE-MATCH: superseded by registerWatch() inside executeMatchmaking.
-// The old saveForAsyncRematch was removed: it omitted the NOT-NULL query_object (so its insert
-// always threw and was swallowed) and only fired on zero-match. registerWatch writes a proper
-// ACTIVE watch row for EVERY proposal via buildSavedSearchRecord.
-// ─────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────
 // MAIN EXECUTION ENGINE
@@ -604,7 +708,7 @@ export async function executeMatchmaking(
 ): Promise<MatchmakingResult | null> {
 
   console.log('[M5] ====== MATCHMAKING ENGINE STARTED ======');
-  console.log(`[M5] intent: ${input.intent} | sector: ${input.sector} | geo: ${input.geography}`);
+  console.log(`[M5] intent: ${input.intent} | sector: ${input.sector} | industry: ${input.industry} | geo: ${input.geography}`);
 
   const supabase = createServerSupabaseClient();
   if (!supabase) {
@@ -630,26 +734,17 @@ export async function executeMatchmaking(
     console.log('[M5] Embeddings generated');
 
     // ── Phase 4: Insert proposal record ──────────────────────
-    // raw_text: document text first (full PDF content for full-text search),
-    // fall back to user message only when substantive (>50 chars — avoids storing "Go ahead!" etc.),
-    // then canonical text if no document attached.
     const rawTextIsSubstantive = input.raw_text && input.raw_text.trim().length > 50;
     const enrichedRawText = (input.document_text || (rawTextIsSubstantive ? input.raw_text : null) || storageText).slice(0, 50_000);
 
     const safeDocText = input.document_text || null;
     const safeDocUrl = input.document_url || null;
 
-    // upsert (not insert) so that passing an existing `input.id` updates that
-    // proposal in place instead of erroring on the primary-key conflict —
-    // needed for "search for matches" re-runs against an already-created
-    // proposal (e.g. bulk-uploaded mandates). When id is omitted this behaves
-    // identically to a plain insert (Postgres assigns the default uuid).
     const { data: proposal, error: propErr } = await supabase
       .from('proposals')
       .upsert([{
         ...(input.id ? { id: input.id } : {}),
         user_id: input.userId,
-        mandate_id: input.mandateId,
         raw_text: enrichedRawText || storageText.slice(0, 4000),
         normalised_text: storageText,
         document_text: safeDocText,
@@ -657,13 +752,13 @@ export async function executeMatchmaking(
         intent: input.intent,
         industry: input.industry ?? null,
         sectors: input.sector ? [normalizeSector(input.sector)] : [],
-        serving_sectors: input.serving_sectors || [],
-        geographies: input.geography ? [input.geography] : [],
-        deal_structure: input.structure,
-        deal_size_min_cr: parseNum(input.deal_size_min),
-        deal_size_max_cr: parseNum(input.deal_size_max),
-        revenue_min_cr: parseNum(input.revenue_min),
-        revenue_max_cr: parseNum(input.revenue_max),
+        serving_sectors: input.serving_sectors ?? [],
+        geographies: input.geography ? [input.geography] : (input.geographies ?? []),
+        deal_structure: input.structure || input.deal_structure || null,
+        deal_size_min_cr: parseNum(input.deal_size_min ?? input.deal_size_min_cr),
+        deal_size_max_cr: parseNum(input.deal_size_max ?? input.deal_size_max_cr),
+        revenue_min_cr: parseNum(input.revenue_min ?? input.revenue_min_cr),
+        revenue_max_cr: parseNum(input.revenue_max ?? input.revenue_max_cr),
         special_conditions: input.special_conditions ?? [],
         currency: input.currency || null,
         urgency: input.urgency || null,
@@ -676,6 +771,8 @@ export async function executeMatchmaking(
         summary_text: buildMandateSummary(input),
         metadata: {
           ...(input.industry_data ?? {}),
+          ...(input.industry ? { industry: input.industry } : {}),
+          ...(input.serving_sectors ? { serving_sectors: input.serving_sectors } : {}),
           ...(safeDocUrl ? { document_url: safeDocUrl } : {}),
           mandate_summary: buildMandateSummary(input),
         },
@@ -693,8 +790,6 @@ export async function executeMatchmaking(
       throw new Error(`Proposal insert failed: ${propErr?.message || 'Unknown error'}`);
     }
     console.log('[M5] Proposal created:', proposal.id);
-    console.log('[M5] Document text length:', safeDocText?.length ?? 0);
-    console.log('[M5] Document URL:', safeDocUrl);
 
     // ── Phase 5: Store embedding ──────────────────────────────
     const { error: embErr } = await supabase.rpc('update_proposal_embedding', {
@@ -704,19 +799,32 @@ export async function executeMatchmaking(
     if (embErr) console.warn('[M5] Embedding RPC failed (non-blocking):', embErr.message);
     else console.log('[M5] Storage embedding stored');
 
-    // Always-on watch registrar (idempotent on proposal_id). Defined once, called on EVERY exit
-    // path so a watch row exists for every proposal — not only zero-match ones (old behaviour).
-    // Writes query_object (the NOT-NULL the old saveForAsyncRematch omitted) + the reversed-intent
-    // search embedding + status ACTIVE.
+    // Always-on watch registrar
     const registerWatch = async (matchCount: number, notified: boolean) => {
       const watch = buildSavedSearchRecord(
         {
-          userId: input.userId, intent: input.intent, sector: input.sector, industry: input.industry ?? null,
-          geography: input.geography, structure: input.structure, sub_sector: input.sub_sector,
-          deal_size_min: input.deal_size_min, deal_size_max: input.deal_size_max,
-          revenue_min: input.revenue_min, revenue_max: input.revenue_max, special_conditions: input.special_conditions
+          userId: input.userId,
+          intent: input.intent,
+          sector: input.sector,
+          industry: input.industry ?? null,
+          serving_sectors: input.serving_sectors ?? [],
+          geography: input.geography,
+          structure: input.structure || input.deal_structure || null,
+          sub_sector: input.sub_sector || null,
+          deal_size_min: input.deal_size_min ?? (input.deal_size_min_cr ? String(input.deal_size_min_cr) : null),
+          deal_size_max: input.deal_size_max ?? (input.deal_size_max_cr ? String(input.deal_size_max_cr) : null),
+          revenue_min: input.revenue_min ?? (input.revenue_min_cr ? String(input.revenue_min_cr) : null),
+          revenue_max: input.revenue_max ?? (input.revenue_max_cr ? String(input.revenue_max_cr) : null),
+          buyer_type: input.buyer_type ?? null,
+          inferred_buyer_type: input.inferred_buyer_type ?? null,
+          currency: input.currency ?? null,
+          urgency: input.urgency ?? null,
+          special_conditions: input.special_conditions ?? [],
         },
-        proposal.id, searchEmbedding, matchCount, notified,
+        proposal.id,
+        searchEmbedding,
+        matchCount,
+        notified,
       );
       const { error: ssErr } = await supabase.from('saved_searches').upsert([watch], { onConflict: 'proposal_id' });
       if (ssErr) console.warn('[M5] saved_searches upsert failed (non-blocking):', ssErr.message);
@@ -724,12 +832,6 @@ export async function executeMatchmaking(
     };
 
     // ── Phase 6: pgvector ANN search ─────────────────────────
-    // FIX: parameter names updated to match current SQL function signature
-    // (match_proposals was changed in 20260515 + 20260521 migrations):
-    //   query_intent  → match_intents (TEXT[], pre-flipped counterparty intents)
-    //   query_user_id → exclude_user_id
-    //   match_limit   → result_count
-    //   exclude_shells removed (not in SQL; shell filtering is HR-7 in TypeScript)
     const targetIntents = COUNTERPARTY_INTENTS[input.intent] ?? [input.intent];
     console.log('[M5] Target counterparty intents:', targetIntents);
     const { data: rawCandidates, error: searchErr } = await supabase.rpc('match_proposals', {
@@ -759,11 +861,11 @@ export async function executeMatchmaking(
     const scoredRows: Array<{
       proposal_id: string;
       matched_proposal_id: string;
-      similarity_score: number;   // FIX: was semantic_score (renamed in 20260515 migration)
+      similarity_score: number;
       industry_score: number;
       financial_score: number;
-      geography_boost: number;    // FIX: was geography_score (renamed in 20260515 migration)
-      confidence_score: number;   // FIX: was freshness_score (renamed in 20260515 migration)
+      geography_boost: number;
+      confidence_score: number;
       final_score: number;
       match_reason: string;
       match_archetype: string;
@@ -790,11 +892,11 @@ export async function executeMatchmaking(
         scoredRows.push({
           proposal_id: proposal.id,
           matched_proposal_id: cand.id,
-          similarity_score: scored.breakdown.semanticScore,   // FIX: post-rename column
+          similarity_score: scored.breakdown.semanticScore,
           industry_score: scored.breakdown.industryScore,
           financial_score: scored.breakdown.financialScore,
-          geography_boost: scored.breakdown.geoScore,          // FIX: post-rename column
-          confidence_score: scored.breakdown.freshnessScore,   // FIX: post-rename column
+          geography_boost: scored.breakdown.geoScore,
+          confidence_score: scored.breakdown.freshnessScore,
           final_score: scored.finalScore,
           match_reason: scored.matchReason,
           match_archetype: scored.archetype,
@@ -810,16 +912,13 @@ export async function executeMatchmaking(
     // ── Phase 9: forward (NEW->OLD) + reciprocal (OLD->NEW) + blind notify OLD ──
     let notifiedCount = 0;
     if (topRows.length > 0) {
-      // 9a. Forward upsert (idempotent on the pair; needs uq_proposal_matches_pair index).
       const { error: fwdErr } = await supabase
         .from('proposal_matches')
         .upsert(topRows, { onConflict: 'proposal_id,matched_proposal_id' });
       if (fwdErr) console.error('[M5] Forward match upsert error:', fwdErr);
       else console.log(`[M5] ${topRows.length} forward matches upserted`);
 
-      // 9b. Reciprocal upsert — old user benefits from new deal flow. Reason is written from the
-      // SOURCE mandate's descriptor so the old user reads about the NEW proposal, not their own.
-      const revSector = input.sector ? normalizeSector(input.sector) : null;
+      const revSector = input.industry ?? (input.sector ? normalizeSector(input.sector) : null);
       const reverseReason = `${revSector ?? 'counterparty'}${input.geography ? ` in ${input.geography}` : ''}. New counterparty mandate aligned with your active position.`;
       const reciprocalRows = topRows.map((r) => buildReciprocalRow(r as MatchRow, reverseReason));
       const { data: recipIns, error: recErr } = await supabase
@@ -829,30 +928,30 @@ export async function executeMatchmaking(
       if (recErr) console.error('[M5] Reciprocal match upsert error:', recErr);
       else console.log(`[M5] ${reciprocalRows.length} reciprocal matches upserted`);
 
-      // 9c. Blind notifications to OLD users (reciprocal direction: proposal_id = OLD, matched = NEW).
       const notifRows = (recipIns ?? [])
         .map((row: { id: string; proposal_id: string; final_score: number | string }) => {
-          const cand = candidates.find((c) => c.id === row.proposal_id); // OLD proposal (recipient)
-          if (!cand || !cand.user_id) return null;                       // can't notify an anonymous owner
+          const cand = candidates.find((c) => c.id === row.proposal_id);
+          if (!cand || !cand.user_id) return null;
           return buildBlindNotification({
             oldUserId: cand.user_id,
             subjectProposalId: row.proposal_id,
             subjectRef: `#${String(row.proposal_id).slice(-6).toUpperCase()}`,
-            subjectIntent: cand.intent,                                   // recipient's OWN proposal (safe to name)
-            subjectSector: cand.sectors?.[0] ?? null,
+            subjectIntent: cand.intent,
+            subjectSector: cand.industry || cand.sectors?.[0] || null,
             subjectGeography: cand.geographies?.[0] ?? null,
             matchId: row.id,
-            cpSectorLabel: input.sector ? normalizeSector(input.sector) : null,  // the NEW counterparty (input)
+            cpSectorLabel: input.industry || (input.sector ? normalizeSector(input.sector) : null),
             cpGeographyLabel: input.geography ?? null,
             finalScore: Number(row.final_score),
           });
         })
         .filter((n: NotificationRecord | null): n is NotificationRecord => n !== null);
+
       if (notifRows.length > 0) {
         const { data: insertedNotifications, error: notifErr } = await supabase
           .from('notifications')
-          .upsert(notifRows, { onConflict: 'match_id', ignoreDuplicates: true }).
-          select('id,user_id,type,message,is_read,created_at');
+          .upsert(notifRows, { onConflict: 'match_id', ignoreDuplicates: true })
+          .select('id,user_id,type,message,is_read,created_at');
         if (notifErr) console.error('[M5] Notification insert error:', notifErr);
         else {
           const notifications = (insertedNotifications ?? []) as NotificationRow[];
@@ -863,7 +962,7 @@ export async function executeMatchmaking(
       }
     }
 
-    // 9d. ALWAYS register the always-on watch (every active proposal, match or no match).
+    // Always register watch
     await registerWatch(topRows.length, notifiedCount > 0);
 
     // ── Phase 10: Build match cards for frontend ──────────────
@@ -871,80 +970,33 @@ export async function executeMatchmaking(
       const cand = candidates.find(c => c.id === row.matched_proposal_id)!;
       const cMin = cand.deal_size_min_cr ?? 0;
       const cMax = cand.deal_size_max_cr ?? 0;
-      const rMin = cand.revenue_min_cr ?? 0;
-      const rMax = cand.revenue_max_cr ?? 0;
-
-      // Full M&A deal intelligence summary
-      const dealSummary = generateFullDealSummary(
-        {
-          intent: input.intent,
-          industry: input.industry,
-          sector: input.sector,
-          sub_sector: input.sub_sector,
-          geography: input.geography,
-          deal_size_min: input.deal_size_min,
-          deal_size_max: input.deal_size_max,
-          revenue_min: input.revenue_min,
-          revenue_max: input.revenue_max,
-          structure: input.structure,
-          industry_data: input.industry_data,
-          special_conditions: input.special_conditions,
-        },
-        {
-          id: cand.id,
-          intent: cand.intent,
-          industry: cand.industry,
-          sectors: cand.sectors,
-          geographies: cand.geographies,
-          deal_size_min_cr: cand.deal_size_min_cr,
-          deal_size_max_cr: cand.deal_size_max_cr,
-          revenue_min_cr: cand.revenue_min_cr,
-          revenue_max_cr: cand.revenue_max_cr,
-          deal_structure: cand.deal_structure,
-          metadata: cand.metadata,
-          quality_tier: cand.quality_tier,
-          normalised_text: cand.normalised_text,
-          raw_text: cand.raw_text,
-        },
-        {
-          finalScore: row.final_score,
-          similarityScore: row.similarity_score,
-          industryScore: row.industry_score,
-          financialScore: row.financial_score,
-          geoScore: row.geography_boost,
-          archetype: row.match_archetype,
-          matchReason: row.match_reason,
-        }
-      );
-
       return {
         matchedProposalId: row.matched_proposal_id,
-        sector: cand.sectors?.[0] ?? null,
-        industry: cand.industry || cand.sectors?.[0] || null,
+        sector: cand.industry || cand.sectors?.[0] || null,
         geography: cand.geographies?.[0] ?? null,
         sizeRange: formatSizeRange(cMin, cMax),
-        revenueRange: formatSizeRange(rMin, rMax),
-        transactionType: cand.intent,
         finalScore: row.final_score,
         scoreLabel: getScoreLabel(row.final_score),
         matchReason: row.match_reason,
-        dealSummary,
         archetype: row.match_archetype,
-        isIdentityProtected: true,
       };
     });
 
     const topScore = topRows[0]?.final_score ?? 0;
-    console.log(`[M5] ====== COMPLETE: ${topRows.length} matches, top score ${topRows[0]?.final_score ?? 0} ======`);
+    console.log(`[M5] ====== COMPLETE: ${topRows.length} matches, top score ${topScore} ======`);
+
     return {
       proposalId: proposal.id,
       matchCount: topRows.length,
       topScore,
       cards,
-      summary: (topRows.length > 0) ? `Found ${topRows.length} potential matches for your consideration.` : 'No immediate matches. Your mandate runs continuously for 90 days.',
+      summary: topRows.length > 0
+        ? `${topRows.length} aligned counterpart${topRows.length > 1 ? 'ies' : 'y'} identified.`
+        : 'No immediate matches. Your mandate runs continuously for 90 days.',
     };
+
   } catch (err) {
-    console.error('[M5] Matchmaking failed:', err);
-    return null;
+    console.error('[M5] CRITICAL FAILURE:', err);
+    throw err;
   }
 }
