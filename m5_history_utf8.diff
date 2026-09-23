@@ -1,0 +1,1786 @@
+﻿commit acba2d6ae33dc488f8dd223ac15c4a4ad93eba33
+Author: NOVA0206 <262285015+dealzebraglobal-ai@users.noreply.github.com>
+Date:   Wed Sep 23 12:39:13 2026 +0530
+
+    updatwa
+
+diff --git a/src/lib/M5_sectorMatrix.ts b/src/lib/M5_sectorMatrix.ts
+index a942de6..91a9a71 100644
+--- a/src/lib/M5_sectorMatrix.ts
++++ b/src/lib/M5_sectorMatrix.ts
+@@ -1,415 +1,508 @@
+-/**
+- * DealCollab ΓÇö M5: Sector Compatibility Matrix
+- * =============================================
+- * Source: DC-KB-003 v1.0 ΓÇö derived from 348 real Indian M&A transactions
+- * Place at: src/lib/M5_sectorMatrix.ts
+- *
+- * Exports:
+- *   normalizeSector()        ΓÇö maps promptRouter SectorKeys ΓåÆ DC-KB-003 codes
+- *   getSectorCompatibility() ΓÇö returns compatibility level + reason for any pair
+- *   MATCH_ARCHETYPES         ΓÇö match type labels for match cards
+- *   detectFraudSignals()     ΓÇö HR-8 fraud signal detection
+- */
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// TYPES
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-export type CompatibilityLevel = 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE';
+-
+-export interface SectorRelation {
+-  level:   CompatibilityLevel;
+-  penalty: number;   // score deduction applied in calculateV2Score()
+-  reason:  string;   // shown on match card
+-}
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// SECTOR NORMALIZATION
+-// promptRouter lowercase keys ΓåÆ DC-KB-003 uppercase canonical codes
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-const NORMALIZE_MAP: Record<string, string> = {
+-  pharma:        'PHARMACEUTICALS',
+-  pharmaceutical: 'PHARMACEUTICALS',
+-  pharmaceuticals: 'PHARMACEUTICALS',
+-  healthcare:    'HEALTHCARE',
+-  hospitals:     'HEALTHCARE',
+-  hospital:      'HEALTHCARE',
+-  manufacturing: 'MANUFACTURING',
+-  saas:          'TECHNOLOGY',
+-  software:      'TECHNOLOGY',
+-  technology:    'TECHNOLOGY',
+-  finserv:       'FINTECH',
+-  consumer:      'CONSUMER',
+-  fmcg:          'FMCG',
+-  realestate:    'REAL_ESTATE',
+-  'real estate': 'REAL_ESTATE',
+-  logistics:     'LOGISTICS',
+-  education:     'EDUCATION',
+-  chemicals:     'CHEMICALS',
+-  hospitality:   'HOTELS',
+-  hotels:        'HOTELS',
+-  renewable:     'RENEWABLE_ENERGY',
+-  'renewable energy': 'RENEWABLE_ENERGY',
+-  defence:       'DEFENCE',
+-  defense:       'DEFENCE',
+-  oil_gas:       'OIL_GAS',
+-  'oil & gas':   'OIL_GAS',
+-  ngo:           'NGO',
+-  mixed:         'GENERAL',
+-  // sub-sector overrides
+-  nbfc:          'NBFC',
+-  fintech:       'FINTECH',
+-  'auto ancillary': 'AUTO_ANCILLARY',
+-  ev:            'EV_MOBILITY',
+-  // specific product industries (must map to their proper sector category, NOT generic manufacturing!)
+-  toy:           'TOYS',
+-  toys:          'TOYS',
+-  fashion:       'FASHION',
+-  textiles:      'HOME_TEXTILES',
+-  'home textiles': 'HOME_TEXTILES',
+-  cybersecurity: 'CYBERSECURITY',
+-  'cyber security': 'CYBERSECURITY',
+-  'ot security': 'CYBERSECURITY',
+-  'sheet metal': 'SHEET_METAL_MANUFACTURING',
+-  'sheet metal manufacturing': 'SHEET_METAL_MANUFACTURING',
+-};
+-
+-// Known explicit cross-industry compatibility rules
+-const INDUSTRY_COMPATIBILITY_RULES: Record<string, 'EXACT' | 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE'> = {
+-  // Toys is compatible with Toys, Consumer Products, FMCG, Retail
+-  'TOYS|TOYS': 'EXACT',
+-  'TOYS|CONSUMER': 'COMPATIBLE',
+-  'TOYS|FMCG': 'COMPATIBLE',
+-  'TOYS|RETAIL': 'COMPATIBLE',
+-  'TOYS|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+-  'SHEET_METAL_MANUFACTURING|TOYS': 'INCOMPATIBLE',
+-  'TOYS|DEFENCE': 'INCOMPATIBLE',
+-  'DEFENCE|TOYS': 'INCOMPATIBLE',
+-  'TOYS|PHARMACEUTICALS': 'INCOMPATIBLE',
+-  'PHARMACEUTICALS|TOYS': 'INCOMPATIBLE',
+-
+-  // Fashion / Home Textiles
+-  'FASHION|FASHION': 'EXACT',
+-  'FASHION|HOME_TEXTILES': 'COMPATIBLE',
+-  'HOME_TEXTILES|HOME_TEXTILES': 'EXACT',
+-  'HOME_TEXTILES|FASHION': 'COMPATIBLE',
+-  'FASHION|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+-  'HOME_TEXTILES|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+-
+-  // Cybersecurity
+-  'CYBERSECURITY|CYBERSECURITY': 'EXACT',
+-  'CYBERSECURITY|TECHNOLOGY': 'COMPATIBLE',
+-  'CYBERSECURITY|DEFENCE': 'COMPATIBLE',
+-  'CYBERSECURITY|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+-};
+-
+-export function normalizeSector(raw: string): string {
+-  if (!raw) return 'GENERAL';
+-  const lower = raw.toLowerCase().trim();
+-  return NORMALIZE_MAP[lower] ?? raw.toUpperCase().replace(/[\s-]+/g, '_');
+-}
+-
+-function normalizeIndustryKey(raw: string): string {
+-  if (!raw) return 'GENERAL';
+-  const lower = raw.toLowerCase().trim();
+-  if (NORMALIZE_MAP[lower]) return NORMALIZE_MAP[lower];
+-
+-  if (lower.includes('toy')) return 'TOYS';
+-  if (lower.includes('sheet metal') || lower.includes('sheet_metal') || lower.includes('stamping')) return 'SHEET_METAL_MANUFACTURING';
+-  if (lower.includes('textile') || lower.includes('linen') || lower.includes('apparel') || lower.includes('garment')) return 'HOME_TEXTILES';
+-  if (lower.includes('fashion')) return 'FASHION';
+-  if (lower.includes('cyber') || lower.includes('security')) return 'CYBERSECURITY';
+-  if (lower.includes('packaging')) return 'PACKAGING';
+-
+-  return normalizeSector(raw);
+-}
+-
+-export function getIndustryCompatibility(
+-  sourceIndustry: string | null | undefined,
+-  candidateIndustry: string | null | undefined,
+-  sourceSector?: string | null,
+-  candidateSector?: string | null,
+-  sourceServingSectors?: string[] | null,
+-  candidateServingSectors?: string[] | null,
+-): SectorRelation {
+-  const sInd = (sourceIndustry || sourceSector || '').toLowerCase().trim();
+-  const cInd = (candidateIndustry || candidateSector || '').toLowerCase().trim();
+-
+-  if (!sInd || !cInd) {
+-    return {
+-      level: 'COMPATIBLE',
+-      penalty: 0,
+-      reason: 'General compatibility (industry not constrained).',
+-    };
+-  }
+-
+-  // Exact normalized string match
+-  if (sInd === cInd) {
+-    return {
+-      level: 'COMPATIBLE',
+-      penalty: 0,
+-      reason: `Exact industry alignment: both operate in ${candidateIndustry || sourceIndustry}.`,
+-    };
+-  }
+-
+-  const sNorm = normalizeIndustryKey(sInd);
+-  const cNorm = normalizeIndustryKey(cInd);
+-
+-  if (sNorm === cNorm && sNorm !== 'GENERAL') {
+-    return {
+-      level: 'COMPATIBLE',
+-      penalty: 0,
+-      reason: `Exact category match: ${sNorm}.`,
+-    };
+-  }
+-
+-  // Check if either entity serves the other's core sector
+-  const sourceCoreSector = sourceSector ? normalizeSector(sourceSector) : null;
+-  const candidateCoreSector = candidateSector ? normalizeSector(candidateSector) : null;
+-  const sourceServes = sourceServingSectors?.map(normalizeSector) || [];
+-  const candidateServes = candidateServingSectors?.map(normalizeSector) || [];
+-
+-  if (sourceCoreSector && candidateServes.includes(sourceCoreSector)) {
+-    return {
+-      level: 'COMPATIBLE',
+-      penalty: 0,
+-      reason: `Aligned ecosystem: candidate explicitly serves the ${sourceSector} sector.`,
+-    };
+-  }
+-  if (candidateCoreSector && sourceServes.includes(candidateCoreSector)) {
+-    return {
+-      level: 'COMPATIBLE',
+-      penalty: 0,
+-      reason: `Aligned ecosystem: source explicitly serves the ${candidateSector} sector.`,
+-    };
+-  }
+-
+-  // Check explicit rules (both directions)
+-  const pairKey = `${sNorm}|${cNorm}`;
+-  const reverseKey = `${cNorm}|${sNorm}`;
+-  const rule = INDUSTRY_COMPATIBILITY_RULES[pairKey] || INDUSTRY_COMPATIBILITY_RULES[reverseKey];
+-
+-  if (rule === 'INCOMPATIBLE') {
+-    return {
+-      level: 'INCOMPATIBLE',
+-      penalty: 1.0,
+-      reason: `Industry mismatch: ${sourceIndustry || sNorm} is incompatible with ${candidateIndustry || cNorm}.`,
+-    };
+-  }
+-  if (rule === 'EXACT' || rule === 'COMPATIBLE') {
+-    return {
+-      level: 'COMPATIBLE',
+-      penalty: 0,
+-      reason: `Aligned industry sector: ${sourceIndustry} aligns with ${candidateIndustry}.`,
+-    };
+-  }
+-
+-  // Fallback to general sector compatibility
+-  const fallbackSectorA = sourceSector || sNorm || sInd;
+-  const fallbackSectorB = candidateSector || cNorm || cInd;
+-  return getSectorCompatibility(fallbackSectorA, fallbackSectorB);
+-}
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// HARD INCOMPATIBLE PAIRS (symmetric)
+-// Zero occurrences in 348 deals + no plausible business logic
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-const HARD_INCOMPATIBLE = new Set<string>([
+-  'PHARMACEUTICALS|REAL_ESTATE',
+-  'PHARMACEUTICALS|HOTELS',
+-  'PHARMACEUTICALS|RETAIL',
+-  'PHARMACEUTICALS|DEFENCE',
+-  'HEALTHCARE|RETAIL',
+-  'HEALTHCARE|REAL_ESTATE',
+-  'HEALTHCARE|DEFENCE',
+-  'NBFC|MANUFACTURING',
+-  'NBFC|REAL_ESTATE',
+-  'NBFC|LOGISTICS',
+-  'NBFC|HOTELS',
+-  'TECHNOLOGY|REAL_ESTATE',
+-  'TECHNOLOGY|HOTELS',
+-  'MANUFACTURING|EDUCATION',
+-  'MANUFACTURING|NBFC',
+-  'MANUFACTURING|RETAIL',
+-  'RENEWABLE_ENERGY|RETAIL',
+-  'RENEWABLE_ENERGY|EDUCATION',
+-  'RENEWABLE_ENERGY|HOTELS',
+-  'FMCG|NBFC',
+-  'FMCG|DEFENCE',
+-  'FMCG|PHARMACEUTICALS',
+-  'CONSUMER|NBFC',
+-  'CONSUMER|DEFENCE',
+-  'CONSUMER|PHARMACEUTICALS',
+-  'EDUCATION|LOGISTICS',
+-  'EDUCATION|CHEMICALS',
+-  'REAL_ESTATE|LOGISTICS',
+-  'DEFENCE|RETAIL',
+-  'DEFENCE|FMCG',
+-  'DEFENCE|CONSUMER',
+-  'DEFENCE|EDUCATION',
+-  'CHEMICALS|NBFC',
+-  'CHEMICALS|RETAIL',
+-  'CHEMICALS|HOTELS',
+-]);
+-
+-function isHardIncompatible(s: string, t: string): boolean {
+-  return HARD_INCOMPATIBLE.has(`${s}|${t}`) || HARD_INCOMPATIBLE.has(`${t}|${s}`);
+-}
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// COMPATIBLE PAIRS ΓÇö observed in dataset with deal rationale
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-const COMPATIBLE: Record<string, string> = {
+-  'TECHNOLOGY|AUTO_ANCILLARY':      'Tech closes hardware-software gap. Factory automation requires software intelligence layer. 13 deals observed.',
+-  'AUTO_ANCILLARY|TECHNOLOGY':      'Auto component maker adds digital layer for Industry 4.0 OEM requirements. 6 deals observed.',
+-  'MANUFACTURING|AUTO_ANCILLARY':   'OEM supply consolidation ΓÇö same clients, adjacent component. 7 deals observed.',
+-  'AUTO_ANCILLARY|MANUFACTURING':   'Tier-1 acquires Tier-2 supplier. Same OEM relationships, adjacent capability.',
+-  'AUTO_ANCILLARY|EV_MOBILITY':     'Auto component maker transitions to EV-compatible parts. Platform changeover thesis.',
+-  'EV_MOBILITY|AUTO_ANCILLARY':     'EV platform acquires component capability ΓÇö vertical integration of supply chain.',
+-  'MANUFACTURING|EV_MOBILITY':      'Industrial manufacturer adds EV capability for fleet and energy clients.',
+-  'EV_MOBILITY|MANUFACTURING':      'EV company acquires manufacturing capacity for scale-up.',
+-  'EV_MOBILITY|RENEWABLE_ENERGY':   'EV + renewable ΓÇö charging infrastructure powered by clean energy.',
+-  'RENEWABLE_ENERGY|EV_MOBILITY':   'Renewable energy company adds EV charging as downstream application.',
+-  'TECHNOLOGY|NBFC':                'Fintech acquires RBI NBFC licence ΓÇö regulatory shortcut. Fresh licence 18ΓÇô24 months. 5 deals.',
+-  'NBFC|FINTECH':                   'NBFC adds fintech platform for digital loan distribution.',
+-  'FINTECH|NBFC':                   'Fintech acquires lending licence to activate embedded finance.',
+-  'TECHNOLOGY|FINTECH':             'Tech-adjacent ΓÇö software + financial services integration.',
+-  'FINTECH|TECHNOLOGY':             'Fintech acquires tech platform to power digital lending or payments.',
+-  'TECHNOLOGY|PHARMACEUTICALS':     'Pharma software ΓÇö clinical trials, regulatory submissions, QMS. 5 deals.',
+-  'TECHNOLOGY|HEALTHCARE':          'Digital health ΓÇö telemedicine, diagnostic AI, hospital management systems.',
+-  'HEALTHCARE|TECHNOLOGY':          'Healthcare business acquires digital health platform.',
+-  'PHARMACEUTICALS|HEALTHCARE':     'Pharma conglomerate expands into hospital/diagnostic network.',
+-  'HEALTHCARE|PHARMACEUTICALS':     'Hospital chain acquires pharma supply ΓÇö backward integration.',
+-  'MANUFACTURING|RENEWABLE_ENERGY': 'Industrial manufacturer adds renewable capability for existing client energy needs. 3 deals.',
+-  'MANUFACTURING|CHEMICALS':        'Chemical inputs supplier acquired by manufacturer ΓÇö backward integration.',
+-  'CHEMICALS|MANUFACTURING':        'Chemical company acquires manufacturing capacity.',
+-  'CHEMICALS|PHARMACEUTICALS':      'Chemical intermediate supplier acquires downstream pharma. 2 deals.',
+-  'PHARMACEUTICALS|CHEMICALS':      'Pharma acquires chemical feedstock for supply chain security.',
+-  'CHEMICALS|HEALTHCARE':           'Medical consumables or diagnostics chemicals adjacency.',
+-  'FMCG|MANUFACTURING':             'FMCG brand acquires manufacturing for in-house production. 2 deals.',
+-  'MANUFACTURING|FMCG':             'Manufacturer acquires FMCG brand for B2C market access.',
+-  'FMCG|RETAIL':                    'FMCG brand acquires retail distribution ΓÇö channel expansion.',
+-  'RETAIL|FMCG':                    'Retail chain acquires FMCG brand to create private label portfolio.',
+-  'CONSUMER|MANUFACTURING':             'Consumer brand acquires manufacturing for in-house production. 2 deals.',
+-  'MANUFACTURING|CONSUMER':             'Manufacturer acquires consumer brand for B2C market access.',
+-  'CONSUMER|RETAIL':                    'Consumer brand acquires retail distribution ΓÇö channel expansion.',
+-  'RETAIL|CONSUMER':                    'Retail chain acquires consumer brand to create private label portfolio.',
+-  'REAL_ESTATE|HOTELS':             'Real estate developer acquires hospitality asset.',
+-  'HOTELS|REAL_ESTATE':             'Hotel chain acquires property for flagship asset ownership.',
+-  'TECHNOLOGY|EDUCATION':           'Edtech ΓÇö software platform serving education institutions.',
+-  'EDUCATION|TECHNOLOGY':           'Education institution acquires edtech for digital delivery.',
+-  'FINANCIAL_SERVICES|NBFC':        'Financial services firm acquires NBFC for lending product.',
+-  'FINANCIAL_SERVICES|FINTECH':     'Wealth management adds fintech platform.',
+-  'AUTO_ANCILLARY|DEFENCE':         'Precision engineering capabilities dual-use for defence components.',
+-  'DEFENCE|MANUFACTURING':          'Defence OEM acquires manufacturing capacity.',
+-  'MANUFACTURING|DEFENCE':          'Manufacturer adds defence vertical ΓÇö government contract diversification.',
+-};
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// NARROW PAIRS ΓÇö conditional compatibility (-10 score penalty)
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-const NARROW: Record<string, string> = {
+-  'LOGISTICS|PHARMACEUTICALS':      'NARROW: Pharma-grade cold chain logistics only. Verify certification.',
+-  'LOGISTICS|HEALTHCARE':           'NARROW: Medical supply chain only. Verify temperature-controlled capability.',
+-  'LOGISTICS|FMCG':                 'NARROW: FMCG last-mile delivery. Verify route density.',
+-  'LOGISTICS|CONSUMER':             'NARROW: Consumer goods last-mile delivery. Verify route density.',
+-  'LOGISTICS|MANUFACTURING':        'NARROW: Industrial logistics only. Verify captive client or MSA contracts.',
+-  'MANUFACTURING|PHARMACEUTICALS':  'NARROW: Contract manufacturing or packaging only.',
+-  'PHARMACEUTICALS|MANUFACTURING':  'NARROW: Pharma packaging or equipment supplier only.',
+-  'HEALTHCARE|LOGISTICS':           'NARROW: Medical supply logistics only.',
+-  'HEALTHCARE|TECHNOLOGY':          'NARROW: Healthtech platforms only ΓÇö telemedicine, diagnostic AI.',
+-  'AUTO_ANCILLARY|NBFC':            'NARROW: Fleet finance or vehicle finance NBFC only.',
+-  'RETAIL|TECHNOLOGY':              'NARROW: Retail-tech ΓÇö POS, inventory, e-commerce platforms only.',
+-  'FINTECH|HEALTHCARE':             'NARROW: Health payments or insurance-tech only.',
+-  'FINTECH|RETAIL':                 'NARROW: Embedded finance or BNPL only.',
+-  'TECHNOLOGY|MANUFACTURING':       'NARROW: Industry 4.0 / factory automation software only.',
+-  'TECHNOLOGY|LOGISTICS':           'NARROW: Logistics-tech ΓÇö WMS, TMS, route optimisation only.',
+-  'FMCG|LOGISTICS':                 'NARROW: Last-mile distribution alignment only.',
+-  'FMCG|HEALTHCARE':                'NARROW: Health FMCG ΓÇö nutraceuticals, OTC products only.',
+-  'CONSUMER|LOGISTICS':             'NARROW: Last-mile distribution alignment only.',
+-  'CONSUMER|HEALTHCARE':            'NARROW: Health consumer products ΓÇö nutraceuticals, OTC products only.',
+-  'CHEMICALS|AGRICULTURE':          'NARROW: Agrochemicals only. Verify product category.',
+-  'MANUFACTURING|LOGISTICS':        'NARROW: Captive logistics for manufacturing output only.',
+-};
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// MAIN EXPORT: getSectorCompatibility()
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-export function getSectorCompatibility(
+-  sourceSector: string,
+-  targetSector: string,
+-): SectorRelation {
+-  const s = normalizeSector(sourceSector);
+-  const t = normalizeSector(targetSector);
+-
+-  // Same sector ΓÇö always compatible
+-  if (s === t) {
+-    return {
+-      level:   'COMPATIBLE',
+-      penalty: 0,
+-      reason:  `${s}: Same-sector consolidation ΓÇö capacity, capability, or client book acquisition.`,
+-    };
+-  }
+-
+-  // Hard incompatible check (symmetric)
+-  if (isHardIncompatible(s, t)) {
+-    return {
+-      level:   'INCOMPATIBLE',
+-      penalty: 1.0,
+-      reason:  `${s} ΓåÆ ${t}: No observed deal pattern in dataset. No plausible business synergy.`,
+-    };
+-  }
+-
+-  // Compatible pair check (both directions)
+-  const compatReason = COMPATIBLE[`${s}|${t}`] ?? COMPATIBLE[`${t}|${s}`];
+-  if (compatReason) {
+-    return { level: 'COMPATIBLE', penalty: 0, reason: compatReason };
+-  }
+-
+-  // Narrow pair check (both directions)
+-  const narrowReason = NARROW[`${s}|${t}`] ?? NARROW[`${t}|${s}`];
+-  if (narrowReason) {
+-    return { level: 'NARROW', penalty: 0.10, reason: narrowReason };
+-  }
+-
+-  // Default: NARROW with higher penalty (not explicitly incompatible, no precedent)
+-  return {
+-    level:   'NARROW',
+-    penalty: 0.15,
+-    reason:  `${s} ΓåÆ ${t}: No direct deal precedent. Verify specific use case before connecting.`,
+-  };
+-}
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// MATCH ARCHETYPES ΓÇö labels for match cards
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-export const MATCH_ARCHETYPES = {
+-  BOLT_ON:      'Same-sector bolt-on',
+-  LICENSE:      'Regulatory licence acquisition',
+-  CROSS_SECTOR: 'Cross-sector capability',
+-  VERTICAL:     'Vertical integration',
+-  TECH_ENABLER: 'Technology enablement',
+-  GEOGRAPHIC:   'Geographic expansion',
+-} as const;
+-
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// FRAUD SIGNALS ΓÇö HR-8 detection
+-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-
+-const FRAUD_SIGNAL_LIST = [
+-  'sblc', 'standby letter of credit', 'bank guarantee collateral',
+-  'bg discounting', 'guaranteed return', 'assured return',
+-  'risk-free return', 'guaranteed profit', 'fixed return on investment',
+-  'barclays collateral', 'hsbc instrument', 'fixed profit',
+-];
+-
+-export function detectFraudSignals(text: string): string[] {
+-  const lower = text.toLowerCase();
+-  return FRAUD_SIGNAL_LIST.filter(s => lower.includes(s));
+-}
+\ No newline at end of file
++/**
++ * DealSage Chain ΓÇö M5: Sector Compatibility Matrix
++ * =============================================
++ * Source: DC-KB-003 v1.0 ΓÇö derived from 348 real Indian M&A transactions
++ * Place at: src/lib/M5_sectorMatrix.ts
++ *
++ * Exports:
++ *   normalizeSector()        ΓÇö maps promptRouter SectorKeys ΓåÆ DC-KB-003 codes
++ *   getSectorCompatibility() ΓÇö returns compatibility level + reason for any pair
++ *   MATCH_ARCHETYPES         ΓÇö match type labels for match cards
++ *   detectFraudSignals()     ΓÇö HR-8 fraud signal detection
++ */
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// TYPES
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export type CompatibilityLevel = 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE';
++
++export interface SectorRelation {
++  level:   CompatibilityLevel;
++  penalty: number;   // score deduction applied in calculateV2Score()
++  reason:  string;   // shown on match card
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// SECTOR NORMALIZATION
++// promptRouter lowercase keys ΓåÆ DC-KB-003 uppercase canonical codes
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const NORMALIZE_MAP: Record<string, string> = {
++  pharma:        'PHARMACEUTICALS',
++  pharmaceutical: 'PHARMACEUTICALS',
++  pharmaceuticals: 'PHARMACEUTICALS',
++  healthcare:    'HEALTHCARE',
++  hospitals:     'HEALTHCARE',
++  hospital:      'HEALTHCARE',
++  manufacturing: 'MANUFACTURING',
++  saas:          'TECHNOLOGY',
++  software:      'TECHNOLOGY',
++  technology:    'TECHNOLOGY',
++  finserv:       'FINTECH',
++  consumer:      'CONSUMER',
++  fmcg:          'FMCG',
++  realestate:    'REAL_ESTATE',
++  'real estate': 'REAL_ESTATE',
++  logistics:     'LOGISTICS',
++  education:     'EDUCATION',
++  chemicals:     'CHEMICALS',
++  hospitality:   'HOTELS',
++  hotels:        'HOTELS',
++  renewable:     'RENEWABLE_ENERGY',
++  'renewable energy': 'RENEWABLE_ENERGY',
++  defence:       'DEFENCE',
++  defense:       'DEFENCE',
++  oil_gas:       'OIL_GAS',
++  'oil & gas':   'OIL_GAS',
++  ngo:           'NGO',
++  mixed:         'GENERAL',
++  // sub-sector overrides
++  nbfc:          'NBFC',
++  fintech:       'FINTECH',
++  'auto ancillary': 'AUTO_ANCILLARY',
++  ev:            'EV_MOBILITY',
++  // specific product industries (must map to their proper sector category, NOT generic manufacturing!)
++  toy:           'TOYS',
++  toys:          'TOYS',
++  fashion:       'FASHION',
++  textiles:      'HOME_TEXTILES',
++  'home textiles': 'HOME_TEXTILES',
++  cybersecurity: 'CYBERSECURITY',
++  'cyber security': 'CYBERSECURITY',
++  'ot security': 'CYBERSECURITY',
++  'sheet metal': 'SHEET_METAL_MANUFACTURING',
++  'sheet metal manufacturing': 'SHEET_METAL_MANUFACTURING',
++};
++
++// Known explicit cross-industry compatibility rules
++const INDUSTRY_COMPATIBILITY_RULES: Record<string, 'EXACT' | 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE'> = {
++  // Toys is compatible with Toys, Consumer Products, FMCG, Retail
++  'TOYS|TOYS': 'EXACT',
++  'TOYS|CONSUMER': 'COMPATIBLE',
++  'TOYS|FMCG': 'COMPATIBLE',
++  'TOYS|RETAIL': 'COMPATIBLE',
++  'TOYS|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
++  'SHEET_METAL_MANUFACTURING|TOYS': 'INCOMPATIBLE',
++  'TOYS|DEFENCE': 'INCOMPATIBLE',
++  'DEFENCE|TOYS': 'INCOMPATIBLE',
++  'TOYS|PHARMACEUTICALS': 'INCOMPATIBLE',
++  'PHARMACEUTICALS|TOYS': 'INCOMPATIBLE',
++
++  // Fashion / Home Textiles
++  'FASHION|FASHION': 'EXACT',
++  'FASHION|HOME_TEXTILES': 'COMPATIBLE',
++  'HOME_TEXTILES|HOME_TEXTILES': 'EXACT',
++  'HOME_TEXTILES|FASHION': 'COMPATIBLE',
++  'FASHION|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
++  'HOME_TEXTILES|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
++
++  // Cybersecurity
++  'CYBERSECURITY|CYBERSECURITY': 'EXACT',
++  'CYBERSECURITY|TECHNOLOGY': 'COMPATIBLE',
++  'CYBERSECURITY|DEFENCE': 'COMPATIBLE',
++  'CYBERSECURITY|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
++};
++
++export function normalizeSector(raw: string): string {
++  if (!raw) return 'GENERAL';
++  const lower = raw.toLowerCase().trim();
++  return NORMALIZE_MAP[lower] ?? raw.toUpperCase().replace(/[\s-]+/g, '_');
++}
++
++function normalizeIndustryKey(raw: string): string {
++  if (!raw) return 'GENERAL';
++  const lower = raw.toLowerCase().trim();
++  if (NORMALIZE_MAP[lower]) return NORMALIZE_MAP[lower];
++
++  if (lower.includes('toy')) return 'TOYS';
++  if (lower.includes('sheet metal') || lower.includes('sheet_metal') || lower.includes('stamping')) return 'SHEET_METAL_MANUFACTURING';
++  if (lower.includes('textile') || lower.includes('linen') || lower.includes('apparel') || lower.includes('garment')) return 'HOME_TEXTILES';
++  if (lower.includes('fashion')) return 'FASHION';
++  if (lower.includes('cyber') || lower.includes('security')) return 'CYBERSECURITY';
++  if (lower.includes('packaging')) return 'PACKAGING';
++
++  return normalizeSector(raw);
++}
++
++export function getIndustryCompatibility(
++  sourceIndustry: string | null | undefined,
++  candidateIndustry: string | null | undefined,
++  sourceSector?: string | null,
++  candidateSector?: string | null,
++): SectorRelation {
++  const sInd = (sourceIndustry || sourceSector || '').toLowerCase().trim();
++  const cInd = (candidateIndustry || candidateSector || '').toLowerCase().trim();
++
++  if (!sInd || !cInd) {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: 'General compatibility (industry not constrained).',
++    };
++  }
++
++  // Exact normalized string match
++  if (sInd === cInd) {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Exact industry alignment: both operate in ${candidateIndustry || sourceIndustry}.`,
++    };
++  }
++
++  const sNorm = normalizeIndustryKey(sInd);
++  const cNorm = normalizeIndustryKey(cInd);
++
++  if (sNorm === cNorm && sNorm !== 'GENERAL') {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Exact category match: ${sNorm}.`,
++    };
++  }
++
++  // Check explicit rules (both directions)
++  const pairKey = `${sNorm}|${cNorm}`;
++  const reverseKey = `${cNorm}|${sNorm}`;
++  const rule = INDUSTRY_COMPATIBILITY_RULES[pairKey] || INDUSTRY_COMPATIBILITY_RULES[reverseKey];
++
++  if (rule === 'INCOMPATIBLE') {
++    return {
++      level: 'INCOMPATIBLE',
++      penalty: 1.0,
++      reason: `Industry mismatch: ${sourceIndustry || sNorm} is incompatible with ${candidateIndustry || cNorm}.`,
++    };
++  }
++  if (rule === 'EXACT' || rule === 'COMPATIBLE') {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Aligned industry sector: ${sourceIndustry} aligns with ${candidateIndustry}.`,
++    };
++  }
++
++  // Fallback to general sector compatibility
++  const fallbackSectorA = sourceSector || sNorm || sInd;
++  const fallbackSectorB = candidateSector || cNorm || cInd;
++  return getSectorCompatibility(fallbackSectorA, fallbackSectorB);
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// HARD INCOMPATIBLE PAIRS (symmetric)
++// Zero occurrences in 348 deals + no plausible business logic
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const HARD_INCOMPATIBLE = new Set<string>([
++  'PHARMACEUTICALS|REAL_ESTATE',
++  'PHARMACEUTICALS|HOTELS',
++  'PHARMACEUTICALS|RETAIL',
++  'PHARMACEUTICALS|DEFENCE',
++  'HEALTHCARE|RETAIL',
++  'HEALTHCARE|REAL_ESTATE',
++  'HEALTHCARE|DEFENCE',
++  'NBFC|MANUFACTURING',
++  'NBFC|REAL_ESTATE',
++  'NBFC|LOGISTICS',
++  'NBFC|HOTELS',
++  'TECHNOLOGY|REAL_ESTATE',
++  'TECHNOLOGY|HOTELS',
++  'MANUFACTURING|EDUCATION',
++  'MANUFACTURING|NBFC',
++  'MANUFACTURING|RETAIL',
++  'RENEWABLE_ENERGY|RETAIL',
++  'RENEWABLE_ENERGY|EDUCATION',
++  'RENEWABLE_ENERGY|HOTELS',
++  'FMCG|NBFC',
++  'FMCG|DEFENCE',
++  'FMCG|PHARMACEUTICALS',
++  'CONSUMER|NBFC',
++  'CONSUMER|DEFENCE',
++  'CONSUMER|PHARMACEUTICALS',
++  'EDUCATION|LOGISTICS',
++  'EDUCATION|CHEMICALS',
++  'REAL_ESTATE|LOGISTICS',
++  'DEFENCE|RETAIL',
++  'DEFENCE|FMCG',
++  'DEFENCE|CONSUMER',
++  'DEFENCE|EDUCATION',
++  'CHEMICALS|NBFC',
++  'CHEMICALS|RETAIL',
++  'CHEMICALS|HOTELS',
++]);
++
++function isHardIncompatible(s: string, t: string): boolean {
++  return HARD_INCOMPATIBLE.has(`${s}|${t}`) || HARD_INCOMPATIBLE.has(`${t}|${s}`);
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// COMPATIBLE PAIRS ΓÇö observed in dataset with deal rationale
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const COMPATIBLE: Record<string, string> = {
++  'TECHNOLOGY|AUTO_ANCILLARY':      'Tech closes hardware-software gap. Factory automation requires software intelligence layer. 13 deals observed.',
++  'AUTO_ANCILLARY|TECHNOLOGY':      'Auto component maker adds digital layer for Industry 4.0 OEM requirements. 6 deals observed.',
++  'MANUFACTURING|AUTO_ANCILLARY':   'OEM supply consolidation ΓÇö same clients, adjacent component. 7 deals observed.',
++  'AUTO_ANCILLARY|MANUFACTURING':   'Tier-1 acquires Tier-2 supplier. Same OEM relationships, adjacent capability.',
++  'AUTO_ANCILLARY|EV_MOBILITY':     'Auto component maker transitions to EV-compatible parts. Platform changeover thesis.',
++  'EV_MOBILITY|AUTO_ANCILLARY':     'EV platform acquires component capability ΓÇö vertical integration of supply chain.',
++  'MANUFACTURING|EV_MOBILITY':      'Industrial manufacturer adds EV capability for fleet and energy clients.',
++  'EV_MOBILITY|MANUFACTURING':      'EV company acquires manufacturing capacity for scale-up.',
++  'EV_MOBILITY|RENEWABLE_ENERGY':   'EV + renewable ΓÇö charging infrastructure powered by clean energy.',
++  'RENEWABLE_ENERGY|EV_MOBILITY':   'Renewable energy company adds EV charging as downstream application.',
++  'TECHNOLOGY|NBFC':                'Fintech acquires RBI NBFC licence ΓÇö regulatory shortcut. Fresh licence 18ΓÇô24 months. 5 deals.',
++  'NBFC|FINTECH':                   'NBFC adds fintech platform for digital loan distribution.',
++  'FINTECH|NBFC':                   'Fintech acquires lending licence to activate embedded finance.',
++  'TECHNOLOGY|FINTECH':             'Tech-adjacent ΓÇö software + financial services integration.',
++  'FINTECH|TECHNOLOGY':             'Fintech acquires tech platform to power digital lending or payments.',
++  'TECHNOLOGY|PHARMACEUTICALS':     'Pharma software ΓÇö clinical trials, regulatory submissions, QMS. 5 deals.',
++  'TECHNOLOGY|HEALTHCARE':          'Digital health ΓÇö telemedicine, diagnostic AI, hospital management systems.',
++  'HEALTHCARE|TECHNOLOGY':          'Healthcare business acquires digital health platform.',
++  'PHARMACEUTICALS|HEALTHCARE':     'Pharma conglomerate expands into hospital/diagnostic network.',
++  'HEALTHCARE|PHARMACEUTICALS':     'Hospital chain acquires pharma supply ΓÇö backward integration.',
++  'MANUFACTURING|RENEWABLE_ENERGY': 'Industrial manufacturer adds renewable capability for existing client energy needs. 3 deals.',
++  'MANUFACTURING|CHEMICALS':        'Chemical inputs supplier acquired by manufacturer ΓÇö backward integration.',
++  'CHEMICALS|MANUFACTURING':        'Chemical company acquires manufacturing capacity.',
++  'CHEMICALS|PHARMACEUTICALS':      'Chemical intermediate supplier acquires downstream pharma. 2 deals.',
++  'PHARMACEUTICALS|CHEMICALS':      'Pharma acquires chemical feedstock for supply chain security.',
++  'CHEMICALS|HEALTHCARE':           'Medical consumables or diagnostics chemicals adjacency.',
++  'FMCG|MANUFACTURING':             'FMCG brand acquires manufacturing for in-house production. 2 deals.',
++  'MANUFACTURING|FMCG':             'Manufacturer acquires FMCG brand for B2C market access.',
++  'FMCG|RETAIL':                    'FMCG brand acquires retail distribution ΓÇö channel expansion.',
++  'RETAIL|FMCG':                    'Retail chain acquires FMCG brand to create private label portfolio.',
++  'CONSUMER|MANUFACTURING':             'Consumer brand acquires manufacturing for in-house production. 2 deals.',
++  'MANUFACTURING|CONSUMER':             'Manufacturer acquires consumer brand for B2C market access.',
++  'CONSUMER|RETAIL':                    'Consumer brand acquires retail distribution ΓÇö channel expansion.',
++  'RETAIL|CONSUMER':                    'Retail chain acquires consumer brand to create private label portfolio.',
++  'REAL_ESTATE|HOTELS':             'Real estate developer acquires hospitality asset.',
++  'HOTELS|REAL_ESTATE':             'Hotel chain acquires property for flagship asset ownership.',
++  'TECHNOLOGY|EDUCATION':           'Edtech ΓÇö software platform serving education institutions.',
++  'EDUCATION|TECHNOLOGY':           'Education institution acquires edtech for digital delivery.',
++  'FINANCIAL_SERVICES|NBFC':        'Financial services firm acquires NBFC for lending product.',
++  'FINANCIAL_SERVICES|FINTECH':     'Wealth management adds fintech platform.',
++  'AUTO_ANCILLARY|DEFENCE':         'Precision engineering capabilities dual-use for defence components.',
++  'DEFENCE|MANUFACTURING':          'Defence OEM acquires manufacturing capacity.',
++  'MANUFACTURING|DEFENCE':          'Manufacturer adds defence vertical ΓÇö government contract diversification.',
++};
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// NARROW PAIRS ΓÇö conditional compatibility (-10 score penalty)
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const NARROW: Record<string, string> = {
++  'LOGISTICS|PHARMACEUTICALS':      'NARROW: Pharma-grade cold chain logistics only. Verify certification.',
++  'LOGISTICS|HEALTHCARE':           'NARROW: Medical supply chain only. Verify temperature-controlled capability.',
++  'LOGISTICS|FMCG':                 'NARROW: FMCG last-mile delivery. Verify route density.',
++  'LOGISTICS|CONSUMER':             'NARROW: Consumer goods last-mile delivery. Verify route density.',
++  'LOGISTICS|MANUFACTURING':        'NARROW: Industrial logistics only. Verify captive client or MSA contracts.',
++  'MANUFACTURING|PHARMACEUTICALS':  'NARROW: Contract manufacturing or packaging only.',
++  'PHARMACEUTICALS|MANUFACTURING':  'NARROW: Pharma packaging or equipment supplier only.',
++  'HEALTHCARE|LOGISTICS':           'NARROW: Medical supply logistics only.',
++  'HEALTHCARE|TECHNOLOGY':          'NARROW: Healthtech platforms only ΓÇö telemedicine, diagnostic AI.',
++  'AUTO_ANCILLARY|NBFC':            'NARROW: Fleet finance or vehicle finance NBFC only.',
++  'RETAIL|TECHNOLOGY':              'NARROW: Retail-tech ΓÇö POS, inventory, e-commerce platforms only.',
++  'FINTECH|HEALTHCARE':             'NARROW: Health payments or insurance-tech only.',
++  'FINTECH|RETAIL':                 'NARROW: Embedded finance or BNPL only.',
++  'TECHNOLOGY|MANUFACTURING':       'NARROW: Industry 4.0 / factory automation software only.',
++  'TECHNOLOGY|LOGISTICS':           'NARROW: Logistics-tech ΓÇö WMS, TMS, route optimisation only.',
++  'FMCG|LOGISTICS':                 'NARROW: Last-mile distribution alignment only.',
++  'FMCG|HEALTHCARE':                'NARROW: Health FMCG ΓÇö nutraceuticals, OTC products only.',
++  'CONSUMER|LOGISTICS':             'NARROW: Last-mile distribution alignment only.',
++  'CONSUMER|HEALTHCARE':            'NARROW: Health consumer products ΓÇö nutraceuticals, OTC products only.',
++  'CHEMICALS|AGRICULTURE':          'NARROW: Agrochemicals only. Verify product category.',
++  'MANUFACTURING|LOGISTICS':        'NARROW: Captive logistics for manufacturing output only.',
++};
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// MAIN EXPORT: getSectorCompatibility()
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export function getSectorCompatibility(
++  sourceSector: string,
++  targetSector: string,
++): SectorRelation {
++  const s = normalizeSector(sourceSector);
++  const t = normalizeSector(targetSector);
++
++  // Same sector ΓÇö always compatible
++  if (s === t) {
++    return {
++      level:   'COMPATIBLE',
++      penalty: 0,
++      reason:  `${s}: Same-sector consolidation ΓÇö capacity, capability, or client book acquisition.`,
++    };
++  }
++
++  // Hard incompatible check (symmetric)
++  if (isHardIncompatible(s, t)) {
++    return {
++      level:   'INCOMPATIBLE',
++      penalty: 1.0,
++      reason:  `${s} ΓåÆ ${t}: No observed deal pattern in dataset. No plausible business synergy.`,
++    };
++  }
++
++  // Compatible pair check (both directions)
++  const compatReason = COMPATIBLE[`${s}|${t}`] ?? COMPATIBLE[`${t}|${s}`];
++  if (compatReason) {
++    return { level: 'COMPATIBLE', penalty: 0, reason: compatReason };
++  }
++
++  // Narrow pair check (both directions)
++  const narrowReason = NARROW[`${s}|${t}`] ?? NARROW[`${t}|${s}`];
++  if (narrowReason) {
++    return { level: 'NARROW', penalty: 0.10, reason: narrowReason };
++  }
++
++  // Default: NARROW with higher penalty (not explicitly incompatible, no precedent)
++  return {
++    level:   'NARROW',
++    penalty: 0.15,
++    reason:  `${s} ΓåÆ ${t}: No direct deal precedent. Verify specific use case before connecting.`,
++  };
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// MATCH ARCHETYPES ΓÇö labels for match cards
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export const MATCH_ARCHETYPES = {
++  BOLT_ON:      'Same-sector bolt-on',
++  LICENSE:      'Regulatory licence acquisition',
++  CROSS_SECTOR: 'Cross-sector capability',
++  VERTICAL:     'Vertical integration',
++  TECH_ENABLER: 'Technology enablement',
++  GEOGRAPHIC:   'Geographic expansion',
++} as const;
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// FRAUD SIGNALS ΓÇö HR-8 detection
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const FRAUD_SIGNAL_LIST = [
++  'sblc', 'standby letter of credit', 'bank guarantee collateral',
++  'bg discounting', 'guaranteed return', 'assured return',
++  'risk-free return', 'guaranteed profit', 'fixed return on investment',
++  'barclays collateral', 'hsbc instrument', 'fixed profit',
++];
++
++export function detectFraudSignals(text: string): string[] {
++  const lower = text.toLowerCase();
++  return FRAUD_SIGNAL_LIST.filter(s => lower.includes(s));
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// V2 INDUSTRY COMPATIBILITY RESOLVER (used by matchmakingEngine)
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export interface IndustryCompatibilityResult {
++  level: 'EXACT' | 'COMPATIBLE' | 'NARROW' | 'SERVING_SECTOR_MATCH' | 'COARSE_SECTOR_MATCH' | 'GENERAL_FALLBACK' | 'INCOMPATIBLE';
++  score: number;
++  penalty: number;
++  reason: string;
++  archetype: string;
++  isGeneralFallback: boolean;
++}
++
++export interface IndustryQuery {
++  industry?: string | null;
++  sector?: string | null;
++  sectors?: string[] | null;
++  serving_sectors?: string[] | null;
++}
++
++export function resolveIndustryCompatibility(source: IndustryQuery, target: IndustryQuery): IndustryCompatibilityResult {
++  const sSectorNorm = source.sector ? normalizeSector(source.sector) : 'GENERAL';
++  const cSectorNorm = target.sector ? normalizeSector(target.sector) : (target.sectors?.[0] ? normalizeSector(target.sectors[0]) : 'GENERAL');
++
++  // 1. Direct Industry alignment using the existing matrix function
++  const baseCompat = getIndustryCompatibility(
++    source.industry, 
++    target.industry, 
++    source.sector, 
++    target.sector || target.sectors?.[0]
++  );
++
++  // If hard incompatible, return immediately
++  if (baseCompat.level === 'INCOMPATIBLE') {
++    return {
++      level: 'INCOMPATIBLE',
++      score: 0,
++      penalty: baseCompat.penalty,
++      reason: baseCompat.reason,
++      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
++      isGeneralFallback: false
++    };
++  }
++
++  // 2. Check serving_sectors (cross-sector capability)
++  const cServesS = target.serving_sectors?.map(s => normalizeSector(s)).includes(sSectorNorm);
++  const sServesC = source.serving_sectors?.map(s => normalizeSector(s)).includes(cSectorNorm);
++  
++  if (cServesS || sServesC) {
++    return {
++      level: 'SERVING_SECTOR_MATCH',
++      score: 0.85,
++      penalty: 0,
++      reason: `Cross-sector capability: explicit alignment with target sector.`,
++      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
++      isGeneralFallback: false
++    };
++  }
++
++  // 3. Process the base compat from getIndustryCompatibility
++  if (baseCompat.level === 'COMPATIBLE') {
++    if (baseCompat.reason.includes('Exact')) {
++      return {
++        level: 'EXACT',
++        score: 1.0,
++        penalty: 0,
++        reason: baseCompat.reason,
++        archetype: MATCH_ARCHETYPES.BOLT_ON,
++        isGeneralFallback: false
++      };
++    } else {
++      return {
++        level: 'COMPATIBLE',
++        score: 0.90,
++        penalty: 0,
++        reason: baseCompat.reason,
++        archetype: MATCH_ARCHETYPES.BOLT_ON,
++        isGeneralFallback: false
++      };
++    }
++  }
++
++  if (baseCompat.level === 'NARROW') {
++    return {
++      level: 'NARROW',
++      score: 0.70,
++      penalty: baseCompat.penalty,
++      reason: baseCompat.reason,
++      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
++      isGeneralFallback: false
++    };
++  }
++
++  // 4. Coarse sector match
++  if (sSectorNorm !== 'GENERAL' && sSectorNorm === cSectorNorm) {
++    return {
++      level: 'COARSE_SECTOR_MATCH',
++      score: 0.60,
++      penalty: 0.10,
++      reason: `Coarse sector alignment within ${sSectorNorm}.`,
++      archetype: MATCH_ARCHETYPES.BOLT_ON,
++      isGeneralFallback: false
++    };
++  }
++
++  // 5. General fallback
++  return {
++    level: 'GENERAL_FALLBACK',
++    score: 0.30,
++    penalty: 0.15,
++    reason: baseCompat.reason.includes('General') ? baseCompat.reason : `General or weakly constrained industry alignment.`,
++    archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
++    isGeneralFallback: true
++  };
++}
+\ No newline at end of file
+
+commit f8dd2a186c5006d3cb4d67873bf0b4f570d6808d
+Author: NOVA0206 <262285015+dealzebraglobal-ai@users.noreply.github.com>
+Date:   Mon Sep 21 19:39:36 2026 +0530
+
+    Updates
+
+diff --git a/src/lib/M5_sectorMatrix.ts b/src/lib/M5_sectorMatrix.ts
+index 2d23976..a942de6 100644
+--- a/src/lib/M5_sectorMatrix.ts
++++ b/src/lib/M5_sectorMatrix.ts
+@@ -40,7 +40,7 @@ const NORMALIZE_MAP: Record<string, string> = {
+   software:      'TECHNOLOGY',
+   technology:    'TECHNOLOGY',
+   finserv:       'FINTECH',
+-  consumer:      'FMCG',
++  consumer:      'CONSUMER',
+   fmcg:          'FMCG',
+   realestate:    'REAL_ESTATE',
+   'real estate': 'REAL_ESTATE',
+@@ -120,6 +120,7 @@ function normalizeIndustryKey(raw: string): string {
+   if (lower.includes('textile') || lower.includes('linen') || lower.includes('apparel') || lower.includes('garment')) return 'HOME_TEXTILES';
+   if (lower.includes('fashion')) return 'FASHION';
+   if (lower.includes('cyber') || lower.includes('security')) return 'CYBERSECURITY';
++  if (lower.includes('packaging')) return 'PACKAGING';
+ 
+   return normalizeSector(raw);
+ }
+@@ -129,6 +130,8 @@ export function getIndustryCompatibility(
+   candidateIndustry: string | null | undefined,
+   sourceSector?: string | null,
+   candidateSector?: string | null,
++  sourceServingSectors?: string[] | null,
++  candidateServingSectors?: string[] | null,
+ ): SectorRelation {
+   const sInd = (sourceIndustry || sourceSector || '').toLowerCase().trim();
+   const cInd = (candidateIndustry || candidateSector || '').toLowerCase().trim();
+@@ -161,6 +164,27 @@ export function getIndustryCompatibility(
+     };
+   }
+ 
++  // Check if either entity serves the other's core sector
++  const sourceCoreSector = sourceSector ? normalizeSector(sourceSector) : null;
++  const candidateCoreSector = candidateSector ? normalizeSector(candidateSector) : null;
++  const sourceServes = sourceServingSectors?.map(normalizeSector) || [];
++  const candidateServes = candidateServingSectors?.map(normalizeSector) || [];
++
++  if (sourceCoreSector && candidateServes.includes(sourceCoreSector)) {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Aligned ecosystem: candidate explicitly serves the ${sourceSector} sector.`,
++    };
++  }
++  if (candidateCoreSector && sourceServes.includes(candidateCoreSector)) {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Aligned ecosystem: source explicitly serves the ${candidateSector} sector.`,
++    };
++  }
++
+   // Check explicit rules (both directions)
+   const pairKey = `${sNorm}|${cNorm}`;
+   const reverseKey = `${cNorm}|${sNorm}`;
+@@ -215,11 +239,15 @@ const HARD_INCOMPATIBLE = new Set<string>([
+   'FMCG|NBFC',
+   'FMCG|DEFENCE',
+   'FMCG|PHARMACEUTICALS',
++  'CONSUMER|NBFC',
++  'CONSUMER|DEFENCE',
++  'CONSUMER|PHARMACEUTICALS',
+   'EDUCATION|LOGISTICS',
+   'EDUCATION|CHEMICALS',
+   'REAL_ESTATE|LOGISTICS',
+   'DEFENCE|RETAIL',
+   'DEFENCE|FMCG',
++  'DEFENCE|CONSUMER',
+   'DEFENCE|EDUCATION',
+   'CHEMICALS|NBFC',
+   'CHEMICALS|RETAIL',
+@@ -265,6 +293,10 @@ const COMPATIBLE: Record<string, string> = {
+   'MANUFACTURING|FMCG':             'Manufacturer acquires FMCG brand for B2C market access.',
+   'FMCG|RETAIL':                    'FMCG brand acquires retail distribution ΓÇö channel expansion.',
+   'RETAIL|FMCG':                    'Retail chain acquires FMCG brand to create private label portfolio.',
++  'CONSUMER|MANUFACTURING':             'Consumer brand acquires manufacturing for in-house production. 2 deals.',
++  'MANUFACTURING|CONSUMER':             'Manufacturer acquires consumer brand for B2C market access.',
++  'CONSUMER|RETAIL':                    'Consumer brand acquires retail distribution ΓÇö channel expansion.',
++  'RETAIL|CONSUMER':                    'Retail chain acquires consumer brand to create private label portfolio.',
+   'REAL_ESTATE|HOTELS':             'Real estate developer acquires hospitality asset.',
+   'HOTELS|REAL_ESTATE':             'Hotel chain acquires property for flagship asset ownership.',
+   'TECHNOLOGY|EDUCATION':           'Edtech ΓÇö software platform serving education institutions.',
+@@ -284,6 +316,7 @@ const NARROW: Record<string, string> = {
+   'LOGISTICS|PHARMACEUTICALS':      'NARROW: Pharma-grade cold chain logistics only. Verify certification.',
+   'LOGISTICS|HEALTHCARE':           'NARROW: Medical supply chain only. Verify temperature-controlled capability.',
+   'LOGISTICS|FMCG':                 'NARROW: FMCG last-mile delivery. Verify route density.',
++  'LOGISTICS|CONSUMER':             'NARROW: Consumer goods last-mile delivery. Verify route density.',
+   'LOGISTICS|MANUFACTURING':        'NARROW: Industrial logistics only. Verify captive client or MSA contracts.',
+   'MANUFACTURING|PHARMACEUTICALS':  'NARROW: Contract manufacturing or packaging only.',
+   'PHARMACEUTICALS|MANUFACTURING':  'NARROW: Pharma packaging or equipment supplier only.',
+@@ -297,6 +330,8 @@ const NARROW: Record<string, string> = {
+   'TECHNOLOGY|LOGISTICS':           'NARROW: Logistics-tech ΓÇö WMS, TMS, route optimisation only.',
+   'FMCG|LOGISTICS':                 'NARROW: Last-mile distribution alignment only.',
+   'FMCG|HEALTHCARE':                'NARROW: Health FMCG ΓÇö nutraceuticals, OTC products only.',
++  'CONSUMER|LOGISTICS':             'NARROW: Last-mile distribution alignment only.',
++  'CONSUMER|HEALTHCARE':            'NARROW: Health consumer products ΓÇö nutraceuticals, OTC products only.',
+   'CHEMICALS|AGRICULTURE':          'NARROW: Agrochemicals only. Verify product category.',
+   'MANUFACTURING|LOGISTICS':        'NARROW: Captive logistics for manufacturing output only.',
+ };
+
+commit 435e701b51c89ad2483491e780582e550573f1b0
+Author: NOVA0206 <262285015+dealzebraglobal-ai@users.noreply.github.com>
+Date:   Sat Sep 19 18:59:13 2026 +0530
+
+    Major updates
+
+diff --git a/src/lib/M5_sectorMatrix.ts b/src/lib/M5_sectorMatrix.ts
+index 0248764..2d23976 100644
+--- a/src/lib/M5_sectorMatrix.ts
++++ b/src/lib/M5_sectorMatrix.ts
+@@ -30,27 +30,78 @@ export interface SectorRelation {
+ 
+ const NORMALIZE_MAP: Record<string, string> = {
+   pharma:        'PHARMACEUTICALS',
++  pharmaceutical: 'PHARMACEUTICALS',
++  pharmaceuticals: 'PHARMACEUTICALS',
+   healthcare:    'HEALTHCARE',
++  hospitals:     'HEALTHCARE',
++  hospital:      'HEALTHCARE',
+   manufacturing: 'MANUFACTURING',
+   saas:          'TECHNOLOGY',
++  software:      'TECHNOLOGY',
++  technology:    'TECHNOLOGY',
+   finserv:       'FINTECH',
+   consumer:      'FMCG',
++  fmcg:          'FMCG',
+   realestate:    'REAL_ESTATE',
++  'real estate': 'REAL_ESTATE',
+   logistics:     'LOGISTICS',
+   education:     'EDUCATION',
+   chemicals:     'CHEMICALS',
+   hospitality:   'HOTELS',
++  hotels:        'HOTELS',
+   renewable:     'RENEWABLE_ENERGY',
++  'renewable energy': 'RENEWABLE_ENERGY',
+   defence:       'DEFENCE',
++  defense:       'DEFENCE',
+   oil_gas:       'OIL_GAS',
++  'oil & gas':   'OIL_GAS',
+   ngo:           'NGO',
+   mixed:         'GENERAL',
+   // sub-sector overrides
+   nbfc:          'NBFC',
+-  hospital:      'HEALTHCARE',
+   fintech:       'FINTECH',
+   'auto ancillary': 'AUTO_ANCILLARY',
+   ev:            'EV_MOBILITY',
++  // specific product industries (must map to their proper sector category, NOT generic manufacturing!)
++  toy:           'TOYS',
++  toys:          'TOYS',
++  fashion:       'FASHION',
++  textiles:      'HOME_TEXTILES',
++  'home textiles': 'HOME_TEXTILES',
++  cybersecurity: 'CYBERSECURITY',
++  'cyber security': 'CYBERSECURITY',
++  'ot security': 'CYBERSECURITY',
++  'sheet metal': 'SHEET_METAL_MANUFACTURING',
++  'sheet metal manufacturing': 'SHEET_METAL_MANUFACTURING',
++};
++
++// Known explicit cross-industry compatibility rules
++const INDUSTRY_COMPATIBILITY_RULES: Record<string, 'EXACT' | 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE'> = {
++  // Toys is compatible with Toys, Consumer Products, FMCG, Retail
++  'TOYS|TOYS': 'EXACT',
++  'TOYS|CONSUMER': 'COMPATIBLE',
++  'TOYS|FMCG': 'COMPATIBLE',
++  'TOYS|RETAIL': 'COMPATIBLE',
++  'TOYS|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
++  'SHEET_METAL_MANUFACTURING|TOYS': 'INCOMPATIBLE',
++  'TOYS|DEFENCE': 'INCOMPATIBLE',
++  'DEFENCE|TOYS': 'INCOMPATIBLE',
++  'TOYS|PHARMACEUTICALS': 'INCOMPATIBLE',
++  'PHARMACEUTICALS|TOYS': 'INCOMPATIBLE',
++
++  // Fashion / Home Textiles
++  'FASHION|FASHION': 'EXACT',
++  'FASHION|HOME_TEXTILES': 'COMPATIBLE',
++  'HOME_TEXTILES|HOME_TEXTILES': 'EXACT',
++  'HOME_TEXTILES|FASHION': 'COMPATIBLE',
++  'FASHION|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
++  'HOME_TEXTILES|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
++
++  // Cybersecurity
++  'CYBERSECURITY|CYBERSECURITY': 'EXACT',
++  'CYBERSECURITY|TECHNOLOGY': 'COMPATIBLE',
++  'CYBERSECURITY|DEFENCE': 'COMPATIBLE',
++  'CYBERSECURITY|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+ };
+ 
+ export function normalizeSector(raw: string): string {
+@@ -59,6 +110,83 @@ export function normalizeSector(raw: string): string {
+   return NORMALIZE_MAP[lower] ?? raw.toUpperCase().replace(/[\s-]+/g, '_');
+ }
+ 
++function normalizeIndustryKey(raw: string): string {
++  if (!raw) return 'GENERAL';
++  const lower = raw.toLowerCase().trim();
++  if (NORMALIZE_MAP[lower]) return NORMALIZE_MAP[lower];
++
++  if (lower.includes('toy')) return 'TOYS';
++  if (lower.includes('sheet metal') || lower.includes('sheet_metal') || lower.includes('stamping')) return 'SHEET_METAL_MANUFACTURING';
++  if (lower.includes('textile') || lower.includes('linen') || lower.includes('apparel') || lower.includes('garment')) return 'HOME_TEXTILES';
++  if (lower.includes('fashion')) return 'FASHION';
++  if (lower.includes('cyber') || lower.includes('security')) return 'CYBERSECURITY';
++
++  return normalizeSector(raw);
++}
++
++export function getIndustryCompatibility(
++  sourceIndustry: string | null | undefined,
++  candidateIndustry: string | null | undefined,
++  sourceSector?: string | null,
++  candidateSector?: string | null,
++): SectorRelation {
++  const sInd = (sourceIndustry || sourceSector || '').toLowerCase().trim();
++  const cInd = (candidateIndustry || candidateSector || '').toLowerCase().trim();
++
++  if (!sInd || !cInd) {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: 'General compatibility (industry not constrained).',
++    };
++  }
++
++  // Exact normalized string match
++  if (sInd === cInd) {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Exact industry alignment: both operate in ${candidateIndustry || sourceIndustry}.`,
++    };
++  }
++
++  const sNorm = normalizeIndustryKey(sInd);
++  const cNorm = normalizeIndustryKey(cInd);
++
++  if (sNorm === cNorm && sNorm !== 'GENERAL') {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Exact category match: ${sNorm}.`,
++    };
++  }
++
++  // Check explicit rules (both directions)
++  const pairKey = `${sNorm}|${cNorm}`;
++  const reverseKey = `${cNorm}|${sNorm}`;
++  const rule = INDUSTRY_COMPATIBILITY_RULES[pairKey] || INDUSTRY_COMPATIBILITY_RULES[reverseKey];
++
++  if (rule === 'INCOMPATIBLE') {
++    return {
++      level: 'INCOMPATIBLE',
++      penalty: 1.0,
++      reason: `Industry mismatch: ${sourceIndustry || sNorm} is incompatible with ${candidateIndustry || cNorm}.`,
++    };
++  }
++  if (rule === 'EXACT' || rule === 'COMPATIBLE') {
++    return {
++      level: 'COMPATIBLE',
++      penalty: 0,
++      reason: `Aligned industry sector: ${sourceIndustry} aligns with ${candidateIndustry}.`,
++    };
++  }
++
++  // Fallback to general sector compatibility
++  const fallbackSectorA = sourceSector || sNorm || sInd;
++  const fallbackSectorB = candidateSector || cNorm || cInd;
++  return getSectorCompatibility(fallbackSectorA, fallbackSectorB);
++}
++
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ // HARD INCOMPATIBLE PAIRS (symmetric)
+ // Zero occurrences in 348 deals + no plausible business logic
+
+commit c2426ada2d3636c55055a0c6aa60443a64a5ef61
+Author: NOVA0206 <jeevan02062004@gmail.com>
+Date:   Mon Jun 8 17:37:51 2026 +0530
+
+    Major changes
+
+diff --git a/src/lib/M5_sectorMatrix.ts b/src/lib/M5_sectorMatrix.ts
+index f35fc9e..0248764 100644
+--- a/src/lib/M5_sectorMatrix.ts
++++ b/src/lib/M5_sectorMatrix.ts
+@@ -1,46 +1,56 @@
+ /**
+  * DealCollab ΓÇö M5: Sector Compatibility Matrix
+  * =============================================
+- * Source: DC-KB-003 v1.0 ΓÇö 348 real Indian M&A transactions
+- *
++ * Source: DC-KB-003 v1.0 ΓÇö derived from 348 real Indian M&A transactions
+  * Place at: src/lib/M5_sectorMatrix.ts
++ *
++ * Exports:
++ *   normalizeSector()        ΓÇö maps promptRouter SectorKeys ΓåÆ DC-KB-003 codes
++ *   getSectorCompatibility() ΓÇö returns compatibility level + reason for any pair
++ *   MATCH_ARCHETYPES         ΓÇö match type labels for match cards
++ *   detectFraudSignals()     ΓÇö HR-8 fraud signal detection
+  */
+ 
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// TYPES
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
+ export type CompatibilityLevel = 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE';
+ 
+ export interface SectorRelation {
+-  level: CompatibilityLevel;
+-  penalty: number;
+-  reason: string;
++  level:   CompatibilityLevel;
++  penalty: number;   // score deduction applied in calculateV2Score()
++  reason:  string;   // shown on match card
+ }
+ 
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ // SECTOR NORMALIZATION
+-// promptRouter keys ΓåÆ canonical uppercase codes for embedding + matching
++// promptRouter lowercase keys ΓåÆ DC-KB-003 uppercase canonical codes
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ 
+ const NORMALIZE_MAP: Record<string, string> = {
+-  pharma: 'PHARMACEUTICALS',
++  pharma:        'PHARMACEUTICALS',
++  healthcare:    'HEALTHCARE',
+   manufacturing: 'MANUFACTURING',
+-  saas: 'TECHNOLOGY',
+-  finserv: 'FINTECH',
+-  consumer: 'FMCG',
+-  realestate: 'REAL_ESTATE',
+-  logistics: 'LOGISTICS',
+-  education: 'EDUCATION',
+-  chemicals: 'CHEMICALS',
+-  hospitality: 'HOTELS',
+-  renewable: 'RENEWABLE_ENERGY',
+-  defence: 'DEFENCE',
+-  oil_gas: 'OIL_GAS',
+-  ngo: 'NGO',
+-  mixed: 'GENERAL',
++  saas:          'TECHNOLOGY',
++  finserv:       'FINTECH',
++  consumer:      'FMCG',
++  realestate:    'REAL_ESTATE',
++  logistics:     'LOGISTICS',
++  education:     'EDUCATION',
++  chemicals:     'CHEMICALS',
++  hospitality:   'HOTELS',
++  renewable:     'RENEWABLE_ENERGY',
++  defence:       'DEFENCE',
++  oil_gas:       'OIL_GAS',
++  ngo:           'NGO',
++  mixed:         'GENERAL',
+   // sub-sector overrides
+-  nbfc: 'NBFC',
+-  hospital: 'PHARMACEUTICALS',
+-  fintech: 'FINTECH',
++  nbfc:          'NBFC',
++  hospital:      'HEALTHCARE',
++  fintech:       'FINTECH',
+   'auto ancillary': 'AUTO_ANCILLARY',
+-  ev: 'EV_MOBILITY',
++  ev:            'EV_MOBILITY',
+ };
+ 
+ export function normalizeSector(raw: string): string {
+@@ -55,20 +65,36 @@ export function normalizeSector(raw: string): string {
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ 
+ const HARD_INCOMPATIBLE = new Set<string>([
+-  'PHARMACEUTICALS|REAL_ESTATE', 'PHARMACEUTICALS|HOTELS',
+-  'PHARMACEUTICALS|RETAIL', 'PHARMACEUTICALS|DEFENCE',
+-  'NBFC|MANUFACTURING', 'NBFC|REAL_ESTATE',
+-  'NBFC|LOGISTICS', 'NBFC|HOTELS',
+-  'TECHNOLOGY|REAL_ESTATE', 'TECHNOLOGY|HOTELS',
+-  'MANUFACTURING|EDUCATION', 'MANUFACTURING|NBFC',
+-  'MANUFACTURING|RETAIL', 'HEALTHCARE|RETAIL',
+-  'HEALTHCARE|REAL_ESTATE', 'RENEWABLE_ENERGY|RETAIL',
+-  'RENEWABLE_ENERGY|EDUCATION', 'RENEWABLE_ENERGY|HOTELS',
+-  'FMCG|NBFC', 'FMCG|DEFENCE',
+-  'EDUCATION|LOGISTICS', 'EDUCATION|CHEMICALS',
+-  'REAL_ESTATE|LOGISTICS', 'DEFENCE|RETAIL',
+-  'DEFENCE|FMCG', 'DEFENCE|EDUCATION',
+-  'CHEMICALS|NBFC', 'CHEMICALS|RETAIL',
++  'PHARMACEUTICALS|REAL_ESTATE',
++  'PHARMACEUTICALS|HOTELS',
++  'PHARMACEUTICALS|RETAIL',
++  'PHARMACEUTICALS|DEFENCE',
++  'HEALTHCARE|RETAIL',
++  'HEALTHCARE|REAL_ESTATE',
++  'HEALTHCARE|DEFENCE',
++  'NBFC|MANUFACTURING',
++  'NBFC|REAL_ESTATE',
++  'NBFC|LOGISTICS',
++  'NBFC|HOTELS',
++  'TECHNOLOGY|REAL_ESTATE',
++  'TECHNOLOGY|HOTELS',
++  'MANUFACTURING|EDUCATION',
++  'MANUFACTURING|NBFC',
++  'MANUFACTURING|RETAIL',
++  'RENEWABLE_ENERGY|RETAIL',
++  'RENEWABLE_ENERGY|EDUCATION',
++  'RENEWABLE_ENERGY|HOTELS',
++  'FMCG|NBFC',
++  'FMCG|DEFENCE',
++  'FMCG|PHARMACEUTICALS',
++  'EDUCATION|LOGISTICS',
++  'EDUCATION|CHEMICALS',
++  'REAL_ESTATE|LOGISTICS',
++  'DEFENCE|RETAIL',
++  'DEFENCE|FMCG',
++  'DEFENCE|EDUCATION',
++  'CHEMICALS|NBFC',
++  'CHEMICALS|RETAIL',
+   'CHEMICALS|HOTELS',
+ ]);
+ 
+@@ -77,47 +103,49 @@ function isHardIncompatible(s: string, t: string): boolean {
+ }
+ 
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// COMPATIBLE PAIRS ΓÇö observed in dataset with reasoning
++// COMPATIBLE PAIRS ΓÇö observed in dataset with deal rationale
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ 
+ const COMPATIBLE: Record<string, string> = {
+-  'TECHNOLOGY|AUTO_ANCILLARY': 'Tech closes hardware-software gap. Factory automation requires software intelligence layer. 13 deals observed.',
+-  'AUTO_ANCILLARY|TECHNOLOGY': 'Auto component maker adds digital layer for Industry 4.0 OEM requirements. 6 deals observed.',
+-  'MANUFACTURING|AUTO_ANCILLARY': 'OEM supply consolidation ΓÇö same clients, adjacent component. Add portfolio without new BD. 7 deals observed.',
+-  'AUTO_ANCILLARY|MANUFACTURING': 'Tier-1 acquires Tier-2 supplier. Same OEM relationships, adjacent capability.',
+-  'AUTO_ANCILLARY|EV_MOBILITY': 'Auto component maker transitions to EV-compatible parts. Platform changeover thesis.',
+-  'EV_MOBILITY|AUTO_ANCILLARY': 'EV platform acquires component capability ΓÇö vertical integration of supply chain.',
+-  'MANUFACTURING|EV_MOBILITY': 'Industrial manufacturer adds EV capability for fleet and energy clients.',
+-  'EV_MOBILITY|MANUFACTURING': 'EV company acquires manufacturing capacity for scale-up.',
+-  'EV_MOBILITY|RENEWABLE_ENERGY': 'EV + renewable ΓÇö charging infrastructure powered by clean energy.',
+-  'RENEWABLE_ENERGY|EV_MOBILITY': 'Renewable energy adds EV charging as downstream application.',
+-  'TECHNOLOGY|NBFC': 'Fintech acquires RBI NBFC license ΓÇö regulatory shortcut. Fresh license takes 18-24 months. 5 deals observed.',
+-  'NBFC|FINTECH': 'NBFC adds fintech platform for digital loan distribution.',
+-  'FINTECH|NBFC': 'Fintech acquires lending license to activate embedded finance.',
+-  'TECHNOLOGY|FINTECH': 'Tech-adjacent ΓÇö software + financial services integration.',
+-  'FINTECH|TECHNOLOGY': 'Fintech acquires tech platform to power digital lending or payments.',
+-  'TECHNOLOGY|PHARMACEUTICALS': 'Pharma software ΓÇö clinical trials, regulatory submissions, QMS. 5 deals observed.',
+-  'PHARMACEUTICALS|HEALTHCARE': 'Pharma conglomerate expands into hospital/diagnostic network.',
+-  'HEALTHCARE|PHARMACEUTICALS': 'Hospital chain acquires pharma supply ΓÇö backward integration.',
+-  'TECHNOLOGY|HEALTHCARE': 'Digital health ΓÇö telemedicine, diagnostic AI, hospital management.',
+-  'MANUFACTURING|RENEWABLE_ENERGY': 'Industrial manufacturer adds renewable capability to serve existing client energy needs. 3 deals observed.',
+-  'MANUFACTURING|CHEMICALS': 'Chemical inputs supplier acquired by manufacturer ΓÇö backward integration.',
+-  'CHEMICALS|MANUFACTURING': 'Chemical company acquires manufacturing capacity.',
+-  'CHEMICALS|PHARMACEUTICALS': 'Chemical intermediate supplier acquires downstream pharma. 2 deals observed.',
+-  'PHARMACEUTICALS|CHEMICALS': 'Pharma acquires chemical feedstock for supply chain security.',
+-  'FMCG|MANUFACTURING': 'FMCG brand acquires manufacturing for in-house production. 2 deals observed.',
+-  'MANUFACTURING|FMCG': 'Manufacturer acquires FMCG brand for B2C market access.',
+-  'FMCG|RETAIL': 'FMCG brand acquires retail distribution ΓÇö channel expansion.',
+-  'RETAIL|FMCG': 'Retail chain acquires FMCG brand to create private label portfolio.',
+-  'REAL_ESTATE|HOTELS': 'Real estate developer acquires hospitality asset.',
+-  'HOTELS|REAL_ESTATE': 'Hotel chain acquires property for flagship asset ownership.',
+-  'TECHNOLOGY|EDUCATION': 'Edtech ΓÇö software platform serving education institutions.',
+-  'EDUCATION|TECHNOLOGY': 'Education institution acquires edtech platform for digital delivery.',
+-  'FINANCIAL_SERVICES|NBFC': 'Financial services firm acquires NBFC for lending product.',
+-  'FINANCIAL_SERVICES|FINTECH': 'Wealth management adds fintech platform.',
+-  'AUTO_ANCILLARY|DEFENCE': 'Precision engineering capabilities dual-use for defence components.',
+-  'DEFENCE|MANUFACTURING': 'Defence OEM acquires manufacturing capacity.',
+-  'MANUFACTURING|DEFENCE': 'Manufacturer adds defence vertical ΓÇö government contract diversification.',
++  'TECHNOLOGY|AUTO_ANCILLARY':      'Tech closes hardware-software gap. Factory automation requires software intelligence layer. 13 deals observed.',
++  'AUTO_ANCILLARY|TECHNOLOGY':      'Auto component maker adds digital layer for Industry 4.0 OEM requirements. 6 deals observed.',
++  'MANUFACTURING|AUTO_ANCILLARY':   'OEM supply consolidation ΓÇö same clients, adjacent component. 7 deals observed.',
++  'AUTO_ANCILLARY|MANUFACTURING':   'Tier-1 acquires Tier-2 supplier. Same OEM relationships, adjacent capability.',
++  'AUTO_ANCILLARY|EV_MOBILITY':     'Auto component maker transitions to EV-compatible parts. Platform changeover thesis.',
++  'EV_MOBILITY|AUTO_ANCILLARY':     'EV platform acquires component capability ΓÇö vertical integration of supply chain.',
++  'MANUFACTURING|EV_MOBILITY':      'Industrial manufacturer adds EV capability for fleet and energy clients.',
++  'EV_MOBILITY|MANUFACTURING':      'EV company acquires manufacturing capacity for scale-up.',
++  'EV_MOBILITY|RENEWABLE_ENERGY':   'EV + renewable ΓÇö charging infrastructure powered by clean energy.',
++  'RENEWABLE_ENERGY|EV_MOBILITY':   'Renewable energy company adds EV charging as downstream application.',
++  'TECHNOLOGY|NBFC':                'Fintech acquires RBI NBFC licence ΓÇö regulatory shortcut. Fresh licence 18ΓÇô24 months. 5 deals.',
++  'NBFC|FINTECH':                   'NBFC adds fintech platform for digital loan distribution.',
++  'FINTECH|NBFC':                   'Fintech acquires lending licence to activate embedded finance.',
++  'TECHNOLOGY|FINTECH':             'Tech-adjacent ΓÇö software + financial services integration.',
++  'FINTECH|TECHNOLOGY':             'Fintech acquires tech platform to power digital lending or payments.',
++  'TECHNOLOGY|PHARMACEUTICALS':     'Pharma software ΓÇö clinical trials, regulatory submissions, QMS. 5 deals.',
++  'TECHNOLOGY|HEALTHCARE':          'Digital health ΓÇö telemedicine, diagnostic AI, hospital management systems.',
++  'HEALTHCARE|TECHNOLOGY':          'Healthcare business acquires digital health platform.',
++  'PHARMACEUTICALS|HEALTHCARE':     'Pharma conglomerate expands into hospital/diagnostic network.',
++  'HEALTHCARE|PHARMACEUTICALS':     'Hospital chain acquires pharma supply ΓÇö backward integration.',
++  'MANUFACTURING|RENEWABLE_ENERGY': 'Industrial manufacturer adds renewable capability for existing client energy needs. 3 deals.',
++  'MANUFACTURING|CHEMICALS':        'Chemical inputs supplier acquired by manufacturer ΓÇö backward integration.',
++  'CHEMICALS|MANUFACTURING':        'Chemical company acquires manufacturing capacity.',
++  'CHEMICALS|PHARMACEUTICALS':      'Chemical intermediate supplier acquires downstream pharma. 2 deals.',
++  'PHARMACEUTICALS|CHEMICALS':      'Pharma acquires chemical feedstock for supply chain security.',
++  'CHEMICALS|HEALTHCARE':           'Medical consumables or diagnostics chemicals adjacency.',
++  'FMCG|MANUFACTURING':             'FMCG brand acquires manufacturing for in-house production. 2 deals.',
++  'MANUFACTURING|FMCG':             'Manufacturer acquires FMCG brand for B2C market access.',
++  'FMCG|RETAIL':                    'FMCG brand acquires retail distribution ΓÇö channel expansion.',
++  'RETAIL|FMCG':                    'Retail chain acquires FMCG brand to create private label portfolio.',
++  'REAL_ESTATE|HOTELS':             'Real estate developer acquires hospitality asset.',
++  'HOTELS|REAL_ESTATE':             'Hotel chain acquires property for flagship asset ownership.',
++  'TECHNOLOGY|EDUCATION':           'Edtech ΓÇö software platform serving education institutions.',
++  'EDUCATION|TECHNOLOGY':           'Education institution acquires edtech for digital delivery.',
++  'FINANCIAL_SERVICES|NBFC':        'Financial services firm acquires NBFC for lending product.',
++  'FINANCIAL_SERVICES|FINTECH':     'Wealth management adds fintech platform.',
++  'AUTO_ANCILLARY|DEFENCE':         'Precision engineering capabilities dual-use for defence components.',
++  'DEFENCE|MANUFACTURING':          'Defence OEM acquires manufacturing capacity.',
++  'MANUFACTURING|DEFENCE':          'Manufacturer adds defence vertical ΓÇö government contract diversification.',
+ };
+ 
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+@@ -125,28 +153,28 @@ const COMPATIBLE: Record<string, string> = {
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ 
+ const NARROW: Record<string, string> = {
+-  'LOGISTICS|PHARMACEUTICALS': 'NARROW: Cold chain logistics only. Dry freight is incompatible. Verify cold chain certification.',
+-  'LOGISTICS|FMCG': 'NARROW: FMCG last-mile delivery. Verify route density and client overlap.',
+-  'LOGISTICS|MANUFACTURING': 'NARROW: Industrial logistics only. Verify captive client or MSA contracts.',
+-  'LOGISTICS|HEALTHCARE': 'NARROW: Medical supply chain only. Verify temperature-controlled capability.',
+-  'MANUFACTURING|PHARMACEUTICALS': 'NARROW: Contract manufacturing or packaging only. Not applicable for formulation R&D.',
+-  'PHARMACEUTICALS|MANUFACTURING': 'NARROW: Pharma packaging or equipment supplier only.',
+-  'HEALTHCARE|TECHNOLOGY': 'NARROW: Healthtech platforms only ΓÇö telemedicine, diagnostic AI, hospital management.',
+-  'HEALTHCARE|LOGISTICS': 'NARROW: Medical supply logistics only.',
+-  'AUTO_ANCILLARY|NBFC': 'NARROW: Fleet finance or vehicle finance NBFC only.',
+-  'RETAIL|TECHNOLOGY': 'NARROW: Retail-tech ΓÇö POS, inventory, e-commerce platforms only.',
+-  'FINTECH|HEALTHCARE': 'NARROW: Health payments or insurance-tech only.',
+-  'FINTECH|RETAIL': 'NARROW: Embedded finance or BNPL only.',
+-  'TECHNOLOGY|MANUFACTURING': 'NARROW: Industry 4.0 / factory automation software only.',
+-  'TECHNOLOGY|LOGISTICS': 'NARROW: Logistics-tech ΓÇö WMS, TMS, route optimisation only.',
+-  'FMCG|LOGISTICS': 'NARROW: Last-mile distribution alignment only.',
+-  'FMCG|HEALTHCARE': 'NARROW: Health FMCG ΓÇö nutraceuticals, OTC products only.',
+-  'CHEMICALS|AGRICULTURE': 'NARROW: Agrochemicals only. Verify product category.',
+-  'MANUFACTURING|LOGISTICS': 'NARROW: Captive logistics for manufacturing output only.',
++  'LOGISTICS|PHARMACEUTICALS':      'NARROW: Pharma-grade cold chain logistics only. Verify certification.',
++  'LOGISTICS|HEALTHCARE':           'NARROW: Medical supply chain only. Verify temperature-controlled capability.',
++  'LOGISTICS|FMCG':                 'NARROW: FMCG last-mile delivery. Verify route density.',
++  'LOGISTICS|MANUFACTURING':        'NARROW: Industrial logistics only. Verify captive client or MSA contracts.',
++  'MANUFACTURING|PHARMACEUTICALS':  'NARROW: Contract manufacturing or packaging only.',
++  'PHARMACEUTICALS|MANUFACTURING':  'NARROW: Pharma packaging or equipment supplier only.',
++  'HEALTHCARE|LOGISTICS':           'NARROW: Medical supply logistics only.',
++  'HEALTHCARE|TECHNOLOGY':          'NARROW: Healthtech platforms only ΓÇö telemedicine, diagnostic AI.',
++  'AUTO_ANCILLARY|NBFC':            'NARROW: Fleet finance or vehicle finance NBFC only.',
++  'RETAIL|TECHNOLOGY':              'NARROW: Retail-tech ΓÇö POS, inventory, e-commerce platforms only.',
++  'FINTECH|HEALTHCARE':             'NARROW: Health payments or insurance-tech only.',
++  'FINTECH|RETAIL':                 'NARROW: Embedded finance or BNPL only.',
++  'TECHNOLOGY|MANUFACTURING':       'NARROW: Industry 4.0 / factory automation software only.',
++  'TECHNOLOGY|LOGISTICS':           'NARROW: Logistics-tech ΓÇö WMS, TMS, route optimisation only.',
++  'FMCG|LOGISTICS':                 'NARROW: Last-mile distribution alignment only.',
++  'FMCG|HEALTHCARE':                'NARROW: Health FMCG ΓÇö nutraceuticals, OTC products only.',
++  'CHEMICALS|AGRICULTURE':          'NARROW: Agrochemicals only. Verify product category.',
++  'MANUFACTURING|LOGISTICS':        'NARROW: Captive logistics for manufacturing output only.',
+ };
+ 
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// MAIN EXPORT
++// MAIN EXPORT: getSectorCompatibility()
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ 
+ export function getSectorCompatibility(
+@@ -156,36 +184,59 @@ export function getSectorCompatibility(
+   const s = normalizeSector(sourceSector);
+   const t = normalizeSector(targetSector);
+ 
++  // Same sector ΓÇö always compatible
+   if (s === t) {
+-    return { level: 'COMPATIBLE', penalty: 0, reason: `${s}: Same-sector consolidation ΓÇö capacity, capability, or client book.` };
++    return {
++      level:   'COMPATIBLE',
++      penalty: 0,
++      reason:  `${s}: Same-sector consolidation ΓÇö capacity, capability, or client book acquisition.`,
++    };
+   }
+ 
++  // Hard incompatible check (symmetric)
+   if (isHardIncompatible(s, t)) {
+-    return { level: 'INCOMPATIBLE', penalty: 1.0, reason: `${s} ΓåÆ ${t}: No observed deal pattern. No plausible business synergy.` };
++    return {
++      level:   'INCOMPATIBLE',
++      penalty: 1.0,
++      reason:  `${s} ΓåÆ ${t}: No observed deal pattern in dataset. No plausible business synergy.`,
++    };
+   }
+ 
++  // Compatible pair check (both directions)
+   const compatReason = COMPATIBLE[`${s}|${t}`] ?? COMPATIBLE[`${t}|${s}`];
+-  if (compatReason) return { level: 'COMPATIBLE', penalty: 0, reason: compatReason };
++  if (compatReason) {
++    return { level: 'COMPATIBLE', penalty: 0, reason: compatReason };
++  }
+ 
++  // Narrow pair check (both directions)
+   const narrowReason = NARROW[`${s}|${t}`] ?? NARROW[`${t}|${s}`];
+-  if (narrowReason) return { level: 'NARROW', penalty: 0.10, reason: narrowReason };
++  if (narrowReason) {
++    return { level: 'NARROW', penalty: 0.10, reason: narrowReason };
++  }
+ 
+-  return { level: 'NARROW', penalty: 0.15, reason: `${s} ΓåÆ ${t}: No direct deal precedent. Verify specific use case before connecting.` };
++  // Default: NARROW with higher penalty (not explicitly incompatible, no precedent)
++  return {
++    level:   'NARROW',
++    penalty: 0.15,
++    reason:  `${s} ΓåÆ ${t}: No direct deal precedent. Verify specific use case before connecting.`,
++  };
+ }
+ 
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// MATCH ARCHETYPES ΓÇö labels for match cards
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
+ export const MATCH_ARCHETYPES = {
+-  BOLT_ON: 'Same-sector bolt-on',
+-  LICENSE: 'Regulatory license acquisition',
++  BOLT_ON:      'Same-sector bolt-on',
++  LICENSE:      'Regulatory licence acquisition',
+   CROSS_SECTOR: 'Cross-sector capability',
+-  VERTICAL: 'Vertical integration',
++  VERTICAL:     'Vertical integration',
+   TECH_ENABLER: 'Technology enablement',
+-  GEOGRAPHIC: 'Geographic expansion',
++  GEOGRAPHIC:   'Geographic expansion',
+ } as const;
+ 
+-export type MatchArchetype = (typeof MATCH_ARCHETYPES)[keyof typeof MATCH_ARCHETYPES];
+-
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-// FRAUD SIGNALS (HR-8)
++// FRAUD SIGNALS ΓÇö HR-8 detection
+ // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ 
+ const FRAUD_SIGNAL_LIST = [
+
+commit 805685b5f376e3dd9dd67736b81da3fab2431af3
+Author: NOVA0206 <jeevan02062004@gmail.com>
+Date:   Fri May 15 17:52:09 2026 +0530
+
+    Major deployment
+
+diff --git a/src/lib/M5_sectorMatrix.ts b/src/lib/M5_sectorMatrix.ts
+new file mode 100644
+index 0000000..f35fc9e
+--- /dev/null
++++ b/src/lib/M5_sectorMatrix.ts
+@@ -0,0 +1,201 @@
++/**
++ * DealCollab ΓÇö M5: Sector Compatibility Matrix
++ * =============================================
++ * Source: DC-KB-003 v1.0 ΓÇö 348 real Indian M&A transactions
++ *
++ * Place at: src/lib/M5_sectorMatrix.ts
++ */
++
++export type CompatibilityLevel = 'COMPATIBLE' | 'NARROW' | 'INCOMPATIBLE';
++
++export interface SectorRelation {
++  level: CompatibilityLevel;
++  penalty: number;
++  reason: string;
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// SECTOR NORMALIZATION
++// promptRouter keys ΓåÆ canonical uppercase codes for embedding + matching
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const NORMALIZE_MAP: Record<string, string> = {
++  pharma: 'PHARMACEUTICALS',
++  manufacturing: 'MANUFACTURING',
++  saas: 'TECHNOLOGY',
++  finserv: 'FINTECH',
++  consumer: 'FMCG',
++  realestate: 'REAL_ESTATE',
++  logistics: 'LOGISTICS',
++  education: 'EDUCATION',
++  chemicals: 'CHEMICALS',
++  hospitality: 'HOTELS',
++  renewable: 'RENEWABLE_ENERGY',
++  defence: 'DEFENCE',
++  oil_gas: 'OIL_GAS',
++  ngo: 'NGO',
++  mixed: 'GENERAL',
++  // sub-sector overrides
++  nbfc: 'NBFC',
++  hospital: 'PHARMACEUTICALS',
++  fintech: 'FINTECH',
++  'auto ancillary': 'AUTO_ANCILLARY',
++  ev: 'EV_MOBILITY',
++};
++
++export function normalizeSector(raw: string): string {
++  if (!raw) return 'GENERAL';
++  const lower = raw.toLowerCase().trim();
++  return NORMALIZE_MAP[lower] ?? raw.toUpperCase().replace(/[\s-]+/g, '_');
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// HARD INCOMPATIBLE PAIRS (symmetric)
++// Zero occurrences in 348 deals + no plausible business logic
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const HARD_INCOMPATIBLE = new Set<string>([
++  'PHARMACEUTICALS|REAL_ESTATE', 'PHARMACEUTICALS|HOTELS',
++  'PHARMACEUTICALS|RETAIL', 'PHARMACEUTICALS|DEFENCE',
++  'NBFC|MANUFACTURING', 'NBFC|REAL_ESTATE',
++  'NBFC|LOGISTICS', 'NBFC|HOTELS',
++  'TECHNOLOGY|REAL_ESTATE', 'TECHNOLOGY|HOTELS',
++  'MANUFACTURING|EDUCATION', 'MANUFACTURING|NBFC',
++  'MANUFACTURING|RETAIL', 'HEALTHCARE|RETAIL',
++  'HEALTHCARE|REAL_ESTATE', 'RENEWABLE_ENERGY|RETAIL',
++  'RENEWABLE_ENERGY|EDUCATION', 'RENEWABLE_ENERGY|HOTELS',
++  'FMCG|NBFC', 'FMCG|DEFENCE',
++  'EDUCATION|LOGISTICS', 'EDUCATION|CHEMICALS',
++  'REAL_ESTATE|LOGISTICS', 'DEFENCE|RETAIL',
++  'DEFENCE|FMCG', 'DEFENCE|EDUCATION',
++  'CHEMICALS|NBFC', 'CHEMICALS|RETAIL',
++  'CHEMICALS|HOTELS',
++]);
++
++function isHardIncompatible(s: string, t: string): boolean {
++  return HARD_INCOMPATIBLE.has(`${s}|${t}`) || HARD_INCOMPATIBLE.has(`${t}|${s}`);
++}
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// COMPATIBLE PAIRS ΓÇö observed in dataset with reasoning
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const COMPATIBLE: Record<string, string> = {
++  'TECHNOLOGY|AUTO_ANCILLARY': 'Tech closes hardware-software gap. Factory automation requires software intelligence layer. 13 deals observed.',
++  'AUTO_ANCILLARY|TECHNOLOGY': 'Auto component maker adds digital layer for Industry 4.0 OEM requirements. 6 deals observed.',
++  'MANUFACTURING|AUTO_ANCILLARY': 'OEM supply consolidation ΓÇö same clients, adjacent component. Add portfolio without new BD. 7 deals observed.',
++  'AUTO_ANCILLARY|MANUFACTURING': 'Tier-1 acquires Tier-2 supplier. Same OEM relationships, adjacent capability.',
++  'AUTO_ANCILLARY|EV_MOBILITY': 'Auto component maker transitions to EV-compatible parts. Platform changeover thesis.',
++  'EV_MOBILITY|AUTO_ANCILLARY': 'EV platform acquires component capability ΓÇö vertical integration of supply chain.',
++  'MANUFACTURING|EV_MOBILITY': 'Industrial manufacturer adds EV capability for fleet and energy clients.',
++  'EV_MOBILITY|MANUFACTURING': 'EV company acquires manufacturing capacity for scale-up.',
++  'EV_MOBILITY|RENEWABLE_ENERGY': 'EV + renewable ΓÇö charging infrastructure powered by clean energy.',
++  'RENEWABLE_ENERGY|EV_MOBILITY': 'Renewable energy adds EV charging as downstream application.',
++  'TECHNOLOGY|NBFC': 'Fintech acquires RBI NBFC license ΓÇö regulatory shortcut. Fresh license takes 18-24 months. 5 deals observed.',
++  'NBFC|FINTECH': 'NBFC adds fintech platform for digital loan distribution.',
++  'FINTECH|NBFC': 'Fintech acquires lending license to activate embedded finance.',
++  'TECHNOLOGY|FINTECH': 'Tech-adjacent ΓÇö software + financial services integration.',
++  'FINTECH|TECHNOLOGY': 'Fintech acquires tech platform to power digital lending or payments.',
++  'TECHNOLOGY|PHARMACEUTICALS': 'Pharma software ΓÇö clinical trials, regulatory submissions, QMS. 5 deals observed.',
++  'PHARMACEUTICALS|HEALTHCARE': 'Pharma conglomerate expands into hospital/diagnostic network.',
++  'HEALTHCARE|PHARMACEUTICALS': 'Hospital chain acquires pharma supply ΓÇö backward integration.',
++  'TECHNOLOGY|HEALTHCARE': 'Digital health ΓÇö telemedicine, diagnostic AI, hospital management.',
++  'MANUFACTURING|RENEWABLE_ENERGY': 'Industrial manufacturer adds renewable capability to serve existing client energy needs. 3 deals observed.',
++  'MANUFACTURING|CHEMICALS': 'Chemical inputs supplier acquired by manufacturer ΓÇö backward integration.',
++  'CHEMICALS|MANUFACTURING': 'Chemical company acquires manufacturing capacity.',
++  'CHEMICALS|PHARMACEUTICALS': 'Chemical intermediate supplier acquires downstream pharma. 2 deals observed.',
++  'PHARMACEUTICALS|CHEMICALS': 'Pharma acquires chemical feedstock for supply chain security.',
++  'FMCG|MANUFACTURING': 'FMCG brand acquires manufacturing for in-house production. 2 deals observed.',
++  'MANUFACTURING|FMCG': 'Manufacturer acquires FMCG brand for B2C market access.',
++  'FMCG|RETAIL': 'FMCG brand acquires retail distribution ΓÇö channel expansion.',
++  'RETAIL|FMCG': 'Retail chain acquires FMCG brand to create private label portfolio.',
++  'REAL_ESTATE|HOTELS': 'Real estate developer acquires hospitality asset.',
++  'HOTELS|REAL_ESTATE': 'Hotel chain acquires property for flagship asset ownership.',
++  'TECHNOLOGY|EDUCATION': 'Edtech ΓÇö software platform serving education institutions.',
++  'EDUCATION|TECHNOLOGY': 'Education institution acquires edtech platform for digital delivery.',
++  'FINANCIAL_SERVICES|NBFC': 'Financial services firm acquires NBFC for lending product.',
++  'FINANCIAL_SERVICES|FINTECH': 'Wealth management adds fintech platform.',
++  'AUTO_ANCILLARY|DEFENCE': 'Precision engineering capabilities dual-use for defence components.',
++  'DEFENCE|MANUFACTURING': 'Defence OEM acquires manufacturing capacity.',
++  'MANUFACTURING|DEFENCE': 'Manufacturer adds defence vertical ΓÇö government contract diversification.',
++};
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// NARROW PAIRS ΓÇö conditional compatibility (-10 score penalty)
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const NARROW: Record<string, string> = {
++  'LOGISTICS|PHARMACEUTICALS': 'NARROW: Cold chain logistics only. Dry freight is incompatible. Verify cold chain certification.',
++  'LOGISTICS|FMCG': 'NARROW: FMCG last-mile delivery. Verify route density and client overlap.',
++  'LOGISTICS|MANUFACTURING': 'NARROW: Industrial logistics only. Verify captive client or MSA contracts.',
++  'LOGISTICS|HEALTHCARE': 'NARROW: Medical supply chain only. Verify temperature-controlled capability.',
++  'MANUFACTURING|PHARMACEUTICALS': 'NARROW: Contract manufacturing or packaging only. Not applicable for formulation R&D.',
++  'PHARMACEUTICALS|MANUFACTURING': 'NARROW: Pharma packaging or equipment supplier only.',
++  'HEALTHCARE|TECHNOLOGY': 'NARROW: Healthtech platforms only ΓÇö telemedicine, diagnostic AI, hospital management.',
++  'HEALTHCARE|LOGISTICS': 'NARROW: Medical supply logistics only.',
++  'AUTO_ANCILLARY|NBFC': 'NARROW: Fleet finance or vehicle finance NBFC only.',
++  'RETAIL|TECHNOLOGY': 'NARROW: Retail-tech ΓÇö POS, inventory, e-commerce platforms only.',
++  'FINTECH|HEALTHCARE': 'NARROW: Health payments or insurance-tech only.',
++  'FINTECH|RETAIL': 'NARROW: Embedded finance or BNPL only.',
++  'TECHNOLOGY|MANUFACTURING': 'NARROW: Industry 4.0 / factory automation software only.',
++  'TECHNOLOGY|LOGISTICS': 'NARROW: Logistics-tech ΓÇö WMS, TMS, route optimisation only.',
++  'FMCG|LOGISTICS': 'NARROW: Last-mile distribution alignment only.',
++  'FMCG|HEALTHCARE': 'NARROW: Health FMCG ΓÇö nutraceuticals, OTC products only.',
++  'CHEMICALS|AGRICULTURE': 'NARROW: Agrochemicals only. Verify product category.',
++  'MANUFACTURING|LOGISTICS': 'NARROW: Captive logistics for manufacturing output only.',
++};
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// MAIN EXPORT
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export function getSectorCompatibility(
++  sourceSector: string,
++  targetSector: string,
++): SectorRelation {
++  const s = normalizeSector(sourceSector);
++  const t = normalizeSector(targetSector);
++
++  if (s === t) {
++    return { level: 'COMPATIBLE', penalty: 0, reason: `${s}: Same-sector consolidation ΓÇö capacity, capability, or client book.` };
++  }
++
++  if (isHardIncompatible(s, t)) {
++    return { level: 'INCOMPATIBLE', penalty: 1.0, reason: `${s} ΓåÆ ${t}: No observed deal pattern. No plausible business synergy.` };
++  }
++
++  const compatReason = COMPATIBLE[`${s}|${t}`] ?? COMPATIBLE[`${t}|${s}`];
++  if (compatReason) return { level: 'COMPATIBLE', penalty: 0, reason: compatReason };
++
++  const narrowReason = NARROW[`${s}|${t}`] ?? NARROW[`${t}|${s}`];
++  if (narrowReason) return { level: 'NARROW', penalty: 0.10, reason: narrowReason };
++
++  return { level: 'NARROW', penalty: 0.15, reason: `${s} ΓåÆ ${t}: No direct deal precedent. Verify specific use case before connecting.` };
++}
++
++export const MATCH_ARCHETYPES = {
++  BOLT_ON: 'Same-sector bolt-on',
++  LICENSE: 'Regulatory license acquisition',
++  CROSS_SECTOR: 'Cross-sector capability',
++  VERTICAL: 'Vertical integration',
++  TECH_ENABLER: 'Technology enablement',
++  GEOGRAPHIC: 'Geographic expansion',
++} as const;
++
++export type MatchArchetype = (typeof MATCH_ARCHETYPES)[keyof typeof MATCH_ARCHETYPES];
++
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++// FRAUD SIGNALS (HR-8)
++// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const FRAUD_SIGNAL_LIST = [
++  'sblc', 'standby letter of credit', 'bank guarantee collateral',
++  'bg discounting', 'guaranteed return', 'assured return',
++  'risk-free return', 'guaranteed profit', 'fixed return on investment',
++  'barclays collateral', 'hsbc instrument', 'fixed profit',
++];
++
++export function detectFraudSignals(text: string): string[] {
++  const lower = text.toLowerCase();
++  return FRAUD_SIGNAL_LIST.filter(s => lower.includes(s));
++}
+\ No newline at end of file

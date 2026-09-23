@@ -355,9 +355,19 @@ export async function POST(req: NextRequest) {
         }]).select('id,user_id,type,message,is_read,created_at').single();
 
       if (!notificationErr && notification) {
-        await deliverNotificationEmail(supabase, notification as NotificationRow).catch((emailErr) => {
+        const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow).catch((emailErr) => {
           console.error('[POST /api/eois] Email delivery error:', emailErr);
+          return { success: false, error: String(emailErr) };
         });
+        if (!emailResult.success) {
+           return NextResponse.json({
+             success: true,
+             errorCode: 'OK_BUT_EMAIL_FAILED',
+             message: 'EOI submitted. Email notification could not be delivered.',
+             eoi,
+             currentBalance: userTokens,
+           });
+        }
       }
     } catch (notifErr) {
       console.error('[POST /api/eois] Notification creation error:', notifErr);
@@ -431,11 +441,13 @@ export async function PATCH(req: NextRequest) {
           }]).select('id,user_id,type,message,is_read,created_at').single();
 
           if (notificationErr) throw notificationErr;
-          await deliverNotificationEmail(supabase, notification as NotificationRow);
+          const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow);
           return NextResponse.json({
             success: false,
             errorCode: 'SENDER_INSUFFICIENT',
-            message: "Cannot approve because the sender has insufficient tokens. We've notified them.",
+            message: emailResult.success
+               ? "Cannot approve because the sender has insufficient tokens. We've notified them."
+               : "Cannot approve because the sender has insufficient tokens. We tried to notify them but the email failed.",
           }, { status: 409 });
         }
         const http =
@@ -451,6 +463,15 @@ export async function PATCH(req: NextRequest) {
         }, { status: http });
       }
 
+      // Best-effort: record the real approval time. The RPC above is the transactional source of
+      // truth for status + token charges; this is a non-critical follow-up write, same pattern as
+      // the notification insert below — its failure must not roll back an already-approved EOI.
+      const { error: approvedAtErr } = await supabase
+        .from('eois')
+        .update({ approved_at: new Date().toISOString() })
+        .eq('id', id);
+      if (approvedAtErr) console.error('[EOI] approved_at update failed (non-blocking):', approvedAtErr.message);
+
       const { data: notification, error: notificationErr } = await supabase.from('notifications').insert([{
         user_id: existingEoi.sender_id,
         type: 'EOI_APPROVED',
@@ -459,11 +480,12 @@ export async function PATCH(req: NextRequest) {
       }]).select('id,user_id,type,message,is_read,created_at').single();
 
       if (notificationErr) throw notificationErr;
-      await deliverNotificationEmail(supabase, notification as NotificationRow);
+      const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow);
       return NextResponse.json({
         success: true,
         status: 'approved',
-        errorCode: r.error_code,          // 'OK' or 'ALREADY_APPROVED'
+        errorCode: emailResult.success ? r.error_code : 'OK_BUT_EMAIL_FAILED',
+        message: emailResult.success ? undefined : 'EOI approved. Email notification could not be delivered.',
         senderBalance: r.sender_balance,
         receiverBalance: r.receiver_balance,
       });

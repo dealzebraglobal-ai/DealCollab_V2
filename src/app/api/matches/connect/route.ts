@@ -131,7 +131,8 @@ export async function POST(req: NextRequest) {
                             match_id: matchRow.id,
                             sender_id: user.id,
                             receiver_id: cpProp?.user_id || null,
-                            status: 'approved'
+                            status: 'approved',
+                            approved_at: new Date().toISOString(),
                         }]);
                 }
             }

@@ -98,6 +98,62 @@ export function buildSafeTeaser(cp: CounterpartyProposalRow): string {
     return parts.join('. ') + '.';
 }
 
+/**
+ * Pre-EOI "Strategic Rationale" — a proper 3-6 sentence paragraph, built from EXACTLY the same
+ * safe inputs as buildSafeTeaser() (never raw_text/normalised_text/summary_text/metadata beyond
+ * the SAFE_INDUSTRY_DATA_KEYS allowlist), just composed as readable prose instead of terse
+ * "Label: value" fragments. Confidentiality guarantee is identical to buildSafeTeaser — this is
+ * strictly a presentation change, not a new data-exposure surface.
+ */
+export function buildSafeStrategicRationale(
+    cp: CounterpartyProposalRow,
+    industry: string | null,
+    businessData: BusinessDataField[],
+): string {
+    const label = (INTENT_LABEL[cp.intent] || cp.intent || 'Opportunity').toLowerCase();
+    const sectorText = industry || (cp.sectors || [])[0]?.toLowerCase().replace(/_/g, ' ') || null;
+    const geos = (cp.geographies || []).filter(Boolean);
+    const sizeBand = band(num(cp.deal_size_min_cr), num(cp.deal_size_max_cr));
+    const revBand = band(num(cp.revenue_min_cr), num(cp.revenue_max_cr));
+
+    const sentences: string[] = [];
+
+    // Opener: what this mandate is.
+    const geoPhrase = geos.length > 0
+        ? geos.length === 1 ? ` based in or targeting ${geos[0]}` : ` across ${geos.slice(0, 3).join(', ')}`
+        : '';
+    sentences.push(
+        `This mandate is a ${label}${sectorText ? ` in the ${sectorText} space` : ''}${geoPhrase}.`
+    );
+
+    // Financials, when available.
+    if (sizeBand || revBand) {
+        const parts: string[] = [];
+        if (sizeBand) parts.push(`a deal size of ${sizeBand}`);
+        if (revBand) parts.push(`annual revenue in the ${revBand} range`);
+        sentences.push(`The transaction involves ${parts.join(' and ')}.`);
+    }
+
+    // Structure.
+    if (cp.deal_structure) {
+        sentences.push(`The preferred transaction structure is ${cp.deal_structure}.`);
+    }
+
+    // Business characteristics — top 3, in readable form (not "Label: value" fragments).
+    if (businessData.length > 0) {
+        const attrs = businessData.slice(0, 3).map(f => `${f.label.toLowerCase()} of ${f.value}`);
+        sentences.push(`Notable business characteristics include ${attrs.join(', ')}.`);
+    }
+
+    // Closer, only if we have genuinely little else to say (keeps the paragraph from reading as
+    // a bare fact-list when the underlying proposal has very few structured fields filled in).
+    if (sentences.length <= 2) {
+        sentences.push('Full operational details are shared with the counterparty once an Expression of Interest is approved.');
+    }
+
+    return sentences.join(' ');
+}
+
 // Explicit allowlist of industry_data / metadata keys that are safe to surface
 // BEFORE an EOI is approved — every one of these is a structured business
 // attribute (capacity, certifications, business model, etc.), never free text
@@ -192,6 +248,7 @@ export function buildBlindCounterparty(
     const rawIndustry = cp.metadata && typeof cp.metadata.industry === 'string' ? cp.metadata.industry.trim() : '';
     const industry = rawIndustry.length > 0 ? rawIndustry : null;
     const businessData = extractSafeIndustryData(cp.metadata);
+    const strategicRationale = buildSafeStrategicRationale(cp, industry, businessData);
 
     const view: BlindCounterpartyView = {
         id: cp.id,
@@ -208,7 +265,9 @@ export function buildBlindCounterparty(
         industry,
         businessData,
         teaser,
-        anonymizedPreview: teaser,     // pre-EOI: teaser only
+        // Pre-EOI: paragraph-form rationale built from the same safe inputs as `teaser` — was
+        // the bare teaser fragment itself ("Buy-side acquisition — PHARMACEUTICALS...").
+        anonymizedPreview: strategicRationale,
         isConnected,
         revealedContact: null,
         specialConditions: [],

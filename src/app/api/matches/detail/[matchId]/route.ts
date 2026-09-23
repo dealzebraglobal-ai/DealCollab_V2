@@ -84,7 +84,7 @@ export async function GET(
     // Connection state gates ALL identity-bearing data.
     const { data: existingEoi } = await supabase
       .from('eois')
-      .select('id, status, sender_id, receiver_id')
+      .select('id, status, sender_id, receiver_id, approved_at')
       .eq('match_id', matchId)
       .maybeSingle();
 
@@ -139,6 +139,7 @@ export async function GET(
         id: existingEoi.id,
         status: existingEoi.status,
         isSender: existingEoi.sender_id === dbUser.id,
+        approvedAt: existingEoi.approved_at ?? null,
       } : null,
       userTokens: dbUser.tokens ?? 0,
     });

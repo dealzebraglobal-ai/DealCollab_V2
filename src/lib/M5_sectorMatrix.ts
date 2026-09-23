@@ -71,6 +71,16 @@ const NORMALIZE_MAP: Record<string, string> = {
   cybersecurity: 'CYBERSECURITY',
   'cyber security': 'CYBERSECURITY',
   'ot security': 'CYBERSECURITY',
+  'water treatment': 'WATER_TREATMENT',
+  'water & wastewater': 'WATER_TREATMENT',
+  wastewater: 'WATER_TREATMENT',
+  'wastewater treatment': 'WATER_TREATMENT',
+  'effluent treatment': 'WATER_TREATMENT',
+  'water recycling': 'WATER_TREATMENT',
+  'environmental services': 'WATER_TREATMENT',
+  etp: 'WATER_TREATMENT',
+  stp: 'WATER_TREATMENT',
+  zld: 'WATER_TREATMENT',
   'sheet metal': 'SHEET_METAL_MANUFACTURING',
   'sheet metal manufacturing': 'SHEET_METAL_MANUFACTURING',
 };
@@ -116,6 +126,12 @@ function normalizeIndustryKey(raw: string): string {
   if (NORMALIZE_MAP[lower]) return NORMALIZE_MAP[lower];
 
   if (lower.includes('toy')) return 'TOYS';
+  // Checked before any generic "industrial"/"manufacturing" catch-all — a water-treatment
+  // business must never fall into the generic MANUFACTURING bucket (see production regression
+  // 2026-09-23: "Industrial Water Treatment" scored a false-positive against a generic
+  // manufacturer because both normalized to the same coarse bucket).
+  if (/water[\s-]?treatment/.test(lower) || lower.includes('wastewater') || lower.includes('effluent') ||
+      lower.includes('water recycling') || /\betp\b|\bstp\b|\bzld\b/.test(lower)) return 'WATER_TREATMENT';
   if (lower.includes('sheet metal') || lower.includes('sheet_metal') || lower.includes('stamping')) return 'SHEET_METAL_MANUFACTURING';
   if (lower.includes('textile') || lower.includes('linen') || lower.includes('apparel') || lower.includes('garment')) return 'HOME_TEXTILES';
   if (lower.includes('fashion')) return 'FASHION';
@@ -182,9 +198,16 @@ export function getIndustryCompatibility(
     };
   }
 
-  // Fallback to general sector compatibility
-  const fallbackSectorA = sourceSector || sNorm || sInd;
-  const fallbackSectorB = candidateSector || cNorm || cInd;
+  // Fallback to general sector compatibility. Prefers the more specific industry-derived
+  // category (sNorm/cNorm) over a coarse sector tag that is itself GENERAL/mixed — otherwise two
+  // proposals that both merely have sector='mixed' (e.g. "Freshwater Aquaculture" vs "Unrelated
+  // Generic Business Services", neither with a real sector tag) hit
+  // getSectorCompatibility('GENERAL','GENERAL')'s same-sector rule and score as a full
+  // COMPATIBLE match despite having nothing in common but the absence of a sector tag.
+  const sSectorIsGeneral = !sourceSector || normalizeSector(sourceSector) === 'GENERAL';
+  const cSectorIsGeneral = !candidateSector || normalizeSector(candidateSector) === 'GENERAL';
+  const fallbackSectorA = (!sSectorIsGeneral && sourceSector) ? sourceSector : (sNorm || sInd);
+  const fallbackSectorB = (!cSectorIsGeneral && candidateSector) ? candidateSector : (cNorm || cInd);
   return getSectorCompatibility(fallbackSectorA, fallbackSectorB);
 }
 
@@ -412,8 +435,16 @@ export interface IndustryQuery {
 }
 
 export function resolveIndustryCompatibility(source: IndustryQuery, target: IndustryQuery): IndustryCompatibilityResult {
-  const sSectorNorm = source.sector ? normalizeSector(source.sector) : 'GENERAL';
-  const cSectorNorm = target.sector ? normalizeSector(target.sector) : (target.sectors?.[0] ? normalizeSector(target.sectors[0]) : 'GENERAL');
+  // Falls back to the normalized INDUSTRY (not just the coarse sector tag) when sector is
+  // absent/GENERAL — a mandate with industry='Industrial water-treatment solutions' and no
+  // sector tag (the real production shape: sector stored as GENERAL, industry as free text)
+  // must still be recognized as WATER_TREATMENT here, or the serving_sectors cross-check below
+  // silently never matches it against a supplier whose serving_sectors names that industry.
+  const sSectorNorm = source.sector ? normalizeSector(source.sector)
+    : source.industry ? normalizeIndustryKey(source.industry) : 'GENERAL';
+  const cSectorNorm = target.sector ? normalizeSector(target.sector)
+    : target.sectors?.[0] ? normalizeSector(target.sectors[0])
+    : target.industry ? normalizeIndustryKey(target.industry) : 'GENERAL';
 
   // 1. Direct Industry alignment using the existing matrix function
   const baseCompat = getIndustryCompatibility(
@@ -474,13 +505,19 @@ export function resolveIndustryCompatibility(source: IndustryQuery, target: Indu
   }
 
   if (baseCompat.level === 'NARROW') {
+    // getSectorCompatibility's NARROW table entries all carry penalty 0.10 (a named,
+    // evidence-backed relationship, e.g. "LOGISTICS|PHARMACEUTICALS: cold-chain only"); its
+    // generic "no direct deal precedent" default fallback carries 0.15 — the only reliable way
+    // to tell a real narrow relationship apart from "the matrix has no opinion on this pair"
+    // (reason text isn't stable enough to key off). Only the latter counts as general fallback.
+    const isNoprecedentFallback = baseCompat.penalty >= 0.15;
     return {
       level: 'NARROW',
-      score: 0.70,
+      score: isNoprecedentFallback ? 0.35 : 0.70,
       penalty: baseCompat.penalty,
       reason: baseCompat.reason,
       archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
-      isGeneralFallback: false
+      isGeneralFallback: isNoprecedentFallback,
     };
   }
 

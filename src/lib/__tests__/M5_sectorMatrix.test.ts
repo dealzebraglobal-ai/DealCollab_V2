@@ -3,14 +3,15 @@ import { normalizeSector, getSectorCompatibility } from '../M5_sectorMatrix';
 
 // ─────────────────────────────────────────────────────────────
 // Matching half — the hard-reject (HR-4) fix.
-// The DANGER was: aquaculture forced to "consumer" → normalizeSector → "FMCG", and FMCG has
-// hard-incompatible pairs, so genuine matches were silently deleted. Feeding the TRUE industry
-// avoids the trap (unknown industries fall to NARROW, never INCOMPATIBLE).
+// The DANGER was: aquaculture forced to "consumer" → normalizeSector → a coarse bucket with its
+// own hard-incompatible pairs (CONSUMER|NBFC, CONSUMER|DEFENCE, CONSUMER|PHARMACEUTICALS —
+// formerly the same trap under the FMCG bucket name), so genuine matches were silently deleted.
+// Feeding the TRUE industry avoids the trap (unknown industries fall to NARROW, never INCOMPATIBLE).
 // ─────────────────────────────────────────────────────────────
 
 describe('normalizeSector', () => {
-  it('"consumer" maps to FMCG (the trap)', () => {
-    expect(normalizeSector('consumer')).toBe('FMCG');
+  it('"consumer" maps to a coarse bucket carrying its own hard-incompatible pairs (the trap)', () => {
+    expect(normalizeSector('consumer')).toBe('CONSUMER');
   });
   it('a free-text industry is preserved (uppercased), not coerced into a bucket', () => {
     expect(normalizeSector('Freshwater Aquaculture')).toBe('FRESHWATER_AQUACULTURE');

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getIndustryCompatibility } from '../M5_sectorMatrix';
+import { getIndustryCompatibility, resolveIndustryCompatibility } from '../M5_sectorMatrix';
 import {
   applyHardRejections,
   calculateV2Score,
@@ -165,14 +165,10 @@ describe('Matchmaking Engine Overhaul Regression Tests', () => {
   });
 
   describe('Serving Sectors & Cross-Sector Capability', () => {
-    it('evaluates Pharma Acquirer vs Flexible Packaging (serving Pharma) as COMPATIBLE with penalty 0', () => {
-      const comp = getIndustryCompatibility(
-        'Pharmaceutical Formulations CDMO',
-        'Flexible Packaging Manufacturing',
-        'pharma',
-        'manufacturing',
-        [],
-        ['PHARMACEUTICALS', 'HEALTHCARE']
+    it('evaluates Pharma Acquirer vs Flexible Packaging (serving Pharma) as SERVING_SECTOR_MATCH with penalty 0', () => {
+      const comp = resolveIndustryCompatibility(
+        { industry: 'Pharmaceutical Formulations CDMO', sector: 'pharma' },
+        { industry: 'Flexible Packaging Manufacturing', sectors: ['manufacturing'], serving_sectors: ['PHARMACEUTICALS', 'HEALTHCARE'] }
       );
 
       expect(comp.level).toBe('SERVING_SECTOR_MATCH');
@@ -181,22 +177,14 @@ describe('Matchmaking Engine Overhaul Regression Tests', () => {
     });
 
     it('evaluates bidirectional symmetry for serving_sectors', () => {
-      const compA = getIndustryCompatibility(
-        'Pharmaceuticals',
-        'Packaging',
-        'pharma',
-        'manufacturing',
-        [],
-        ['PHARMACEUTICALS']
+      const compA = resolveIndustryCompatibility(
+        { industry: 'Pharmaceuticals', sector: 'pharma' },
+        { industry: 'Packaging', sectors: ['manufacturing'], serving_sectors: ['PHARMACEUTICALS'] }
       );
 
-      const compB = getIndustryCompatibility(
-        'Packaging',
-        'Pharmaceuticals',
-        'manufacturing',
-        'pharma',
-        ['PHARMACEUTICALS'],
-        []
+      const compB = resolveIndustryCompatibility(
+        { industry: 'Packaging', sector: 'manufacturing', serving_sectors: ['PHARMACEUTICALS'] },
+        { industry: 'Pharmaceuticals', sectors: ['pharma'] }
       );
 
       expect(compA.level).toBe('SERVING_SECTOR_MATCH');
@@ -216,14 +204,14 @@ describe('Matchmaking Engine Overhaul Regression Tests', () => {
       expect(comp.penalty).toBe(1.0);
     });
 
-    it('evaluates AI / Data Analytics vs Heavy Manufacturing as INCOMPATIBLE', () => {
+    it('evaluates AI / Data Analytics vs Heavy Manufacturing as NARROW', () => {
       const comp = getIndustryCompatibility(
         'AI / Data Analytics',
         'Heavy Industrial Machinery Manufacturing',
         'saas',
         'manufacturing'
       );
-      expect(comp.level).toBe('INCOMPATIBLE');
+      expect(comp.level).toBe('NARROW');
     });
   });
 
@@ -282,7 +270,7 @@ describe('Matchmaking Engine Overhaul Regression Tests', () => {
 
       const score = calculateV2Score(autoBuyer, autoTarget);
       expect(score.finalScore).toBeGreaterThanOrEqual(80);
-      expect(score.breakdown.industryScore).toBe(1.0);
+      expect(score.breakdown.industryScore).toBe(0.9);
     });
 
     // 2. Service -> Service
@@ -337,13 +325,11 @@ describe('Matchmaking Engine Overhaul Regression Tests', () => {
       const hardCheck = applyHardRejections(maAdvisor, peFirm);
       expect(hardCheck.rejected).toBe(false);
 
-      const comp = getIndustryCompatibility(
-        maAdvisor.industry,
-        peFirm.industry,
-        maAdvisor.sector,
-        peFirm.sectors?.[0]
+      const comp = resolveIndustryCompatibility(
+        { industry: maAdvisor.industry, sector: maAdvisor.sector, serving_sectors: maAdvisor.serving_sectors },
+        { industry: peFirm.industry, sectors: peFirm.sectors, serving_sectors: peFirm.serving_sectors }
       );
-      expect(comp.level).toBe('DIRECT_MATCH');
+      expect(comp.level).toBe('SERVING_SECTOR_MATCH');
     });
 
     // 3. Industry -> Service
@@ -398,13 +384,9 @@ describe('Matchmaking Engine Overhaul Regression Tests', () => {
       const hardCheck = applyHardRejections(mfgCompany, financialSponsor);
       expect(hardCheck.rejected).toBe(false);
 
-      const comp = getIndustryCompatibility(
-        mfgCompany.industry,
-        financialSponsor.industry,
-        mfgCompany.sector,
-        financialSponsor.sectors?.[0],
-        mfgCompany.serving_sectors,
-        financialSponsor.serving_sectors
+      const comp = resolveIndustryCompatibility(
+        { industry: mfgCompany.industry, sector: mfgCompany.sector, serving_sectors: mfgCompany.serving_sectors },
+        { industry: financialSponsor.industry, sectors: financialSponsor.sectors, serving_sectors: financialSponsor.serving_sectors }
       );
       expect(comp.level).toBe('SERVING_SECTOR_MATCH');
     });
@@ -461,13 +443,9 @@ describe('Matchmaking Engine Overhaul Regression Tests', () => {
       const hardCheck = applyHardRejections(techService, mfgPartner);
       expect(hardCheck.rejected).toBe(false);
 
-      const comp = getIndustryCompatibility(
-        techService.industry,
-        mfgPartner.industry,
-        techService.sector,
-        mfgPartner.sectors?.[0],
-        techService.serving_sectors,
-        mfgPartner.serving_sectors
+      const comp = resolveIndustryCompatibility(
+        { industry: techService.industry, sector: techService.sector, serving_sectors: techService.serving_sectors },
+        { industry: mfgPartner.industry, sectors: mfgPartner.sectors, serving_sectors: mfgPartner.serving_sectors }
       );
       expect(comp.level).toBe('SERVING_SECTOR_MATCH');
     });

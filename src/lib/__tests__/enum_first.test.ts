@@ -5,13 +5,13 @@ describe('enum-first sector compatibility', () => {
   it('selects sector enum over free-text industry and marks compatible', () => {
     const sellerSectorEnum = 'consumer';
     const sellerIndustry = 'packaged healthy snacks and wellness food';
-    const buyerStoredSector = 'FMCG';
+    const buyerStoredSector = 'CONSUMER';
 
     const matrixInput = (sellerSectorEnum ?? sellerIndustry) ?? '';
     expect(matrixInput).toBe('consumer');
 
     const fixed = getSectorCompatibility(matrixInput, buyerStoredSector);
-    expect(normalizeSector('consumer')).toBe('FMCG');
+    expect(normalizeSector('consumer')).toBe('CONSUMER');
     expect(fixed.level).toBe('COMPATIBLE');
 
     const broken = getSectorCompatibility(sellerIndustry, buyerStoredSector);

@@ -20,7 +20,15 @@ describe('M5_blindCard', () => {
     special_conditions: ['{"ebitda":"18%","promoter":"Ramesh"}'],
     contact_phone: '9876543210',
     advisor_name: 'Ramesh Advisor',
-      };
+    metadata: {
+      industry: 'packaged healthy snacks and wellness food',
+      sub_type: 'CDMO',
+      capacity_utilisation: '78%',
+      business_model: 'contract_manufacturing_exposure',
+      contact_email: 'ceo@snackbrand.com',
+      source_file: 'secret-teaser.pdf',
+    },
+  };
 
   const IDENTITY_TOKENS = ['SnackBrandPvtLtd', '9876543210', 'Ramesh', 'ceo@snackbrand.com', 'snackbrand.com'];
 
@@ -32,9 +40,15 @@ describe('M5_blindCard', () => {
     }
     expect(pre.revealedContact).toBeNull();
     expect(pre.specialConditions.length).toBe(0);
-    expect(pre.anonymizedPreview).toBe(pre.teaser);
-    expect(pre.anonymizedPreview.includes('FMCG') && pre.anonymizedPreview.includes('Mumbai')).toBe(true);
+    // anonymizedPreview is now a paragraph-form Strategic Rationale (Task 6), built from the same
+    // safe inputs as `teaser` — deliberately no longer identical to the terse teaser fragment.
+    expect(pre.anonymizedPreview).not.toBe(pre.teaser);
+    expect(pre.anonymizedPreview.includes('Mumbai')).toBe(true);
     expect(pre.anonymizedPreview.includes('₹50–200 Cr')).toBe(true);
+    // 3-6 sentences, paragraph format (Task 9).
+    const sentenceCount = pre.anonymizedPreview.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+    expect(sentenceCount).toBeGreaterThanOrEqual(2);
+    expect(sentenceCount).toBeLessThanOrEqual(6);
     expect(pre.userId).toBe('user-uuid-xyz');
     expect(pre.industry).toBe('packaged healthy snacks and wellness food');
     expect(JSON.stringify(pre).includes('contact_email')).toBe(false);

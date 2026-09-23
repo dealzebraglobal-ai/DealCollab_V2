@@ -31,7 +31,7 @@ interface NotifRow {
   user_id: string;
   type: string;
   message: string;
-  is_read: boolean;
+  is_read: string;
   created_at: string;
 }
 
@@ -109,7 +109,7 @@ describe('GET/PATCH /api/notifications — read-state persistence', () => {
   it('marking a single notification read persists is_read=true and is reflected on next GET', async () => {
     authMock.mockResolvedValue({ user: { id: 'u1', email: 'owner@example.com' } });
     const notifs: NotifRow[] = [
-      { id: 'n1', user_id: 'u1', type: 'new_counterparty', message: 'match', is_read: false, created_at: '2026-09-18T10:00:00Z' },
+      { id: 'n1', user_id: 'u1', type: 'new_counterparty', message: 'match', is_read: 'false', created_at: '2026-09-18T10:00:00Z' },
     ];
     const { createServerSupabaseClient } = await import('@/utils/supabase/server');
     (createServerSupabaseClient as ReturnType<typeof vi.fn>).mockReturnValue(
@@ -119,22 +119,22 @@ describe('GET/PATCH /api/notifications — read-state persistence', () => {
     const { PATCH, GET } = await import('./route');
     const patchRes = await PATCH(new Request('http://x', { method: 'PATCH', body: JSON.stringify({ id: 'n1' }) }) as never);
     expect(patchRes.status).toBe(200);
-    expect(notifs[0].is_read).toBe(true);
+    expect(notifs[0].is_read).toBe('true');
 
     // Refetch — the DB row itself changed, so a fresh GET reflects it (this is
     // the exact call the old bug's `mutate()` would otherwise undo).
     const getRes = await GET();
     const body = await getRes.json();
-    expect(body[0].is_read).toBe(true);
+    expect(body[0].is_read).toBe('true');
   });
 
   it('"mark all as read" (previously a no-op) now persists for every unread row', async () => {
     authMock.mockResolvedValue({ user: { id: 'u1', email: 'owner@example.com' } });
     const notifs: NotifRow[] = [
-      { id: 'n1', user_id: 'u1', type: 'new_counterparty', message: 'match 1', is_read: false, created_at: '2026-09-18T10:00:00Z' },
-      { id: 'n2', user_id: 'u1', type: 'eoi_received', message: 'eoi', is_read: false, created_at: '2026-09-18T09:00:00Z' },
-      { id: 'n3', user_id: 'u1', type: 'status', message: 'already read', is_read: true, created_at: '2026-09-18T08:00:00Z' },
-      { id: 'n4', user_id: 'u2', type: 'new_counterparty', message: 'someone else\'s', is_read: false, created_at: '2026-09-18T07:00:00Z' },
+      { id: 'n1', user_id: 'u1', type: 'new_counterparty', message: 'match 1', is_read: 'false', created_at: '2026-09-18T10:00:00Z' },
+      { id: 'n2', user_id: 'u1', type: 'eoi_received', message: 'eoi', is_read: 'false', created_at: '2026-09-18T09:00:00Z' },
+      { id: 'n3', user_id: 'u1', type: 'status', message: 'already read', is_read: 'true', created_at: '2026-09-18T08:00:00Z' },
+      { id: 'n4', user_id: 'u2', type: 'new_counterparty', message: 'someone else\'s', is_read: 'false', created_at: '2026-09-18T07:00:00Z' },
     ];
     const { createServerSupabaseClient } = await import('@/utils/supabase/server');
     (createServerSupabaseClient as ReturnType<typeof vi.fn>).mockReturnValue(
@@ -148,15 +148,15 @@ describe('GET/PATCH /api/notifications — read-state persistence', () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.updatedCount).toBe(2); // n1, n2 — not n3 (already read), not n4 (other user)
-    expect(notifs.find(n => n.id === 'n1')!.is_read).toBe(true);
-    expect(notifs.find(n => n.id === 'n2')!.is_read).toBe(true);
-    expect(notifs.find(n => n.id === 'n4')!.is_read).toBe(false); // untouched — belongs to u2
+    expect(notifs.find(n => n.id === 'n1')!.is_read).toBe('true');
+    expect(notifs.find(n => n.id === 'n2')!.is_read).toBe('true');
+    expect(notifs.find(n => n.id === 'n4')!.is_read).toBe('false'); // untouched — belongs to u2
   });
 
   it('reports a real failure (not 200) when the update matches no row, instead of a false success', async () => {
     authMock.mockResolvedValue({ user: { id: 'u1', email: 'owner@example.com' } });
     const notifs: NotifRow[] = [
-      { id: 'n1', user_id: 'someone-else', type: 'new_counterparty', message: 'match', is_read: false, created_at: '2026-09-18T10:00:00Z' },
+      { id: 'n1', user_id: 'someone-else', type: 'new_counterparty', message: 'match', is_read: 'false', created_at: '2026-09-18T10:00:00Z' },
     ];
     const { createServerSupabaseClient } = await import('@/utils/supabase/server');
     (createServerSupabaseClient as ReturnType<typeof vi.fn>).mockReturnValue(
@@ -167,6 +167,6 @@ describe('GET/PATCH /api/notifications — read-state persistence', () => {
     const res = await PATCH(new Request('http://x', { method: 'PATCH', body: JSON.stringify({ id: 'n1' }) }) as never);
     // Wrong owner → the update's .eq('user_id', ...) matches nothing.
     expect(res.status).toBe(404);
-    expect(notifs[0].is_read).toBe(false);
+    expect(notifs[0].is_read).toBe('false');
   });
 });

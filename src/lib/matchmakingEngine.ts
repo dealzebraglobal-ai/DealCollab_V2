@@ -447,7 +447,17 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
     const overlapMax = Math.min(sMax, cMax);
     const overlap = Math.max(0, overlapMax - overlapMin);
     const union = Math.max(sMax, cMax) - Math.min(sMin, cMin);
-    financialScore = union > 0 ? overlap / union : 0.1;
+    
+    // Check if one is a point value that falls completely inside the other's range
+    const isSPointInsideC = sMin === sMax && sMin >= cMin && sMin <= cMax;
+    const isCPointInsideS = cMin === cMax && cMin >= sMin && cMin <= sMax;
+    
+    if ((union === 0 && sMax === cMax && sMax > 0) || isSPointInsideC || isCPointInsideS) {
+      // Perfect fit
+      financialScore = 1.0;
+    } else {
+      financialScore = union > 0 ? overlap / union : 0.1;
+    }
   }
 
   // GEOGRAPHY (5%) — geo string matching
@@ -482,10 +492,14 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
   // ADJUSTMENTS & SAFEGUARDS
   if (comp.penalty > 0) finalScore -= (comp.penalty * 100 * 0.5);
 
-  // Safeguard: location alone must not push unrelated / generic candidates into results
-  if (comp.isGeneralFallback || industryScore <= 0.2) {
+  // Safeguard: location alone must not push unrelated / generic candidates into results.
+  // Threshold realigned to M5_sectorMatrix's current score bands (EXACT 1.0 / COMPATIBLE 0.9 /
+  // SERVING_SECTOR_MATCH 0.85 / NARROW 0.70 / COARSE_SECTOR_MATCH 0.60 / GENERAL_FALLBACK 0.30) —
+  // 0.2 was stale against a prior 3-tier scale and no longer caught GENERAL_FALLBACK (0.30).
+  if (comp.isGeneralFallback || industryScore <= 0.35) {
     if (geoScore === 1.0) finalScore += 2;
     if (semanticScore < 0.65) finalScore -= 10;
+    finalScore -= 12;
   } else {
     if (geoScore === 1.0) finalScore += 8;
     else if (geoScore === 0.5) finalScore += 4;
@@ -499,7 +513,8 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
   // ARCHETYPE
   const archetype = comp.archetype || MATCH_ARCHETYPES.CROSS_SECTOR;
 
-  // MATCH REASON — anonymous, shown on match card
+  // MATCH REASON — anonymous, shown on match card. Prefers the true industry label over the
+  // coarse sector tag when one exists.
   const indLabel = candidate.industry || candidate.sectors?.[0] || 'target sector';
   const geoLabel = candidate.geographies?.[0] ?? 'matched region';
   const sizeLabel = formatSizeRange(cMin, cMax);
@@ -507,8 +522,15 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
     `${indLabel} in ${geoLabel}${sizeLabel ? ` · ${sizeLabel}` : ''}.`,
     comp.reason.split('.')[0] + '.',
   ];
-  if (financialScore > 0.7) reasonParts.push('Strong financial alignment.');
-  else if (semanticScore > 0.7) reasonParts.push('Strong mandate alignment.');
+  // "Strong alignment" language is only honest when there is real industry evidence behind it —
+  // gating it on industryScore prevents a merely-generic semantic/financial subscore from reading
+  // as a confident recommendation. For general-fallback pairs, an explicit caveat replaces it.
+  const hasRealIndustryEvidence = !comp.isGeneralFallback && industryScore > 0.35;
+  if (hasRealIndustryEvidence && financialScore > 0.7) reasonParts.push('Strong financial alignment.');
+  else if (hasRealIndustryEvidence && semanticScore > 0.7) reasonParts.push('Strong mandate alignment.');
+  else if (comp.isGeneralFallback || industryScore <= 0.35) {
+    reasonParts.push(`Broader ${normalizeSector(candidate.sectors?.[0] ?? 'sector').toLowerCase()}-level alignment only — no confirmed ${source.industry ? source.industry.toLowerCase() : 'specific industry'} evidence.`);
+  }
   const matchReason = reasonParts.join(' ');
 
   return {

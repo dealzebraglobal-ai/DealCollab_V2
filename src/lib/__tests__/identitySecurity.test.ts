@@ -20,7 +20,8 @@ describe('Counterparty Identity Card Security Guarantee', () => {
     summary_text: 'Founder Rohan Mehta seeking complete exit for Acme Technologies',
     contact_phone: '+91 98204 41180',
     advisor_name: 'Rohan Mehta',
-      };
+    metadata: { industry: 'Enterprise Software' },
+  };
 
   it('filters out confidential fields when isConnected is false (locked mode)', () => {
     const lockedView = buildBlindCounterparty(mockProposal, false);

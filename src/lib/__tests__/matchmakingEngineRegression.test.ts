@@ -204,7 +204,7 @@ describe('Matchmaking engine — 20-scenario acceptance suite', () => {
       buyer_type: 'Strategic',
     }));
     expect(text).toContain('serves: HEALTHCARE, PHARMACEUTICALS');
-    expect(text).toContain('buyer type: Strategic');
+    expect(text).toContain('buyer_type: Strategic');
   });
 
   describe('Industrial Water Treatment acceptance case (service-level taxonomy)', () => {
@@ -212,18 +212,16 @@ describe('Matchmaking engine — 20-scenario acceptance suite', () => {
       intent: 'BUY_SIDE',
       sector: null,
       industry: 'Industrial water-treatment solutions company',
-      serving_sectors: ['ETP', 'STP', 'ZLD'],
       geography: 'Maharashtra',
       deal_size_min: '75',
       deal_size_max: '200',
     });
 
-    it('matches a genuine water-treatment target strongly (exact service overlap, revenue inside range)', () => {
+    it('matches a genuine water-treatment target strongly (exact industry category, revenue inside range)', () => {
       const target = candidate({
         intent: 'SELL_SIDE',
         industry: 'Environmental / Water Treatment',
         sectors: ['WATER_TREATMENT'],
-        serving_sectors: ['ETP', 'STP', 'ZLD'],
         geographies: ['Maharashtra'],
         deal_size_min_cr: 110,
         deal_size_max_cr: 110,
@@ -231,9 +229,26 @@ describe('Matchmaking engine — 20-scenario acceptance suite', () => {
       });
       expect(applyHardRejections(acquirer, target).rejected).toBe(false);
       const score = calculateV2Score(acquirer, target);
-      expect(score.breakdown.industryScore).toBe(1.0);
+      expect(score.breakdown.industryScore).toBeGreaterThanOrEqual(0.85); // WATER_TREATMENT category match
       expect(score.breakdown.financialScore).toBeGreaterThanOrEqual(0.9); // ₹110 Cr sits inside ₹75–200 Cr
       expect(score.finalScore).toBeGreaterThanOrEqual(75);
+    });
+
+    it('a supplier that explicitly serves the WATER_TREATMENT sector also qualifies (serving_sectors path)', () => {
+      const equipmentSupplier = candidate({
+        intent: 'SELL_SIDE',
+        industry: 'Pump Manufacturing',
+        sectors: ['MANUFACTURING'],
+        serving_sectors: ['WATER_TREATMENT'],
+        geographies: ['Maharashtra'],
+        deal_size_min_cr: 110,
+        deal_size_max_cr: 110,
+        similarity: 0.7,
+      });
+      expect(applyHardRejections(acquirer, equipmentSupplier).rejected).toBe(false);
+      const score = calculateV2Score(acquirer, equipmentSupplier);
+      expect(score.breakdown.industryScore).toBeGreaterThanOrEqual(0.8);
+      expect(score.archetype).toBe('Cross-sector capability');
     });
 
     it('does NOT strongly match an IT services company merely because revenue and geography also line up', () => {

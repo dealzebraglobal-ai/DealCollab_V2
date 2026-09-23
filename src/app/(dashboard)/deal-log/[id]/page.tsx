@@ -13,6 +13,7 @@ import { useNotifications } from '@/components/NotificationProvider';
 import useSWR from 'swr';
 
 import { formatMatchScore, normalizeMatchScoreNum } from '@/utils/formatters';
+import { formatExactDateTime } from '@/utils/date';
 import IdentityCard from '@/components/IdentityCard';
 import EOIContributionModal from '@/components/EOIContributionModal';
 
@@ -52,7 +53,7 @@ interface MatchDetailResponse {
       financialFit: string;
       geographyFit: string;
    } | null;
-   eoi: { id: string; status: string; isSender: boolean } | null;
+   eoi: { id: string; status: string; isSender: boolean; approvedAt?: string | null } | null;
    userTokens?: number;
 }
 
@@ -580,8 +581,13 @@ export default function MatchDetailPage() {
                         matchReference: `DC-M-${String(match.id).slice(-4).toUpperCase()} · ${counterparty.sectors[0] || 'Advisory'} · ${formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr)}`,
                         matchedMandateText: `MATCHED ON DC-M-${String(match.id).slice(-4).toUpperCase()} · ${counterparty.intent} · ${formatSize(counterparty.dealSizeMinCr, counterparty.dealSizeMaxCr)}`,
                         eoiReference: eoi ? String(eoi.id).slice(-4).toUpperCase() : undefined,
-                        disclosureTimestamp: counterparty.isConnected
-                           ? new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase() + ' · IST'
+                        // Real approval timestamp (eois.approved_at) — was fabricated as
+                        // formatExactDateTime(new Date()) previously, so it silently changed to
+                        // "now" on every page reload instead of showing when disclosure actually
+                        // happened. Falls back to the EOI's created_at (still real, stored data)
+                        // for rows approved before the approved_at column existed.
+                        disclosureTimestamp: counterparty.isConnected && (eoi?.approvedAt)
+                           ? formatExactDateTime(eoi.approvedAt)
                            : undefined,
                      }}
                      onAction={!eoi ? handleSendEOI : undefined}
@@ -624,61 +630,7 @@ export default function MatchDetailPage() {
                         <p className="font-normal text-[#1F1F1F]">{match.matchReason}</p>
                      </div>
 
-                     {/* Action Buttons */}
-                     <div className="border-t border-[#E5E7EB] pt-3 w-full">
-                        {eoi ? (
-                           <button
-                              disabled
-                              className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider cursor-not-allowed flex items-center justify-center ${eoi.status === 'approved'
-                                    ? 'bg-[#16A34A] text-white shadow-sm'
-                                    : 'bg-[#F3F4F6] text-[#747775] border border-[#E5E7EB]'
-                                 }`}
-                           >
-                              {eoi.status === 'sent' && (eoi.isSender ? 'EOI Sent (Awaiting Approval)' : 'EOI Received')}
-                              {eoi.status === 'approved' && 'Connected'}
-                              {eoi.status === 'declined' && 'Declined'}
-                           </button>
-                        ) : (
-                           <button
-                              onClick={handleSendEOI}
-                              disabled={isSending}
-                              className="w-full bg-[#FF6A00] text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm hover:bg-[#EA580C] hover:shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                           >
-                              {isSending ? (
-                                 <>
-                                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Sending...
-                                 </>
-                              ) : (
-                                 <>
-                                    Send Expression of Interest
-                                    <Sparkles size={13} />
-                                 </>
-                              )}
-                           </button>
-                        )}
 
-                        {sendError && (
-                           <div className="mt-3 flex flex-col gap-1.5 p-3 rounded-lg bg-red-50 border border-red-100 text-xs w-full">
-                              <p className="font-semibold text-red-600">{sendError}</p>
-                              {sendError.toLowerCase().includes('complete your profile') ? (
-                                 <Link
-                                    href={`/profile?returnUrl=${encodeURIComponent(`/deal-log/${id}`)}`}
-                                    className="font-bold text-[#FF6A00] uppercase tracking-wider hover:underline text-[10px] mt-0.5"
-                                 >
-                                    Complete Profile →
-                                 </Link>
-                              ) : (
-                                 <Link
-                                    href="/profile/billing"
-                                    className="font-bold text-[#FF6A00] uppercase tracking-wider hover:underline text-[10px] mt-0.5"
-                                 >
-                                    Buy Tokens →
-                                 </Link>
-                              )}
-                           </div>
-                        )}
-                     </div>
                   </div>
 
                   {/* BOTTOM DISCLAIMER */}

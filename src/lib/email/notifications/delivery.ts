@@ -137,7 +137,7 @@ async function updateDelivery(
     }
 }
 
-async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notification: NotificationRow): Promise<void> {
+async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notification: NotificationRow): Promise<{ success: boolean; error?: string }> {
     const deliveryId = await createPendingDelivery(supabase, {
         notificationId: notification.id,
         userId: notification.user_id,
@@ -152,7 +152,7 @@ async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notif
             status: 'skipped',
             errorMessage: 'Email notifications are disabled',
         });
-        return;
+        return { success: true }; // Treat as success if disabled
     }
 
     const { data: recipientData, error: recipientErr } = await supabase
@@ -171,7 +171,7 @@ async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notif
             status: 'failed',
             errorMessage: recipientErr?.message || 'Recipient user not found',
         });
-        return;
+        return { success: false, error: 'Recipient user not found' };
     }
 
     if (!recipient.email || isPlaceholderEmail(recipient.email)) {
@@ -182,7 +182,7 @@ async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notif
             status: 'skipped',
             errorMessage: 'Recipient email is missing or placeholder',
         });
-        return;
+        return { success: true }; // Treat as success for placeholder accounts
     }
 
     const email = renderNotificationEmail({
@@ -199,7 +199,7 @@ async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notif
             status: 'skipped',
             errorMessage: `No email template configured for ${notification.type}`,
         });
-        return;
+        return { success: false, error: 'No template configured' };
     }
 
     try {
@@ -219,6 +219,7 @@ async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notif
             providerMessageId: result.providerMessageId,
             sentAt: new Date().toISOString(),
         });
+        return { success: true };
     } catch (error: unknown) {
         await updateDelivery(supabase, {
             deliveryId,
@@ -227,17 +228,19 @@ async function deliverTemplatedNotificationEmail(supabase: SupabaseClient, notif
             status: 'failed',
             errorMessage: error instanceof Error ? error.message : String(error),
         });
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
 export async function deliverNotificationEmail(
     supabase: SupabaseClient,
     notification: NotificationRow
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
     try {
         if ([EOI_RECEIVED, EOI_APPROVED, EOI_APPROVAL_BLOCKED, NEW_COUNTERPARTY].includes(notification.type)) {
-            await deliverTemplatedNotificationEmail(supabase, notification);
+            return await deliverTemplatedNotificationEmail(supabase, notification);
         }
+        return { success: true };
     } catch (error: unknown) {
         // Email delivery must never fail the business action that already created the EOI
         // and in-app notification. Log unexpected delivery failures and let the caller return
@@ -248,5 +251,6 @@ export async function deliverNotificationEmail(
             type: notification.type,
             error: error instanceof Error ? error.message : String(error),
         });
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
