@@ -24,8 +24,8 @@ function envInt(name: string, fallback: number): number {
 // Timeouts — every native/network sub-step is bounded so a single document
 // can never hold a serverless invocation open for minutes.
 const PDF_EXTRACTION_TIMEOUT_MS = envInt('PDF_EXTRACTION_TIMEOUT_MS', 20_000);
-const OCR_WORKER_INIT_TIMEOUT_MS = envInt('OCR_WORKER_INIT_TIMEOUT_MS', 20_000);
-const OCR_PAGE_TIMEOUT_MS = envInt('OCR_PAGE_TIMEOUT_MS', 20_000);
+const OCR_WORKER_INIT_TIMEOUT_MS = envInt('OCR_WORKER_INIT_TIMEOUT_MS', 60_000);
+const OCR_PAGE_TIMEOUT_MS = envInt('OCR_PAGE_TIMEOUT_MS', 60_000);
 
 // Document-size limits — configurable via env so large-but-legitimate
 // business documents can be tuned without a code change.
