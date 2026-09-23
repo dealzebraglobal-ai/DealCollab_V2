@@ -83,6 +83,7 @@ const NORMALIZE_MAP: Record<string, string> = {
   zld: 'WATER_TREATMENT',
   'sheet metal': 'SHEET_METAL_MANUFACTURING',
   'sheet metal manufacturing': 'SHEET_METAL_MANUFACTURING',
+  'pump manufacturing': 'PUMP_MANUFACTURING',
 };
 
 // Known explicit cross-industry compatibility rules
@@ -112,6 +113,9 @@ const INDUSTRY_COMPATIBILITY_RULES: Record<string, 'EXACT' | 'COMPATIBLE' | 'NAR
   'CYBERSECURITY|TECHNOLOGY': 'COMPATIBLE',
   'CYBERSECURITY|DEFENCE': 'COMPATIBLE',
   'CYBERSECURITY|SHEET_METAL_MANUFACTURING': 'INCOMPATIBLE',
+
+  // Water Treatment
+  'WATER_TREATMENT|PUMP_MANUFACTURING': 'COMPATIBLE',
 };
 
 export function normalizeSector(raw: string): string {
@@ -466,20 +470,7 @@ export function resolveIndustryCompatibility(source: IndustryQuery, target: Indu
     };
   }
 
-  // 2. Check serving_sectors (cross-sector capability)
-  const cServesS = target.serving_sectors?.map(s => normalizeSector(s)).includes(sSectorNorm);
-  const sServesC = source.serving_sectors?.map(s => normalizeSector(s)).includes(cSectorNorm);
-  
-  if (cServesS || sServesC) {
-    return {
-      level: 'SERVING_SECTOR_MATCH',
-      score: 0.85,
-      penalty: 0,
-      reason: `Cross-sector capability: explicit alignment with target sector.`,
-      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
-      isGeneralFallback: false
-    };
-  }
+
 
   // 3. Process the base compat from getIndustryCompatibility
   if (baseCompat.level === 'COMPATIBLE') {
@@ -502,6 +493,21 @@ export function resolveIndustryCompatibility(source: IndustryQuery, target: Indu
         isGeneralFallback: false
       };
     }
+  }
+
+  // 4. Check serving_sectors (cross-sector capability)
+  const cServesS = target.serving_sectors?.map(s => normalizeSector(s)).includes(sSectorNorm);
+  const sServesC = source.serving_sectors?.map(s => normalizeSector(s)).includes(cSectorNorm);
+  
+  if (cServesS || sServesC) {
+    return {
+      level: 'SERVING_SECTOR_MATCH',
+      score: 0.85,
+      penalty: 0,
+      reason: `Cross-sector capability: explicit alignment with target sector.`,
+      archetype: MATCH_ARCHETYPES.CROSS_SECTOR,
+      isGeneralFallback: false
+    };
   }
 
   if (baseCompat.level === 'NARROW') {

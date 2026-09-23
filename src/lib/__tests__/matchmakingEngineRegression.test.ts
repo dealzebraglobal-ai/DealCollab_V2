@@ -237,7 +237,7 @@ describe('Matchmaking engine — 20-scenario acceptance suite', () => {
     it('a supplier that explicitly serves the WATER_TREATMENT sector also qualifies (serving_sectors path)', () => {
       const equipmentSupplier = candidate({
         intent: 'SELL_SIDE',
-        industry: 'Pump Manufacturing',
+        industry: 'Valve Manufacturing',
         sectors: ['MANUFACTURING'],
         serving_sectors: ['WATER_TREATMENT'],
         geographies: ['Maharashtra'],

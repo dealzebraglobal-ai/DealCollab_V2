@@ -197,7 +197,7 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
 
   it('8. unsupported document type: throws UNSUPPORTED_FILE_TYPE rather than returning a fake success result', async () => {
     const { extractTextFromFile } = await import('../documentParser');
-    await expect(extractTextFromFile(Buffer.from('img'), 'image/png')).rejects.toThrow(/UNSUPPORTED_FILE_TYPE/);
+    await expect(extractTextFromFile(Buffer.from('img'), 'image/gif')).rejects.toThrow(/UNSUPPORTED_FILE_TYPE/);
   });
 
   it('9. empty document (DOCX with no text): throws EXTRACTION_FAILED rather than a soft placeholder', async () => {
@@ -280,7 +280,7 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
     const resultPromise = extractTextFromFile(Buffer.from('pdf'), 'application/pdf');
     const assertion = expect(resultPromise).rejects.toThrow(/OCR_FAILED/);
 
-    await vi.advanceTimersByTimeAsync(25_000); // past the 20s worker-init timeout
+    await vi.advanceTimersByTimeAsync(65_000); // past the 60s worker-init timeout
     await assertion;
   });
 

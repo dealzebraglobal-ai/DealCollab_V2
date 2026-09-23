@@ -126,12 +126,19 @@ export interface MatchCard {
   archetype: string;
 }
 
+export type MatchmakingStatus =
+  | 'MATCHMAKING_FAILED'
+  | 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES'
+  | 'MATCHMAKING_COMPLETED_WITH_MATCHES';
+
 export interface MatchmakingResult {
   proposalId: string;
   matchCount: number;
   topScore: number;
   cards: MatchCard[];
   summary: string;
+  status: MatchmakingStatus;
+  persistedCount: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -866,16 +873,20 @@ export async function executeMatchmaking(
 
     if (searchErr) {
       console.error('[M5] pgvector search failed:', searchErr);
+      console.error('[DEALCOLLAB MATCH TRACE]', { proposalId: proposal.id, candidatesEvaluated: 0, matchesGenerated: 0, matchesPersisted: 0, status: 'MATCHMAKING_FAILED', reason: 'pgvector_search_failed' });
       await registerWatch(0, false);
-      return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'Searching for counterparties...' };
+      // Real failure — never claim success/zero here, so the caller can distinguish
+      // "searched and found nothing" from "search itself broke".
+      return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'Searching for counterparties...', status: 'MATCHMAKING_FAILED', persistedCount: 0 };
     }
 
     const candidates = (rawCandidates ?? []) as Candidate[];
     console.log('[M5] Candidates from pgvector:', candidates.length);
 
     if (candidates.length === 0) {
+      console.log('[DEALCOLLAB MATCH TRACE]', { proposalId: proposal.id, candidatesEvaluated: 0, matchesGenerated: 0, matchesPersisted: 0, status: 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES' });
       await registerWatch(0, false);
-      return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'No immediate matches. Your mandate runs continuously for 90 days.' };
+      return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'No immediate matches. Your mandate runs continuously for 90 days.', status: 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES', persistedCount: 0 };
     }
 
     // ── Phase 7/8: Hard rejections + V2 scoring ──────────────
@@ -933,12 +944,26 @@ export async function executeMatchmaking(
 
     // ── Phase 9: forward (NEW->OLD) + reciprocal (OLD->NEW) + blind notify OLD ──
     let notifiedCount = 0;
+    // Never trust the upsert call blindly — verify what actually landed in the DB via
+    // .select() on the same call, so a partial/failed write can never masquerade as success.
+    let persistedRows: typeof topRows = [];
     if (topRows.length > 0) {
-      const { error: fwdErr } = await supabase
+      const { data: fwdIns, error: fwdErr } = await supabase
         .from('proposal_matches')
-        .upsert(topRows, { onConflict: 'proposal_id,matched_proposal_id' });
-      if (fwdErr) console.error('[M5] Forward match upsert error:', fwdErr);
-      else console.log(`[M5] ${topRows.length} forward matches upserted`);
+        .upsert(topRows, { onConflict: 'proposal_id,matched_proposal_id' })
+        .select('proposal_id, matched_proposal_id');
+
+      if (fwdErr) {
+        console.error('[M5] Forward match upsert error:', fwdErr);
+        console.error('[DEALCOLLAB MATCH TRACE]', { proposalId: proposal.id, candidatesEvaluated: candidates.length, matchesGenerated: topRows.length, matchesPersisted: 0, status: 'MATCH_PERSIST_FAILED', reason: fwdErr.message });
+      } else {
+        const persistedKeys = new Set((fwdIns ?? []).map(r => `${r.proposal_id}|${r.matched_proposal_id}`));
+        persistedRows = topRows.filter(r => persistedKeys.has(`${r.proposal_id}|${r.matched_proposal_id}`));
+        console.log(`[M5] ${persistedRows.length}/${topRows.length} forward matches upserted and verified`);
+        if (persistedRows.length !== topRows.length) {
+          console.error('[M5] PARTIAL PERSIST — generated vs verified mismatch:', { generated: topRows.length, persisted: persistedRows.length });
+        }
+      }
 
       const revSector = input.industry ?? (input.sector ? normalizeSector(input.sector) : null);
       const reverseReason = `${revSector ?? 'counterparty'}${input.geography ? ` in ${input.geography}` : ''}. New counterparty mandate aligned with your active position.`;
@@ -984,11 +1009,13 @@ export async function executeMatchmaking(
       }
     }
 
-    // Always register watch
-    await registerWatch(topRows.length, notifiedCount > 0);
+    // Always register watch — uses verified persisted count, not the in-memory generated count.
+    await registerWatch(persistedRows.length, notifiedCount > 0);
 
     // ── Phase 10: Build match cards for frontend ──────────────
-    const cards: MatchCard[] = topRows.slice(0, 3).map(row => {
+    // Built from persistedRows only — a card must never be shown to the user for a match
+    // that didn't actually make it into proposal_matches (it would vanish on refresh).
+    const cards: MatchCard[] = persistedRows.slice(0, 3).map(row => {
       const cand = candidates.find(c => c.id === row.matched_proposal_id)!;
       const cMin = cand.deal_size_min_cr ?? 0;
       const cMax = cand.deal_size_max_cr ?? 0;
@@ -1004,17 +1031,31 @@ export async function executeMatchmaking(
       };
     });
 
-    const topScore = topRows[0]?.final_score ?? 0;
-    console.log(`[M5] ====== COMPLETE: ${topRows.length} matches, top score ${topScore} ======`);
+    const topScore = persistedRows[0]?.final_score ?? 0;
+    const status: MatchmakingStatus = persistedRows.length > 0
+      ? 'MATCHMAKING_COMPLETED_WITH_MATCHES'
+      : (topRows.length > 0 ? 'MATCHMAKING_FAILED' : 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES');
+    console.log(`[M5] ====== COMPLETE: generated=${topRows.length} persisted=${persistedRows.length} top score ${topScore} status=${status} ======`);
+    console.log('[DEALCOLLAB MATCH TRACE]', {
+      proposalId: proposal.id,
+      candidatesEvaluated: candidates.length,
+      matchesGenerated: topRows.length,
+      matchesPersisted: persistedRows.length,
+      status,
+    });
 
     return {
       proposalId: proposal.id,
-      matchCount: topRows.length,
+      matchCount: persistedRows.length,
       topScore,
       cards,
-      summary: topRows.length > 0
-        ? `${topRows.length} aligned counterpart${topRows.length > 1 ? 'ies' : 'y'} identified.`
-        : 'No immediate matches. Your mandate runs continuously for 90 days.',
+      summary: persistedRows.length > 0
+        ? `${persistedRows.length} aligned counterpart${persistedRows.length > 1 ? 'ies' : 'y'} identified.`
+        : topRows.length > 0
+          ? 'We generated matches but could not save them — please retry.'
+          : 'No immediate matches. Your mandate runs continuously for 90 days.',
+      status,
+      persistedCount: persistedRows.length,
     };
 
   } catch (err) {

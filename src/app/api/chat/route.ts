@@ -632,6 +632,7 @@ export async function POST(req: NextRequest) {
     let matchSummary: string | null = null;
     let matchResult: MatchmakingResult | null = null;
     let resolvedProposalId: string | null = null;
+    let matchmakingStatus: MatchmakingResult['status'] | null = null;
 
     // STEP C: DB insert — runs when the mandate structuring is complete.
     // Step 1: use the engine's gate, which inserts ONCE and never re-inserts a captured deal.
@@ -774,13 +775,24 @@ export async function POST(req: NextRequest) {
             source: source,
           });
 
+          // matchPromise may still be running after the timeout wins the race — attach a
+          // catch so a later rejection becomes a logged trace, not an unhandled rejection.
+          matchPromise.catch((bgErr) => {
+            console.error('[M5] Background matchmaking failed after 12s timeout:', bgErr);
+            console.error('[DEALCOLLAB MATCH TRACE]', { proposalId, mandateId: mandateData.id, status: 'MATCHMAKING_FAILED', reason: 'background_promise_rejected' });
+          });
+
           const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 12000));
           matchResult = await Promise.race([matchPromise, timeoutPromise]);
+
+          matchmakingStatus = matchResult?.status ?? null;
 
           if (matchResult?.cards?.length) {
             matchCards = matchResult.cards;
             matchSummary = matchResult.summary;
             console.log(`[M5] ${matchResult.matchCount} match cards. Top score: ${matchResult.topScore}`);
+          } else if (matchResult?.status === 'MATCHMAKING_FAILED') {
+            console.error(`[M5] Matchmaking completed but reported FAILED for proposal ${matchResult.proposalId}`);
           } else {
             console.log("[M5] No immediate matches — will surface via /api/matches");
           }
@@ -852,6 +864,7 @@ export async function POST(req: NextRequest) {
       type: updatedState.is_complete ? 'complete' : 'conversation',
       matches: matchCards,
       matchSummary: matchSummary,
+      matchmakingStatus: matchmakingStatus,
       is_document_intake: updatedState.is_document_intake,
       reason: completion.reason,
       m4GuardFired: completion.m4GuardFired,
