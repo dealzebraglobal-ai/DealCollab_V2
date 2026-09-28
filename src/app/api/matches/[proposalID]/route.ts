@@ -118,7 +118,7 @@ export async function GET(
         }
 
         // Fetch top matches (already scored and ranked by executeMatchmaking)
-        let { data: matches, error: matchErr } = await supabase
+        const { data: initialMatches, error: matchErr } = await supabase
             .from('proposal_matches')
             .select(`
         id,
@@ -133,6 +133,8 @@ export async function GET(
             .neq('status', 'EXPIRED')
             .order('final_score', { ascending: false })
             .limit(TOP_N);
+
+        let matches = initialMatches;
 
         if (matchErr) {
             console.error('[MATCHES_API] Fetch error:', matchErr);
@@ -191,8 +193,8 @@ export async function GET(
                 tokensRequired: 50,
                 userTokens: userRow.tokens ?? 0,
                 message: savedSearch
-                    ? 'No immediate matches found. Your mandate is queued — you will be notified when an aligned counterparty joins.'
-                    : (isFreshlyCreated ? 'Searching for aligned counterparties...' : 'No immediate matches found. Your mandate is active.'),
+                    ? 'Your match is playing hard to get. Your mandate is queued — you will be notified when an aligned counterparty joins.'
+                    : (isFreshlyCreated ? 'Searching for aligned counterparties...' : 'Your match is playing hard to get. Your mandate is active.'),
             });
         }
 

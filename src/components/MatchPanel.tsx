@@ -194,14 +194,35 @@ export function MatchPanel({ proposalId, onStartOver }: { proposalId: string; on
             );
         } else {
             return (
-                <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                    <p className="text-sm font-medium text-gray-900">No immediate matches found.</p>
-                    <p className="text-xs text-gray-600 mt-1">Your mandate has been added to our queue. We will notify you via email when a suitable counterparty joins the platform.</p>
-                    <div className="flex flex-col gap-2 mt-3">
-                        <button onClick={fetchMatches} className="text-xs text-blue-600 underline w-full text-left">
-                            Refresh matches
+                <div className="p-5 rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50 to-white shadow-sm">
+                    <h3 className="text-[15px] font-semibold text-gray-900 mb-3">Your match is playing hard to get.</h3>
+                    <div className="text-[13px] text-gray-600 space-y-3 leading-relaxed">
+                        <p>We haven't found the right counterparty yet — but the search isn't over.</p>
+                        <p>Your mandate is live, and DealCollab will keep scanning the growing network 24×7 as new opportunities enter.</p>
+                        <p>Because sometimes the right deal isn't missing.</p>
+                        <p>It just hasn't entered the room yet.</p>
+                    </div>
+                    <div className="flex flex-col gap-3 mt-5 pt-4 border-t border-gray-100">
+                        <button 
+                            onClick={fetchMatches} 
+                            disabled={loading}
+                            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-medium text-white bg-[#FF6A00] hover:bg-[#EA580C] disabled:bg-[#FF6A00]/60 rounded-lg transition-colors"
+                        >
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Refreshing...
+                                </span>
+                            ) : 'Refresh matches'}
                         </button>
-                        <button onClick={onStartOver} className="text-xs text-gray-500 underline w-full text-left">
+                        <button 
+                            onClick={onStartOver} 
+                            disabled={loading} 
+                            className="text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50 text-center transition-colors"
+                        >
                             Start over with a new mandate
                         </button>
                     </div>
