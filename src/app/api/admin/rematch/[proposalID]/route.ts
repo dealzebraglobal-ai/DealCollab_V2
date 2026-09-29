@@ -26,10 +26,6 @@ export async function POST(
 ) {
     try {
         const session = await auth();
-        // Previously this only checked "is any session present", not whether that
-        // session belongs to an admin — any logged-in user could trigger rematch
-        // for any proposal. Now requires the ADMIN_EMAILS allowlist (same source
-        // of truth as /api/admin/dashboard) OR the internal admin key.
         const isAdmin = isValidAdminKey(req.headers.get('x-admin-key')) || isAdminEmail(session?.user?.email);
 
         if (!isAdmin) {
@@ -48,9 +44,6 @@ export async function POST(
 
         const result = await executeMatchmaking({
             id: proposalID,
-            // Was `p.mandate_id ?? p.id` — fabricating a mandate id from the proposal's own id
-            // throws FK constraint 23503 on re-insert whenever the proposal genuinely has no
-            // mandates row (legacy/bulk-imported rows), since that id never exists in `mandates`.
             mandateId: p.mandate_id ?? null,
             userId: p.user_id,
             intent: p.intent,
@@ -58,19 +51,32 @@ export async function POST(
             sector: p.sectors?.[0] ?? null,
             industry: p.industry ?? ((p.metadata as Record<string, unknown>)?.industry as string) ?? null,
             sub_sector: null,
-            serving_sectors: p.serving_sectors || [],
+            serving_sectors: p.serving_sectors ?? [],
             geography: p.geographies?.[0] ?? null,
+            geographies: p.geographies ?? [],
             deal_size: null,
             revenue: null,
             structure: p.deal_structure,
+            deal_structure: p.deal_structure,
             buyer_type: p.buyer_type ?? ((p.metadata as Record<string, unknown>)?.buyer_type as string) ?? null,
             intent_focus: null,
             industry_data: (p.metadata as Record<string, unknown>) ?? {},
             special_conditions: p.special_conditions || [],
             deal_size_min: p.deal_size_min_cr?.toString() ?? null,
             deal_size_max: p.deal_size_max_cr?.toString() ?? null,
+            deal_size_min_cr: p.deal_size_min_cr,
+            deal_size_max_cr: p.deal_size_max_cr,
             revenue_min: p.revenue_min_cr?.toString() ?? null,
             revenue_max: p.revenue_max_cr?.toString() ?? null,
+            revenue_min_cr: p.revenue_min_cr,
+            revenue_max_cr: p.revenue_max_cr,
+            inferred_buyer_type: p.inferred_buyer_type || null,
+            currency: p.currency || null,
+            urgency: p.urgency || null,
+            intent_validated: p.intent_validated ?? false,
+            document_url: p.document_url ?? null,
+            document_text: p.document_text ?? null,
+            source: p.source || 'WEB',
         });
 
         return NextResponse.json({ proposalID, result });

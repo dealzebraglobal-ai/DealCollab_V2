@@ -265,6 +265,7 @@ export const proposals = pgTable('proposals', {
   intent: text('intent').notNull(),
   industry: text('industry'),
   sectors: text('sectors').array(),
+  servingSectors: text('serving_sectors').array(),
   geographies: text('geographies').array(),
   dealStructure: text('deal_structure'),
   dealSizeMinCr: numeric('deal_size_min_cr'),

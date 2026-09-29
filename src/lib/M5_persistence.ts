@@ -75,6 +75,7 @@ export interface SavedSearchInput {
     intent: string;
     sector: string | null;
     industry?: string | null;
+    serving_sectors?: string[] | null;
     geography: string | null;
     structure: string | null;
     sub_sector: string | null;
@@ -82,12 +83,11 @@ export interface SavedSearchInput {
     deal_size_max: string | null;
     revenue_min: string | null;
     revenue_max: string | null;
-    special_conditions?: string[];
-    serving_sectors?: string[];
     buyer_type?: string | null;
     inferred_buyer_type?: string | null;
     currency?: string | null;
     urgency?: string | null;
+    special_conditions?: string[];
 }
 
 export interface SavedSearchRecord {
@@ -116,7 +116,7 @@ const num = (v: string | null | undefined): number | null => {
 
 /**
  * Build the always-on watch row. `query_object` mirrors the live production key shape
- * (locked from real rows) PLUS the free-text industry. `query_embedding` is the
+ * (locked from real rows) PLUS the free-text industry and serving_sectors. `query_embedding` is the
  * reversed-intent (counterparty-facing) embedding — re-match searches for counterparties,
  * so it must NOT reuse the proposal's own stored embedding.
  */
@@ -131,9 +131,14 @@ export function buildSavedSearchRecord(
         intent: input.intent,
         sector: input.sector,
         industry: input.industry ?? null,
+        serving_sectors: input.serving_sectors ?? [],
         geography: input.geography,
         structure: input.structure,
         sub_sector: input.sub_sector,
+        buyer_type: input.buyer_type ?? null,
+        inferred_buyer_type: input.inferred_buyer_type ?? null,
+        currency: input.currency ?? null,
+        urgency: input.urgency ?? null,
         revenue_min_cr: num(input.revenue_min),
         revenue_max_cr: num(input.revenue_max),
         deal_size_min_cr: num(input.deal_size_min),

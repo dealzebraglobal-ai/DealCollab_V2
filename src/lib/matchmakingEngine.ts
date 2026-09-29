@@ -28,10 +28,13 @@
 import OpenAI from 'openai';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import {
+  getSectorCompatibility,
   normalizeSector,
   MATCH_ARCHETYPES,
   detectFraudSignals,
-  resolveIndustryCompatibility
+  resolveIndustryCompatibility,
+  type IndustryCompatibilityResult,
+  type MandateSpecificity,
 } from './M5_sectorMatrix';
 import {
   buildReciprocalRow,
@@ -47,7 +50,7 @@ import { deliverNotificationEmail, type NotificationRow } from './email/notifica
 // ─────────────────────────────────────────────────────────────
 
 export interface ProposalInput {
-  mandateId?: string;
+  mandateId?: string | null;
   userId: string;
   intent: string;
   raw_text: string;
@@ -81,6 +84,7 @@ export interface ProposalInput {
   inferred_buyer_type?: string | null;
   intent_validated?: boolean;
   is_shell_query?: boolean;   // NM5: true = include shells, false = exclude
+  mandate_specificity?: MandateSpecificity | null;
   document_url?: string | null;   // URL of uploaded PDF/doc (if any)
   document_text?: string | null;  // Extracted text from uploaded document
   id?: string;
@@ -211,10 +215,6 @@ export function buildCanonicalText(input: ProposalInput, intentOverride?: string
 
   /**
    * Financial signal formatting.
-   *
-   * Why this exists:
-   * - If min and max are same, show a single value.
-   * - If min and max are different, show a range.
    */
   const formatCrSignal = (
     label: 'deal size' | 'revenue',
@@ -357,6 +357,7 @@ export function applyHardRejections(
       sector: source.sector,
       sectors: source.sector ? [source.sector] : [],
       serving_sectors: source.serving_sectors,
+      mandate_specificity: source.mandate_specificity,
     },
     {
       industry: candidate.industry,
@@ -409,7 +410,7 @@ export interface ScoreResult {
 
 export function calculateV2Score(source: ProposalInput, candidate: Candidate): ScoreResult {
   // SEMANTIC (55%) — raw cosine similarity from pgvector
-  let semanticScore = Math.max(0, Math.min(1, candidate.similarity));
+  const semanticScore = Math.max(0, Math.min(1, candidate.similarity));
 
   // INDUSTRY ALIGNMENT (25%) — Industry-first hierarchy
   const comp = resolveIndustryCompatibility(
@@ -418,6 +419,7 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
       sector: source.sector,
       sectors: source.sector ? [source.sector] : [],
       serving_sectors: source.serving_sectors,
+      mandate_specificity: source.mandate_specificity,
     },
     {
       industry: candidate.industry,
@@ -428,18 +430,6 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
   );
   const industryScore = comp.score;
 
-  // INDUSTRY QUALITY GATE
-  // Semantic similarity cannot compensate for a clear operating industry mismatch.
-  // If the candidate merely serves the sector or is only a broad match, cap semantic influence.
-  if (
-    comp.level === 'SERVING_SECTOR_MATCH' ||
-    comp.level === 'COARSE_SECTOR_MATCH' ||
-    comp.level === 'GENERAL_FALLBACK' ||
-    comp.level === 'INCOMPATIBLE'
-  ) {
-    semanticScore = Math.min(semanticScore, 0.75);
-  }
-
   // FINANCIAL (10%) — compare deal size when present, otherwise revenue.
   const sMin = parseNum(source.deal_size_min ?? (source.deal_size_min_cr ? String(source.deal_size_min_cr) : null)) ??
     parseNum(source.revenue_min ?? (source.revenue_min_cr ? String(source.revenue_min_cr) : null)) ?? 0;
@@ -449,21 +439,34 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
   const cMax = candidate.deal_size_max_cr ?? candidate.revenue_max_cr ?? cMin;
 
   let financialScore = 0.5; // neutral when data unavailable
+  let scaleDampener = 1.0;
+
   if (sMax > 0 && cMax > 0) {
     const overlapMin = Math.max(sMin, cMin);
     const overlapMax = Math.min(sMax, cMax);
     const overlap = Math.max(0, overlapMax - overlapMin);
     const union = Math.max(sMax, cMax) - Math.min(sMin, cMin);
-    
-    // Check if one is a point value that falls completely inside the other's range
+
     const isSPointInsideC = sMin === sMax && sMin >= cMin && sMin <= cMax;
     const isCPointInsideS = cMin === cMax && cMin >= sMin && cMin <= sMax;
-    
+
     if ((union === 0 && sMax === cMax && sMax > 0) || isSPointInsideC || isCPointInsideS) {
-      // Perfect fit
       financialScore = 1.0;
     } else {
       financialScore = union > 0 ? overlap / union : 0.1;
+    }
+
+    // Progressive scale disparity dampener
+    const upperRatio = cMax > 0 && sMax > 0 ? cMax / sMax : 1.0;
+    const lowerRatio = sMin > 0 && cMax > 0 ? sMin / cMax : 1.0;
+    const maxDisparity = Math.max(upperRatio, lowerRatio);
+
+    if (maxDisparity > 4.0) {
+      scaleDampener = 0.50; // Severe mismatch (>4x budget)
+    } else if (maxDisparity > 2.5) {
+      scaleDampener = 0.75; // Substantial mismatch (2.5x - 4x)
+    } else if (maxDisparity > 1.8) {
+      scaleDampener = 0.90; // Moderate mismatch (1.8x - 2.5x)
     }
   }
 
@@ -499,10 +502,7 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
   // ADJUSTMENTS & SAFEGUARDS
   if (comp.penalty > 0) finalScore -= (comp.penalty * 100 * 0.5);
 
-  // Safeguard: location alone must not push unrelated / generic candidates into results.
-  // Threshold realigned to M5_sectorMatrix's current score bands (EXACT 1.0 / COMPATIBLE 0.9 /
-  // SERVING_SECTOR_MATCH 0.85 / NARROW 0.70 / COARSE_SECTOR_MATCH 0.60 / GENERAL_FALLBACK 0.30) —
-  // 0.2 was stale against a prior 3-tier scale and no longer caught GENERAL_FALLBACK (0.30).
+  // Safeguard: location alone must not push unrelated / generic candidates into results
   if (comp.isGeneralFallback || industryScore <= 0.35) {
     if (geoScore === 1.0) finalScore += 2;
     if (semanticScore < 0.65) finalScore -= 10;
@@ -515,13 +515,24 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
   if (candidate.quality_tier === 1) finalScore += 5;
   else if (candidate.quality_tier === 2) finalScore += 2;
 
+  // Apply progressive financial scale dampener
+  if (scaleDampener < 1.0) {
+    finalScore = finalScore * scaleDampener;
+  }
+
+  // Target Requirement Match Gate: For HIGH-specificity mandates, if the explicit target requirement
+  // is not satisfied, cap the score so same-sector or geo alignment cannot produce a primary match (>70).
+  const isHighSpecificity = (source.mandate_specificity === 'HIGH');
+  if (isHighSpecificity && !comp.isSpecificIndustryMatch) {
+    finalScore = Math.min(finalScore, 58);
+  }
+
   finalScore = Math.max(0, Math.min(100, Math.round(finalScore)));
 
   // ARCHETYPE
   const archetype = comp.archetype || MATCH_ARCHETYPES.CROSS_SECTOR;
 
-  // MATCH REASON — anonymous, shown on match card. Prefers the true industry label over the
-  // coarse sector tag when one exists.
+  // MATCH REASON — anonymous, shown on match card
   const indLabel = candidate.industry || candidate.sectors?.[0] || 'target sector';
   const geoLabel = candidate.geographies?.[0] ?? 'matched region';
   const sizeLabel = formatSizeRange(cMin, cMax);
@@ -529,15 +540,8 @@ export function calculateV2Score(source: ProposalInput, candidate: Candidate): S
     `${indLabel} in ${geoLabel}${sizeLabel ? ` · ${sizeLabel}` : ''}.`,
     comp.reason.split('.')[0] + '.',
   ];
-  // "Strong alignment" language is only honest when there is real industry evidence behind it —
-  // gating it on industryScore prevents a merely-generic semantic/financial subscore from reading
-  // as a confident recommendation. For general-fallback pairs, an explicit caveat replaces it.
-  const hasRealIndustryEvidence = !comp.isGeneralFallback && industryScore > 0.35;
-  if (hasRealIndustryEvidence && financialScore > 0.7) reasonParts.push('Strong financial alignment.');
-  else if (hasRealIndustryEvidence && semanticScore > 0.7) reasonParts.push('Strong mandate alignment.');
-  else if (comp.isGeneralFallback || industryScore <= 0.35) {
-    reasonParts.push(`Broader ${normalizeSector(candidate.sectors?.[0] ?? 'sector').toLowerCase()}-level alignment only — no confirmed ${source.industry ? source.industry.toLowerCase() : 'specific industry'} evidence.`);
-  }
+  if (financialScore > 0.7) reasonParts.push('Strong financial alignment.');
+  else if (semanticScore > 0.7 && comp.isSpecificIndustryMatch) reasonParts.push('Strong mandate alignment.');
   const matchReason = reasonParts.join(' ');
 
   return {
@@ -610,9 +614,6 @@ export function computeQualityTier(input: ProposalInput): number {
 
 // ─────────────────────────────────────────────────────────────
 // MANDATE SUMMARY GENERATOR
-// Produces an 80–250 word anonymized executive summary from
-// structured ProposalInput fields. Stored in proposals.metadata
-// and surfaced in the Deal Log as the human-readable preview.
 // ─────────────────────────────────────────────────────────────
 
 export function buildMandateSummary(input: ProposalInput): string {
@@ -692,7 +693,7 @@ export function buildMandateSummary(input: ProposalInput): string {
   if (channel) highlights.push(`${channel} distribution channel`);
   if (model) highlights.push(`${model} business model`);
   if (clients) highlights.push(`${clients} active clients or customers`);
-  if (hospitals) highlights.push(`$${hospitals} hospital facilities`);
+  if (hospitals) highlights.push(`${hospitals} hospital facilities`);
   if (beds) highlights.push(`${beds} operational beds`);
   if (sku) highlights.push(`${sku} SKU / product range`);
   if (arr) highlights.push(`ARR / revenue run-rate of ${arr}`);
@@ -718,7 +719,6 @@ export function buildMandateSummary(input: ProposalInput): string {
   sentences.push(`Ideal counterparties include ${counterpartyDesc}${geoSuffix}.`);
 
   const summary = sentences.join(' ');
-  console.log(`[M5] Mandate summary generated (${summary.split(' ').length} words): ${summary.slice(0, 80)}...`);
   return summary;
 }
 
@@ -728,8 +728,6 @@ export function cap(s: string): string {
 
 // ─────────────────────────────────────────────────────────────
 // MAIN EXECUTION ENGINE
-// Called synchronously from route.ts after mandate insert.
-// Runs with 12-second timeout — match cards appear in same API response.
 // ─────────────────────────────────────────────────────────────
 
 export async function executeMatchmaking(
@@ -751,16 +749,12 @@ export async function executeMatchmaking(
     const reversedIntent = REVERSE_INTENT[input.intent] ?? input.intent;
     const queryText = buildCanonicalText(input, reversedIntent);
 
-    console.log('[M5] Storage text:', storageText.slice(0, 80) + '...');
-    console.log('[M5] Query text (reversed):', queryText.slice(0, 80) + '...');
-
     // ── Phase 2/3: Generate embeddings ───────────────────────
     const [storageEmbedding, queryEmbeddingRaw] = await Promise.all([
       embed(storageText),
       storageText !== queryText ? embed(queryText) : Promise.resolve(null as number[] | null),
     ]);
     const searchEmbedding = queryEmbeddingRaw ?? storageEmbedding;
-    console.log('[M5] Embeddings generated');
 
     // ── Phase 4: Insert proposal record ──────────────────────
     const rawTextIsSubstantive = input.raw_text && input.raw_text.trim().length > 50;
@@ -826,7 +820,6 @@ export async function executeMatchmaking(
       embedding_vector: storageEmbedding,
     });
     if (embErr) console.warn('[M5] Embedding RPC failed (non-blocking):', embErr.message);
-    else console.log('[M5] Storage embedding stored');
 
     // Always-on watch registrar
     const registerWatch = async (matchCount: number, notified: boolean) => {
@@ -862,7 +855,6 @@ export async function executeMatchmaking(
 
     // ── Phase 6: pgvector ANN search ─────────────────────────
     const targetIntents = COUNTERPARTY_INTENTS[input.intent] ?? [input.intent];
-    console.log('[M5] Target counterparty intents:', targetIntents);
     const { data: rawCandidates, error: searchErr } = await supabase.rpc('match_proposals', {
       query_embedding: searchEmbedding,
       match_intents: targetIntents,
@@ -875,13 +867,10 @@ export async function executeMatchmaking(
       console.error('[M5] pgvector search failed:', searchErr);
       console.error('[DEALCOLLAB MATCH TRACE]', { proposalId: proposal.id, candidatesEvaluated: 0, matchesGenerated: 0, matchesPersisted: 0, status: 'MATCHMAKING_FAILED', reason: 'pgvector_search_failed' });
       await registerWatch(0, false);
-      // Real failure — never claim success/zero here, so the caller can distinguish
-      // "searched and found nothing" from "search itself broke".
       return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'Searching for counterparties...', status: 'MATCHMAKING_FAILED', persistedCount: 0 };
     }
 
     const candidates = (rawCandidates ?? []) as Candidate[];
-    console.log('[M5] Candidates from pgvector:', candidates.length);
 
     if (candidates.length === 0) {
       console.log('[DEALCOLLAB MATCH TRACE]', { proposalId: proposal.id, candidatesEvaluated: 0, matchesGenerated: 0, matchesPersisted: 0, status: 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES' });
@@ -919,9 +908,8 @@ export async function executeMatchmaking(
       }
 
       const scored = calculateV2Score(input, cand);
-      console.log(`[M5] SCORE ${cand.id.slice(-8)}: ${scored.finalScore} (${scored.archetype})`);
 
-      if (scored.finalScore >= 60) {
+      if (scored.finalScore >= 70) {
         scoredRows.push({
           proposal_id: proposal.id,
           matched_proposal_id: cand.id,
@@ -944,8 +932,6 @@ export async function executeMatchmaking(
 
     // ── Phase 9: forward (NEW->OLD) + reciprocal (OLD->NEW) + blind notify OLD ──
     let notifiedCount = 0;
-    // Never trust the upsert call blindly — verify what actually landed in the DB via
-    // .select() on the same call, so a partial/failed write can never masquerade as success.
     let persistedRows: typeof topRows = [];
     if (topRows.length > 0) {
       const { data: fwdIns, error: fwdErr } = await supabase
@@ -960,9 +946,6 @@ export async function executeMatchmaking(
         const persistedKeys = new Set((fwdIns ?? []).map(r => `${r.proposal_id}|${r.matched_proposal_id}`));
         persistedRows = topRows.filter(r => persistedKeys.has(`${r.proposal_id}|${r.matched_proposal_id}`));
         console.log(`[M5] ${persistedRows.length}/${topRows.length} forward matches upserted and verified`);
-        if (persistedRows.length !== topRows.length) {
-          console.error('[M5] PARTIAL PERSIST — generated vs verified mismatch:', { generated: topRows.length, persisted: persistedRows.length });
-        }
       }
 
       const revSector = input.industry ?? (input.sector ? normalizeSector(input.sector) : null);
@@ -973,7 +956,6 @@ export async function executeMatchmaking(
         .upsert(reciprocalRows, { onConflict: 'proposal_id,matched_proposal_id' })
         .select('id, proposal_id, final_score');
       if (recErr) console.error('[M5] Reciprocal match upsert error:', recErr);
-      else console.log(`[M5] ${reciprocalRows.length} reciprocal matches upserted`);
 
       const notifRows = (recipIns ?? [])
         .map((row: { id: string; proposal_id: string; final_score: number | string }) => {
@@ -1004,17 +986,14 @@ export async function executeMatchmaking(
           const notifications = (insertedNotifications ?? []) as NotificationRow[];
           notifiedCount = notifications.length;
           await Promise.all(notifications.map((notification) => deliverNotificationEmail(supabase, notification)));
-          console.log(`[M5] ${notifiedCount} blind notifications stored`);
         }
       }
     }
 
-    // Always register watch — uses verified persisted count, not the in-memory generated count.
+    // Always register watch
     await registerWatch(persistedRows.length, notifiedCount > 0);
 
     // ── Phase 10: Build match cards for frontend ──────────────
-    // Built from persistedRows only — a card must never be shown to the user for a match
-    // that didn't actually make it into proposal_matches (it would vanish on refresh).
     const cards: MatchCard[] = persistedRows.slice(0, 3).map(row => {
       const cand = candidates.find(c => c.id === row.matched_proposal_id)!;
       const cMin = cand.deal_size_min_cr ?? 0;
@@ -1035,14 +1014,6 @@ export async function executeMatchmaking(
     const status: MatchmakingStatus = persistedRows.length > 0
       ? 'MATCHMAKING_COMPLETED_WITH_MATCHES'
       : (topRows.length > 0 ? 'MATCHMAKING_FAILED' : 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES');
-    console.log(`[M5] ====== COMPLETE: generated=${topRows.length} persisted=${persistedRows.length} top score ${topScore} status=${status} ======`);
-    console.log('[DEALCOLLAB MATCH TRACE]', {
-      proposalId: proposal.id,
-      candidatesEvaluated: candidates.length,
-      matchesGenerated: topRows.length,
-      matchesPersisted: persistedRows.length,
-      status,
-    });
 
     return {
       proposalId: proposal.id,

@@ -79,10 +79,10 @@ function isCsv(file: File): boolean {
 // Accepts common header spellings and normalizes to a canonical field name.
 const HEADER_ALIASES: Record<string, string> = {
   intent: 'intent', deal_type: 'intent', type: 'intent', transaction_type: 'intent',
-  sector: 'sector', industry: 'industry',
+  sector: 'sector', coarse_sector: 'sector',
+  industry: 'industry', specific_industry: 'industry', business_type: 'industry', business_industry: 'industry', niche: 'industry',
+  serving_sectors: 'serving_sectors', serving_industries: 'serving_sectors', target_sectors: 'serving_sectors', target_industries: 'serving_sectors', clients_served: 'serving_sectors', sectors_served: 'serving_sectors', serving_sector: 'serving_sectors', serves: 'serving_sectors', client_sectors: 'serving_sectors',
   sub_sector: 'sub_sector', subsector: 'sub_sector',
-  serving_sectors: 'serving_sectors', serving_sector: 'serving_sectors', serves: 'serving_sectors',
-  client_sectors: 'serving_sectors', target_industries: 'serving_sectors',
   geography: 'geography', location: 'geography', city: 'geography', region: 'geography',
   deal_size: 'deal_size', ticket_size: 'deal_size', investment_size: 'deal_size', size: 'deal_size',
   revenue: 'revenue', annual_revenue: 'revenue', turnover: 'revenue',
@@ -114,24 +114,20 @@ function buildProposalInputFromRow(row: Record<string, string>, userId: string):
     ? (rawSector as SectorKey)
     : detectSectorFromText(rawIndustry ? `${rawIndustry} ${description}` : description);
 
-  const rawServingSectors = row.serving_sectors
-    ? row.serving_sectors.split(/[,;|]/).map(s => s.trim()).filter(Boolean)
-    : [];
+  const rawServing = row.serving_sectors;
+  const serving_sectors = rawServing ? rawServing.split(/[,;|]/).map(s => s.trim()).filter(Boolean) : [];
 
   const sizeParsed = normalizeSize(row.deal_size || '');
   const revenueParsed = normalizeSize(row.revenue || '');
 
   const input: ProposalInput = {
-    // Was crypto.randomUUID() — a fabricated id that (almost) never exists in `mandates`, which
-    // throws FK constraint 23503 on the proposals insert inside executeMatchmaking. No mandates
-    // row is created for bulk-uploaded rows, so this must be null (mandate_id is a nullable FK).
     userId,
     intent,
     raw_text: description,
     sector,
     industry: rawIndustry || (sector ? String(sector) : null),
+    serving_sectors,
     sub_sector: row.sub_sector || null,
-    serving_sectors: rawServingSectors,
     geography: row.geography || null,
     deal_size: row.deal_size || null,
     revenue: row.revenue || null,
@@ -155,8 +151,6 @@ function buildProposalInputFromRow(row: Record<string, string>, userId: string):
 
 export async function POST(req: NextRequest) {
   try {
-    // SECURITY: was a plain `===` comparison — vulnerable to a timing
-    // side-channel. Now uses the same constant-time compare as chat/route.ts.
     const isAdmin = isValidAdminSecret(req.headers.get('x-admin-secret'));
     let userId: string;
 
@@ -268,9 +262,6 @@ export async function POST(req: NextRequest) {
           console.warn('[bulk-upload] cleanAndStructureDocument failed, continuing with raw text only:', intelErr);
         }
 
-        // initializeStateFromDocument() already canonicalizes intent via dataQuality.normalizeIntent()
-        // — the same normalizer chat/route.ts uses at insert time — so both flows land on an
-        // identical DealIntent value from the same document without each caller re-deriving it.
         const state = initializeStateFromDocument(structuredData);
 
         const intent: DealIntent = state.intent ?? detectIntentFromText(cleanText);
@@ -300,7 +291,6 @@ export async function POST(req: NextRequest) {
           if (norm) revenueParsed = { min_cr: norm.min_cr, max_cr: norm.max_cr };
         }
 
-        // Best-effort storage upload for the document URL — non-blocking if it fails.
         let documentUrl: string | null = null;
         try {
           const storageName = `${userId}/bulk/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -316,15 +306,13 @@ export async function POST(req: NextRequest) {
         }
 
         const input: ProposalInput = {
-          // See the other buildProposalInputFromRow() site above — fabricating a random
-          // mandate_id throws FK constraint 23503; no mandates row exists for this path.
           userId,
           intent,
           raw_text: cleanText,
           sector: state.sector,
-          industry: state.industry,
+          industry: state.industry || (structuredData.industry as string) || null,
+          serving_sectors: state.serving_sectors || (Array.isArray(structuredData.serving_sectors) ? structuredData.serving_sectors as string[] : []),
           sub_sector: state.sub_sector,
-          serving_sectors: state.serving_sectors || [],
           geography: state.geography,
           deal_size: dealSizeText,
           revenue: revenueText,
@@ -346,7 +334,6 @@ export async function POST(req: NextRequest) {
           source: 'BULK',
         };
 
-        console.log("BULK UPLOAD INPUT:", input);
         const match = await executeMatchmaking(input);
         if (!match) {
           throw new Error("executeMatchmaking returned null (critical failure)");
