@@ -1,13 +1,18 @@
-'use server';
-
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { getAdminAccess } from "@/lib/admin";
 
 /**
  * SURGICAL DATABASE FIX
  * Run this to fix the ON CONFLICT (identifier) error permanently.
+ * Restricted to administrators only.
  */
 export async function fixDatabaseConstraint() {
+  const access = await getAdminAccess();
+  if (!access.allowed) {
+    return { error: "Forbidden: administrator access required." };
+  }
+
   try {
     // 1. Clear out potentially conflicting data
     await db.execute(sql`DELETE FROM "verification_tokens"`);

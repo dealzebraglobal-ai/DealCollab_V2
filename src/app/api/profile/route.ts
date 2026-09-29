@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
     // 3. Build update object (Snake Case) for users table
     const updateData = {
       name: body.fullName || currentUser.name,
-      email: body.workEmail || currentUser.email,
+      email: currentUser.email, // SECURITY: Primary login email cannot be changed without email verification
       phone: incomingPhone || currentUser.phone,
       firm_name: isBusinessPromoter ? null : (body.firmName || currentUser.firm_name),
       role: isBusinessPromoter ? null : (body.role || currentUser.role),
@@ -232,7 +232,8 @@ export async function POST(req: NextRequest) {
       intent: isBusinessPromoter ? null : ((body.currentFocus !== undefined && body.currentFocus !== null && body.currentFocus.length > 0) ? body.currentFocus : currentUser.intent),
       profile_completion: currentUser.profile_completion, // Will be updated after this save
       profile_completed_once: currentUser.profile_completed_once,
-      is_phone_verified: incomingPhone ? true : currentUser.isPhoneVerified,
+      // SECURITY: Phone is only verified if it matches the already-verified phone; changing phone resets verified status until OTP is completed
+      is_phone_verified: (incomingPhone && incomingPhone === currentUser.phone) ? (currentUser.is_phone_verified ?? currentUser.isPhoneVerified ?? false) : false,
       tokens: currentUser.tokens ?? 0,
       profile_image: (() => {
         const incoming = (body.profileImage !== undefined)

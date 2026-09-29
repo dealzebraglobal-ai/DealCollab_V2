@@ -6,6 +6,8 @@ import { hashOtp } from '@/lib/emailOtp';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { describeAuthError as describeDbError } from '@/lib/authDiagnostics';
 
+import { createAuthVerificationToken } from '@/lib/authVerificationToken';
+
 export const dynamic = "force-dynamic";
 
 const MAX_ATTEMPTS = 5;
@@ -73,7 +75,13 @@ export async function POST(req: Request) {
       .set({ otpCode: null, otpExpires: null, otpAttempts: 0, emailVerified: new Date() })
       .where(eq(users.id, user.id));
 
-    return NextResponse.json({ success: true, email: normalizedEmail, hasPhone: !!user.phone });
+    const verificationToken = createAuthVerificationToken({
+      type: 'email',
+      value: normalizedEmail,
+      userId: user.id,
+    });
+
+    return NextResponse.json({ success: true, email: normalizedEmail, hasPhone: !!user.phone, verificationToken });
   } catch (error: unknown) {
     const info = describeDbError(error);
     console.error('[email-otp/verify] error:', { ...info });

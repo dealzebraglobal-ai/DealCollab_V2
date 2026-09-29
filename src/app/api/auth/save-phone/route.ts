@@ -3,12 +3,13 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
+import { verifyAuthVerificationToken } from '@/lib/authVerificationToken';
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const { phone } = await req.json();
+    const { phone, verificationToken } = await req.json();
 
     if (!phone) {
       return NextResponse.json({ error: 'Phone is required' }, { status: 400 });
@@ -19,11 +20,21 @@ export async function POST(req: Request) {
     }
 
     const session = await auth();
-    console.log("Saving phone:", phone);
-    console.log("User ID:", session?.user?.id);
 
     if (!session?.user?.id) {
        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // SECURITY: The user MUST provide a cryptographically verified token issued
+    // by /api/auth/otp/verify proving they possess and verified this phone number.
+    // Without this, any logged-in user could claim any phone and delete victim accounts.
+    if (!verificationToken || typeof verificationToken !== 'string') {
+      return NextResponse.json({ error: 'Phone number verification is required before saving.' }, { status: 400 });
+    }
+
+    const tokenCheck = verifyAuthVerificationToken(verificationToken, 'phone', phone);
+    if (!tokenCheck.valid) {
+      return NextResponse.json({ error: 'Invalid or expired phone verification proof. Please request a new code.' }, { status: 400 });
     }
 
     // Check if phone is already used by another account
@@ -32,12 +43,12 @@ export async function POST(req: Request) {
     });
 
     if (existingUser && existingUser.id !== session.user.id) {
-       // Allow overriding if it's just a placeholder, otherwise block
+       // Allow overriding only if it's a confirmed placeholder (now safe because the user proved phone ownership)
        const isPlaceholder = existingUser.email?.includes('@dealcollab.ai');
        if (isPlaceholder) {
           await db.delete(users).where(eq(users.id, existingUser.id));
        } else {
-          return NextResponse.json({ error: 'This phone number is already linked to another account.' }, { status: 403 });
+          return NextResponse.json({ error: 'This phone number is already linked to another active account.' }, { status: 403 });
        }
     }
 
@@ -46,12 +57,8 @@ export async function POST(req: Request) {
       .set({ 
         phone: phone,
         isPhoneVerified: true,
-        profileCompletion: 100, // Explicitly mark as complete for onboarding flow
       })
       .where(eq(users.id, session.user.id));
-
-    console.log("PHONE:", phone);
-    console.log("USER ID:", session.user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

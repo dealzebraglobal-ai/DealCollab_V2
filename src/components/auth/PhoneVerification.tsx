@@ -41,45 +41,21 @@ export default function PhoneVerification({ onVerify, onBack, initialPhone }: Ph
     }
 
     try {
-      if (session) {
-        // CASE 1: User is already logged in with Google, just saving/linking phone
-        const res = await fetch('/api/auth/save-phone', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: formattedPhone, verificationMethod: method }),
-        });
-        const data = await res.json();
+      // Step 1: Request a real OTP to verify phone ownership
+      const sendRes = await fetch('/api/auth/whatsapp-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone, method }),
+      });
+      const sendData = await sendRes.json();
 
-        if (data.success || res.ok) {
-          // Refresh the JWT with the new phone number.
-          // Use try/catch so a transient DB issue doesn't block the user.
-          try {
-            await update();
-          } catch (updateErr) {
-            console.warn("[PhoneVerification] session.update() failed (non-fatal):", updateErr);
-          }
-          onVerify();
-        } else {
-          setError(data.error || "Failed to save phone number");
-        }
-      } else {
-        // CASE 2: User is NOT logged in, trying to log in via phone.
-        // Step 1: request a real OTP to be sent before we'll accept a code.
-        const sendRes = await fetch('/api/auth/whatsapp-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: formattedPhone }),
-        });
-        const sendData = await sendRes.json();
-
-        if (!sendRes.ok) {
-          setError(sendData.error || "Failed to send verification code");
-          setIsLoading(false);
-          return;
-        }
-
-        setCodeSent(true);
+      if (!sendRes.ok) {
+        setError(sendData.error || "Failed to send verification code");
+        setIsLoading(false);
+        return;
       }
+
+      setCodeSent(true);
     } catch (err: unknown) {
       console.error("FULL ERROR:", err);
       console.error("STRINGIFIED:", JSON.stringify(err, null, 2));
@@ -110,16 +86,43 @@ export default function PhoneVerification({ onVerify, onBack, initialPhone }: Ph
         return;
       }
 
-      const { signIn } = await import('next-auth/react');
-      const result = await signIn('credentials', {
-        phone: formattedPhone,
-        redirect: false
-      });
+      if (session) {
+        // CASE 1: User is logged in with Google, link verified phone with proof token
+        const saveRes = await fetch('/api/auth/save-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: formattedPhone,
+            verificationToken: verifyData.verificationToken,
+          }),
+        });
+        const saveData = await saveRes.json();
+        if (!saveRes.ok || !saveData.success) {
+          setError(saveData.error || "Failed to link phone number");
+          setIsLoading(false);
+          return;
+        }
 
-      if (result?.error) {
-        setError("Login failed. Please try again.");
-      } else {
+        try {
+          await update();
+        } catch (updateErr) {
+          console.warn("[PhoneVerification] session.update() failed (non-fatal):", updateErr);
+        }
         onVerify();
+      } else {
+        // CASE 2: User is not logged in, authenticate via verified credentials
+        const { signIn } = await import('next-auth/react');
+        const result = await signIn('credentials', {
+          phone: formattedPhone,
+          verificationToken: verifyData.verificationToken || '',
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError("Login failed. Please try again.");
+        } else {
+          onVerify();
+        }
       }
     } catch (err: unknown) {
       console.error("FULL ERROR:", err);

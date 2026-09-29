@@ -29,6 +29,9 @@ const adapter = wrapAdapterWithDiagnostics(
   }),
 );
 
+import { verifyAuthVerificationToken } from "./lib/authVerificationToken";
+import { hashOtp } from "./lib/emailOtp";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter,
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
@@ -59,14 +62,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       name: "Phone OTP",
       credentials: {
         phone: { label: "Phone", type: "text" },
+        verificationToken: { label: "Verification Token", type: "text" },
+        code: { label: "Code", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.phone) return null;
+        const phone = (credentials.phone as string).trim();
 
-        // Find the user by verified phone number
+        // 1. Verify cryptographic proof of verified OTP
+        let isVerified = false;
+        if (typeof credentials.verificationToken === 'string' && credentials.verificationToken) {
+          const check = verifyAuthVerificationToken(credentials.verificationToken as string, 'phone', phone);
+          if (check.valid) {
+            isVerified = true;
+          }
+        }
+
+        // Find the user by phone number
         const user = await db.query.users.findFirst({
-          where: eq(users.phone, credentials.phone as string),
+          where: eq(users.phone, phone),
         });
+
+        // 2. Direct OTP code verification fallback
+        if (!isVerified && typeof credentials.code === 'string' && credentials.code && user?.otpCode && user?.otpExpires) {
+          if (user.otpExpires.getTime() > Date.now() && (user.otpAttempts ?? 0) < 5) {
+            if (hashOtp(credentials.code as string) === user.otpCode) {
+              isVerified = true;
+              await db.update(users)
+                .set({ otpCode: null, otpExpires: null, otpAttempts: 0, isPhoneVerified: true })
+                .where(eq(users.id, user.id));
+            }
+          }
+        }
+
+        // SECURITY: Never authenticate based on phone existence alone.
+        if (!isVerified) {
+          console.warn('[auth] Phone credentials login rejected: missing or invalid OTP verification proof');
+          return null;
+        }
 
         if (user && user.isPhoneVerified) {
           return {
@@ -85,13 +118,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       name: "Email OTP",
       credentials: {
         email: { label: "Email", type: "text" },
+        verificationToken: { label: "Verification Token", type: "text" },
+        code: { label: "Code", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email) return null;
+        const email = (credentials.email as string).trim().toLowerCase();
+
+        // 1. Verify cryptographic proof of verified OTP
+        let isVerified = false;
+        if (typeof credentials.verificationToken === 'string' && credentials.verificationToken) {
+          const check = verifyAuthVerificationToken(credentials.verificationToken as string, 'email', email);
+          if (check.valid) {
+            isVerified = true;
+          }
+        }
 
         const user = await db.query.users.findFirst({
-          where: eq(users.email, credentials.email as string),
+          where: eq(users.email, email),
         });
+
+        // 2. Direct OTP code verification fallback
+        if (!isVerified && typeof credentials.code === 'string' && credentials.code && user?.otpCode && user?.otpExpires) {
+          if (user.otpExpires.getTime() > Date.now() && (user.otpAttempts ?? 0) < 5) {
+            if (hashOtp(credentials.code as string) === user.otpCode) {
+              isVerified = true;
+              await db.update(users)
+                .set({ otpCode: null, otpExpires: null, otpAttempts: 0, emailVerified: new Date() })
+                .where(eq(users.id, user.id));
+            }
+          }
+        }
+
+        // SECURITY: Never authenticate based on email existence alone.
+        if (!isVerified) {
+          console.warn('[auth] Email credentials login rejected: missing or invalid OTP verification proof');
+          return null;
+        }
 
         if (user && user.emailVerified) {
           return {

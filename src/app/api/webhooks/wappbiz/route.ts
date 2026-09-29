@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { whatsappInboundEvents } from '@/db/schema';
@@ -72,7 +73,12 @@ export async function POST(req: Request) {
   waLog(ctx, 'PAYLOAD_PARSED', 'SUCCESS', { type: payload?.type, dataType: data.type });
 
   const expectedApiKey = process.env.WAPPBIZ_API_KEY;
-  const apiKeyValid = !!expectedApiKey && data.api_key === expectedApiKey;
+  let apiKeyValid = false;
+  if (expectedApiKey && typeof data.api_key === 'string') {
+    const expectedBuf = Buffer.from(expectedApiKey);
+    const providedBuf = Buffer.from(data.api_key);
+    apiKeyValid = expectedBuf.length === providedBuf.length && crypto.timingSafeEqual(expectedBuf, providedBuf);
+  }
   if (!apiKeyValid) {
     waLog(ctx, 'WEBHOOK_AUTH', 'FAILED', { hasExpectedKey: !!expectedApiKey });
     return new NextResponse('Unauthorized', { status: 401 });

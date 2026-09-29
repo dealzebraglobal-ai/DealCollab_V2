@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { validateOtp } from '@/lib/otp';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashOtp } from '@/lib/emailOtp';
+import { createAuthVerificationToken } from '@/lib/authVerificationToken';
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,13 @@ export async function POST(req: Request) {
       .set({ isPhoneVerified: true, otpCode: null, otpExpires: null, otpAttempts: 0 })
       .where(eq(users.id, user!.id));
 
-    return NextResponse.json({ success: true, phone: user!.phone });
+    const verificationToken = createAuthVerificationToken({
+      type: 'phone',
+      value: user!.phone || normalizedPhone,
+      userId: user!.id,
+    });
+
+    return NextResponse.json({ success: true, phone: user!.phone, verificationToken });
   } catch (error: unknown) {
     console.error("FULL ERROR:", error);
     console.error("STRINGIFIED:", JSON.stringify(error, null, 2));

@@ -26,7 +26,7 @@ import { newWaCtx, waLog, describePgError } from '@/lib/whatsapp/webhookDiagnost
 function isValidWhatsAppSignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = getWhatsAppAppSecret();
   if (!appSecret) {
-    if (process.env.VERCEL_ENV) {
+    if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') {
       console.error('[whatsapp webhook] WHATSAPP_APP_SECRET not set in a deployed environment — rejecting all requests.');
       return false;
     }

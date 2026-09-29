@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyMagicLinkToken } from '@/lib/magicLink';
 import { signIn } from '@/auth';
+import { createAuthVerificationToken } from '@/lib/authVerificationToken';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -21,9 +22,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: errorMessages[result.reason] }, { status: 400 });
   }
 
+  const verificationToken = createAuthVerificationToken({
+    type: 'phone',
+    value: result.payload.phone,
+    userId: result.payload.userId,
+  });
+
   // NextAuth v5 signIn handles setting the session cookies and throwing a redirect
   await signIn('credentials', { 
     phone: result.payload.phone, 
+    verificationToken,
     redirectTo: '/deal-log?tab=whatsapp' 
   });
 }

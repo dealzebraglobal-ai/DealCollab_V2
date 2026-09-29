@@ -158,7 +158,11 @@ export async function POST(req: NextRequest) {
     if (!supabase) throw new Error('Supabase client init failed');
 
     if (isAdmin) {
-      userId = req.headers.get('x-test-user-id') as string;
+      const headerUserId = req.headers.get('x-test-user-id');
+      if (!headerUserId) {
+        return NextResponse.json({ error: 'x-test-user-id header is required when using x-admin-secret' }, { status: 400 });
+      }
+      userId = headerUserId;
     } else {
       const session = await auth();
       if (!session?.user?.email) {

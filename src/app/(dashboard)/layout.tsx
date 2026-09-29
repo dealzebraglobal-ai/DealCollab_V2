@@ -34,8 +34,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  // Final rendering protection
-  if (status === 'unauthenticated' && !isAuthenticated && typeof window !== 'undefined' && localStorage.getItem('isLoggedIn') !== 'true') {
+  // Final rendering protection: unauthenticated users must never render protected dashboard layout
+  if (status !== 'authenticated' || !isAuthenticated) {
      return null;
   }
 

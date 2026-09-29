@@ -37,7 +37,7 @@ export default function EmailOtpVerification({ email, onVerify, onBack }: EmailO
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code }),
       });
-      const verifyData = await parseJsonResponse<{ error?: string; hasPhone?: boolean }>(verifyRes);
+      const verifyData = await parseJsonResponse<{ error?: string; hasPhone?: boolean; verificationToken?: string }>(verifyRes);
 
       if (!verifyRes.ok) {
         console.warn('[EmailOtpVerification] verify failed:', verifyData.error);
@@ -48,7 +48,11 @@ export default function EmailOtpVerification({ email, onVerify, onBack }: EmailO
 
       console.log('[EmailOtpVerification] OTP verified, creating session...');
       const { signIn } = await import('next-auth/react');
-      const result = await signIn('email-otp', { email, redirect: false });
+      const result = await signIn('email-otp', {
+        email,
+        verificationToken: verifyData.verificationToken || '',
+        redirect: false,
+      });
 
       if (result?.error) {
         console.error('[EmailOtpVerification] signIn failed:', result.error);

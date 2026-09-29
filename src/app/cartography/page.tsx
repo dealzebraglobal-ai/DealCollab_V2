@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { notFound } from 'next/navigation';
+import { getAdminAccess } from '@/lib/admin';
 import CartographyDashboard from './CartographyDashboard';
 
 export const metadata = {
@@ -18,6 +20,10 @@ async function readCartographyJson<T>(subPath: string, fallback: T): Promise<T> 
 }
 
 export default async function CartographyPage() {
+    const access = await getAdminAccess();
+    if (!access.allowed) {
+        notFound();
+    }
     const [
         files,
         routes,

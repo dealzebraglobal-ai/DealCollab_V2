@@ -76,11 +76,31 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { type, action, amount } = body;
+    const { action } = body;
 
-    if (!type || !action || typeof amount !== 'number') {
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    // SECURITY: Clients can NEVER credit tokens to themselves directly.
+    // Token credits are strictly reserved for verified payment webhooks (Razorpay)
+    // or atomic database procedures.
+    if (body.type === 'credit') {
+      return NextResponse.json(
+        { error: 'Forbidden: token credits cannot be initiated directly by the client.' },
+        { status: 403 }
+      );
     }
+
+    // Supported server-side debit action costs
+    const DEBIT_ACTIONS: Record<string, number> = {
+      connect: 50,
+    };
+
+    if (!action || typeof action !== 'string' || !DEBIT_ACTIONS[action]) {
+      return NextResponse.json(
+        { error: 'Invalid or unsupported action.' },
+        { status: 400 }
+      );
+    }
+
+    const debitAmount = DEBIT_ACTIONS[action];
 
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -88,25 +108,21 @@ export async function POST(req: NextRequest) {
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    let finalTokens = user.tokens || 0;
-    
-    if (type === 'debit') {
-      if (finalTokens < amount) {
-        return NextResponse.json({ error: 'Insufficient tokens' }, { status: 400 });
-      }
-      finalTokens -= amount;
-    } else {
-      finalTokens += amount;
+    const currentTokens = user.tokens || 0;
+    if (currentTokens < debitAmount) {
+      return NextResponse.json({ error: 'Insufficient tokens' }, { status: 400 });
     }
 
-    // Atomic update (not strictly atomic here, but okay for this app)
+    const finalTokens = currentTokens - debitAmount;
+
+    // Atomic update
     await db.transaction(async (tx) => {
       await tx.update(users).set({ tokens: finalTokens }).where(eq(users.id, userId));
       await tx.insert(tokenTransactions).values({
         userId,
-        type,
+        type: 'debit',
         action,
-        amount: type === 'debit' ? -amount : amount,
+        amount: -debitAmount,
         balanceAfter: finalTokens,
       });
     });

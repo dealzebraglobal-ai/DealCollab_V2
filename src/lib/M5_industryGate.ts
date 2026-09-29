@@ -1,7 +1,6 @@
 /**
  * DealCollab — M5: Industry Gate (HR-9)
  * =====================================
- * Place at: src/lib/M5_industryGate.ts
  *
  * Why this exists: the coarse sector tag cannot tell an oral-solid CDMO from a flexible-packaging
  * supplier (both are tagged pharma), and getIndustryCompatibility() falls back to that tag whenever
