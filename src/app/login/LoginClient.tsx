@@ -80,28 +80,15 @@ const AuthContent = () => {
   useEffect(() => {
     if (!mounted || status !== 'authenticated' || !session?.user) return;
     
-    // Step 1: Check both session and DB profile for phone
-    // @ts-expect-error - custom property
-    const sessionPhone = session.user.phone;
-    const dbPhone = profile?.phone;
-    const phoneExists = onboarding.phoneVerified || !!sessionPhone || !!dbPhone;
-
-    console.log("Verification Status:", { phoneExists, sessionPhone, dbPhone });
-    
-    if (!phoneExists) {
-      if (step !== 'phone') {
-        Promise.resolve().then(() => setStep('phone'));
-      }
-    } else {
-      // User is verified (Returning or just finished)
-      if (step !== 'verified') {
-        Promise.resolve().then(() => setStep('verified'));
-      }
-      if (!isVerified) {
-        Promise.resolve().then(() => setIsVerified(true));
-      }
+    // Once authenticated (Google or Email), user is verified — no mobile verification roadblock
+    setOnboarding('phoneVerified', true);
+    if (step !== 'verified') {
+      Promise.resolve().then(() => setStep('verified'));
     }
-  }, [mounted, status, session, profile, onboarding.phoneVerified, step, isVerified]);
+    if (!isVerified) {
+      Promise.resolve().then(() => setIsVerified(true));
+    }
+  }, [mounted, status, session, setOnboarding, step, isVerified]);
 
   const handleGoogleSignIn = () => {
     setIsLoading(true);
