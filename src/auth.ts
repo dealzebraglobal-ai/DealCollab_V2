@@ -303,28 +303,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.profileCompletion = user.profileCompletion || 0;
       }
 
-      // Sync DB → JWT: on explicit update() call OR when phone hasn't been loaded yet
-      if (trigger === "update" || token.phone === undefined || token.phone === null) {
+      // Always verify user exists in DB to prevent deleted profiles from accessing the app.
+      // If the user row was deleted from the database, return null to invalidate the session.
+      const userId = (token?.id as string) || (user?.id as string);
+      if (userId) {
         try {
           const dbUser = await db.query.users.findFirst({
-            where: eq(users.id, token.id as string),
+            where: eq(users.id, userId),
           });
+          if (!dbUser && !user) {
+            console.warn(`[auth] User ${userId} was deleted from database. Terminating session.`);
+            return null;
+          }
           if (dbUser) {
+            token.id = dbUser.id;
             token.isPhoneVerified = dbUser.isPhoneVerified === true || String(dbUser.isPhoneVerified) === 'true';
             token.phone = dbUser.phone ?? null;
             token.tokens = dbUser.tokens || 0;
             token.profileCompletion = dbUser.profileCompletion || 0;
           }
         } catch (error: unknown) {
-          console.error("FULL ERROR:", error);
-          console.error("STRINGIFIED:", JSON.stringify(error, null, 2));
-          // Return existing token — do NOT throw, keeps user logged in
+          console.error("JWT user existence check error:", error);
         }
       }
 
       return token;
     },
     async session({ session, token, user }) {
+      if (!token?.id && !user?.id) {
+        return session;
+      }
       if (session.user) {
         // In database strategy, 'user' is passed. In jwt strategy, 'token' is passed.
         if (user) {

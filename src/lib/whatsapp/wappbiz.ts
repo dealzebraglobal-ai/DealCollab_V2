@@ -66,8 +66,8 @@ async function wappBizRequest<T = unknown>(
 ): Promise<WappBizResult<T>> {
   const config = getWappBizConfig();
   if (!config) {
-    console.log(`[Wappbiz:stub] → ${endpointPath}`);
-    return { success: true };
+    console.error(`[Wappbiz error] ${endpointPath} aborted: WAPPBIZ_API_KEY is not configured`);
+    return { success: false, error: 'WappBiz API key is not configured' };
   }
 
   const url = `${WAPPBIZ_BASE_URL}${endpointPath}?apikey=${encodeURIComponent(config.apiKey)}`;
@@ -168,16 +168,25 @@ export async function checkCustomerWindow(
   return { success: true, windowOpen: res.data?.windowOpen ?? res.data?.isInsideWindow };
 }
 
+export interface WappBizAuthTemplateItem {
+  template_id?: string;
+  template_name?: string;
+  status?: string;
+  template_status?: string;
+  category?: string;
+  [key: string]: unknown;
+}
+
 /** GET /fetchAuthTemplates — lists pre-approved authentication (OTP) templates. */
 async function fetchAuthTemplates() {
-  return wappBizRequest<Array<{ template_id: string; template_name: string }> | { template_id: string; template_name: string }>(
+  return wappBizRequest<Array<WappBizAuthTemplateItem> | WappBizAuthTemplateItem>(
     '/fetchAuthTemplates',
     { method: 'GET' },
   );
 }
 
 /** POST /sendAuthTemplate — the documented way to deliver an OTP; works even outside the 24h window. */
-async function sendAuthTemplate(params: { templateName: string; phone: string; name: string; otp: string }) {
+export async function sendAuthTemplate(params: { templateName: string; phone: string; name: string; otp: string }) {
   return wappBizRequest<{ _id: string; template_id: string; template_name: string }>('/sendAuthTemplate', {
     body: {
       template_name: params.templateName,
@@ -188,27 +197,110 @@ async function sendAuthTemplate(params: { templateName: string; phone: string; n
   });
 }
 
-let cachedAuthTemplateName: string | null | undefined; // undefined = not yet resolved this process lifetime
+interface TemplateCache {
+  templateName: string;
+  cachedAt: number;
+}
+
+let cachedAuthTemplate: TemplateCache | null = null;
+const TEMPLATE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export type ResolveAuthTemplateResult =
+  | { success: true; templateName: string; source: 'override' | 'cache' | 'fetched' }
+  | { success: false; errorCode: 'WAPPBIZ_TEMPLATE_FETCH_FAILED'; error: string; status?: number }
+  | { success: false; errorCode: 'WAPPBIZ_TEMPLATE_NOT_FOUND'; error: string };
 
 /**
  * Resolves which approved auth template to use for OTP delivery.
  * WAPPBIZ_OTP_TEMPLATE_NAME lets an operator pin a specific template; absent
- * that, we ask WappBiz which auth templates exist and use the first one —
- * there is no documented "default" auth template concept.
+ * that, we ask WappBiz which auth templates exist and use the first one.
+ * Successful resolutions are cached for 5 minutes.
+ * Failed resolutions or zero-template responses are NEVER cached, preventing
+ * transient errors or dashboard provisioning lags from bricking warm lambdas.
  */
-async function resolveAuthTemplateName(): Promise<string | null> {
+export async function resolveAuthTemplateName(): Promise<ResolveAuthTemplateResult> {
   const override = process.env.WAPPBIZ_OTP_TEMPLATE_NAME;
-  if (override) return override;
-  if (cachedAuthTemplateName !== undefined) return cachedAuthTemplateName;
-
-  const res = await fetchAuthTemplates();
-  if (!res.success || !res.data) {
-    cachedAuthTemplateName = null;
-    return null;
+  if (override && override.trim()) {
+    return { success: true, templateName: override.trim(), source: 'override' };
   }
-  const list = Array.isArray(res.data) ? res.data : [res.data];
-  cachedAuthTemplateName = list[0]?.template_name ?? null;
-  return cachedAuthTemplateName;
+
+  const now = Date.now();
+  if (cachedAuthTemplate && now - cachedAuthTemplate.cachedAt < TEMPLATE_CACHE_TTL_MS) {
+    return { success: true, templateName: cachedAuthTemplate.templateName, source: 'cache' };
+  }
+
+  console.log('[WappBiz OTP] fetchAuthTemplates called');
+  const res = await fetchAuthTemplates();
+  console.log(`[WappBiz OTP] fetchAuthTemplates completed: success=${res.success}`);
+
+  if (!res.success) {
+    // API request failed (network, auth, HTTP status error).
+    // DO NOT cache failure so subsequent requests can retry or self-heal.
+    return {
+      success: false,
+      errorCode: 'WAPPBIZ_TEMPLATE_FETCH_FAILED',
+      error: res.error || `Failed to fetch auth templates (status: ${res.status ?? 'unknown'})`,
+      status: res.status,
+    };
+  }
+
+  if (!res.data) {
+    return {
+      success: false,
+      errorCode: 'WAPPBIZ_TEMPLATE_NOT_FOUND',
+      error: 'No authentication templates returned by WappBiz',
+    };
+  }
+
+  const list = (Array.isArray(res.data) ? res.data : [res.data]).filter(Boolean);
+
+  // Find an approved authentication template (or untagged template in mock/test fixtures)
+  const approvedItem =
+    list.find((t) => {
+      const s = (t.status || t.template_status || '').toUpperCase();
+      return s === 'APPROVED' && Boolean(t.template_name?.trim());
+    }) ||
+    list.find((t) => {
+      const s = (t.status || t.template_status || '').toUpperCase();
+      return !s && Boolean(t.template_name?.trim());
+    });
+
+  const templateName = approvedItem?.template_name?.trim();
+
+  if (!templateName) {
+    // Check if templates exist but are awaiting Meta approval (DRAFT / PENDING / REJECTED)
+    const draftItem = list.find((t) => Boolean(t.template_name?.trim()));
+    if (draftItem) {
+      const status = (draftItem.status || draftItem.template_status || 'DRAFT').toUpperCase();
+      console.warn(
+        `[WappBiz OTP] Template "${draftItem.template_name}" is in ${status} status (pending Meta approval in WappBiz dashboard).`,
+      );
+      return {
+        success: false,
+        errorCode: 'WAPPBIZ_TEMPLATE_NOT_FOUND',
+        error: `Template "${draftItem.template_name}" is currently in ${status} status. Please submit it for approval in the WappBiz / Meta dashboard.`,
+      };
+    }
+
+    return {
+      success: false,
+      errorCode: 'WAPPBIZ_TEMPLATE_NOT_FOUND',
+      error: 'No approved authentication templates found in WappBiz account',
+    };
+  }
+
+  // Cache successful template resolution
+  cachedAuthTemplate = {
+    templateName,
+    cachedAt: now,
+  };
+
+  return { success: true, templateName, source: 'fetched' };
+}
+
+/** Diagnostic/testing hook to reset the auth template cache */
+export function __clearAuthTemplateCache(): void {
+  cachedAuthTemplate = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -349,22 +441,63 @@ export function __isInteractiveButtonsDisabled(): boolean {
  * WAPPBIZ_OTP_TEMPLATE_NAME to pin one), not a code defect — see the
  * deployment report for exactly what needs to be configured.
  */
-export async function sendWappBizOTP(phone: string, otp: string) {
+export interface SendWappBizOTPResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  errorCode?: 'WAPPBIZ_CONFIG_MISSING' | 'WAPPBIZ_SEND_FAILED';
+  status?: number;
+}
+
+/**
+ * Delivers OTP via simple free-text service message (sendServiceTextMessage).
+ * No Meta-approved templates required. Operates 100% free within the WhatsApp 24h window.
+ */
+export async function sendWappBizOTP(phone: string, otp: string): Promise<SendWappBizOTPResult> {
   const config = getWappBizConfig();
+
   if (!config) {
-    console.log(`[Wappbiz:stub] OTP → ${normalizePhone(phone)}`);
-    return { success: true };
+    console.error('[WappBiz OTP] configuration missing: WAPPBIZ_API_KEY is not set');
+    return {
+      success: false,
+      errorCode: 'WAPPBIZ_CONFIG_MISSING',
+      error: 'WappBiz configuration missing: WAPPBIZ_API_KEY is not set',
+    };
   }
 
-  const templateName = await resolveAuthTemplateName();
-  if (!templateName) {
-    console.error(
-      '[Wappbiz error] No authentication template available for OTP delivery. Set WAPPBIZ_OTP_TEMPLATE_NAME or approve an authentication template in the Wappbiz dashboard.',
-    );
-    return { success: false, error: 'No Wappbiz authentication template available for OTP delivery' };
+  // Deliver OTP via simple free-text service message (sendServiceTextMessage)
+  const message = `Your DealCollab verification code is: ${otp}. It expires in 10 minutes.`;
+  const textRes = await sendServiceTextMessage(phone, message);
+
+  if (textRes.success) {
+    return {
+      success: true,
+      messageId: textRes.data?.message_id,
+      status: textRes.status,
+    };
   }
 
-  return sendAuthTemplate({ templateName, phone, name: 'DealCollab User', otp });
+  console.error(
+    `[WappBiz OTP] delivery failed — text status=${textRes.status ?? 0} (${textRes.error || 'unknown'})`,
+  );
+
+  const isWindowClosed =
+    textRes.status === 404 ||
+    /window closed|customer not found/i.test(textRes.error || '');
+
+  let errorMessage: string;
+  if (isWindowClosed) {
+    errorMessage = 'WhatsApp 24h window closed. Please click "Verify via WhatsApp" to verify your number directly with zero templates.';
+  } else {
+    errorMessage = textRes.error || 'Failed to deliver WhatsApp verification code';
+  }
+
+  return {
+    success: false,
+    errorCode: 'WAPPBIZ_SEND_FAILED',
+    error: errorMessage,
+    status: textRes.status,
+  };
 }
 
 /**

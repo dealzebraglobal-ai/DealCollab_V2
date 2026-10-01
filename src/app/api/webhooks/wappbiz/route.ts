@@ -124,6 +124,22 @@ export async function POST(req: Request) {
 
   try {
     waLog(ctx, 'PROCESSING_STARTED', 'START');
+
+    // 1-Click Inbound Verification check (Zero template, 100% free)
+    const { handleInboundVerificationMessage } = await import('@/lib/whatsapp/inboundVerification');
+    const inboundVerification = await handleInboundVerificationMessage(parsed.from, parsed.text);
+    if (inboundVerification.matched) {
+      waLog(ctx, 'WEBHOOK_COMPLETED', 'SUCCESS', { note: 'inbound-verification-matched', phone: inboundVerification.phone, code: inboundVerification.code });
+      if (messageId) {
+        await db
+          .update(whatsappInboundEvents)
+          .set({ processed: true, processedAt: new Date() })
+          .where(eq(whatsappInboundEvents.providerMessageId, messageId))
+          .catch(() => {});
+      }
+      return new NextResponse('OK', { status: 200 });
+    }
+
     await processIncomingMessage(parsed.from, parsed.text, 'wappbiz', ctx);
     waLog(ctx, 'WEBHOOK_COMPLETED', 'SUCCESS', { responseSent: ctx.responseSent });
   } catch (err) {

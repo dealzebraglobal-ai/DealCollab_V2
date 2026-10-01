@@ -2,7 +2,7 @@
 import React, { useEffect, useSyncExternalStore } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useUser } from '@/components/UserProvider';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import GlobalErrorBanner from '@/components/GlobalErrorBanner';
 import { ChatProvider } from '@/components/ChatProvider';
@@ -12,7 +12,8 @@ const subscribe = () => () => {};
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated } = useUser();
+  const pathname = usePathname();
+  const { isAuthenticated, isProfileLoading, isProfileComplete } = useUser();
   const { status } = useSession();
 
   const isMounted = useSyncExternalStore(
@@ -29,6 +30,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isMounted, status, router]);
 
+  // Profile completion enforcement: users without a completed profile cannot access dashboard features
+  useEffect(() => {
+    if (isMounted && status === 'authenticated' && !isProfileLoading && !isProfileComplete) {
+      if (pathname && !pathname.startsWith('/profile')) {
+        console.log('[AppLayout] Incomplete profile detected — redirecting to /profile');
+        router.replace('/profile');
+      }
+    }
+  }, [isMounted, status, isProfileLoading, isProfileComplete, pathname, router]);
+
   // Prevent hydration mismatch by rendering null on the server and first client pass
   if (!isMounted || status === 'loading') {
     return null;
@@ -37,6 +48,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Final rendering protection: unauthenticated users must never render protected dashboard layout
   if (status !== 'authenticated' || !isAuthenticated) {
      return null;
+  }
+
+  // If profile is incomplete and user is not on /profile, block rendering dashboard content
+  if (!isProfileLoading && !isProfileComplete && pathname && !pathname.startsWith('/profile')) {
+    return null;
   }
 
   return (

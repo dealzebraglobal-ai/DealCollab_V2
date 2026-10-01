@@ -53,26 +53,12 @@ export async function GET(_req: NextRequest) {
     let endUserProfile = null;
  
     if (!profile) {
-      const nameFallback = session.user.name || email.split("@")[0];
-      const { data: newProfile, error: insertError } = await supabase
-        .from("users")
-        .insert({
-          email: email,
-          name: nameFallback,
-          tokens: 0,
-          profile_completion: 0
-        })
-        .select()
-        .single();
- 
-      if (insertError) {
-        console.error("Supabase error:", insertError);
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
-      }
-      profile = newProfile;
-    } else {
-      const categories = profile.category || [];
-      if (categories.includes('Business Owner / Promoter')) {
+      console.warn('[PROFILE GET] User profile does not exist in DB for email:', email);
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    }
+
+    const categories = profile.category || [];
+    if (categories.includes('Business Owner / Promoter')) {
         const { data: eup } = await supabase
           .from('end_user_profiles')
           .select('*')
@@ -80,7 +66,6 @@ export async function GET(_req: NextRequest) {
           .maybeSingle();
         endUserProfile = eup;
       }
-    }
  
     const isBusinessPromoter = profile.category?.includes('Business Owner / Promoter') || false;
     const accepted = await hasAcceptedTerms(profile.id, session.user?.id);

@@ -137,6 +137,22 @@ async function handleMetaMessage(message: {
 
   try {
     waLog(ctx, 'PROCESSING_STARTED', 'START');
+
+    // 1-Click Inbound Verification check (Zero template, 100% free)
+    const { handleInboundVerificationMessage } = await import('@/lib/whatsapp/inboundVerification');
+    const inboundVerification = await handleInboundVerificationMessage(phone, text);
+    if (inboundVerification.matched) {
+      waLog(ctx, 'WEBHOOK_COMPLETED', 'SUCCESS', { note: 'inbound-verification-matched', phone: inboundVerification.phone, code: inboundVerification.code });
+      if (messageId) {
+        await db
+          .update(whatsappInboundEvents)
+          .set({ processed: true, processedAt: new Date() })
+          .where(eq(whatsappInboundEvents.providerMessageId, messageId))
+          .catch(() => {});
+      }
+      return;
+    }
+
     await processIncomingMessage(phone, text, 'meta', ctx);
     waLog(ctx, 'WEBHOOK_COMPLETED', 'SUCCESS', { responseSent: ctx.responseSent });
   } catch (err) {

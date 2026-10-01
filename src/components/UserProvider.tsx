@@ -153,6 +153,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/profile');
       if (!response.ok) {
+        if (response.status === 404 || response.status === 401) {
+          console.warn("[UserProvider] Profile not found or deleted from DB — terminating session");
+          setIsProfileLoading(false);
+          logout('session_expired');
+          return;
+        }
         const errorText = await response.text();
         console.error("FAILED TO FETCH PROFILE FROM API", {
           status: response.status,

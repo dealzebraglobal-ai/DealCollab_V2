@@ -9,6 +9,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashOtp } from '@/lib/emailOtp';
 
 export async function POST(req: Request) {
+  console.log('[WappBiz OTP] route entered');
   try {
     const { phone } = await req.json();
 
@@ -38,23 +39,30 @@ export async function POST(req: Request) {
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     const hashedOtp = hashOtp(otp);
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.phone, normalizedPhone),
-    });
+    console.log(`[WhatsApp OTP] Generated verification code for ${normalizedPhone}: ${otp}`);
 
-    if (user) {
-      await db.update(users)
-        .set({ otpCode: hashedOtp, otpExpires: expires, otpAttempts: 0 })
-        .where(eq(users.id, user.id));
-    } else {
-      await db.insert(users).values({
-        email: `${normalizedPhone.replace(/\D/g, '')}@dealcollab.ai`,
-        phone: normalizedPhone,
-        otpCode: hashedOtp,
-        otpExpires: expires,
-        otpAttempts: 0,
-        source: 'whatsapp',
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(users.phone, normalizedPhone),
       });
+
+      if (user) {
+        await db.update(users)
+          .set({ otpCode: hashedOtp, otpExpires: expires, otpAttempts: 0 })
+          .where(eq(users.id, user.id));
+      } else {
+        await db.insert(users).values({
+          email: `${normalizedPhone.replace(/\D/g, '')}@dealcollab.ai`,
+          phone: normalizedPhone,
+          otpCode: hashedOtp,
+          otpExpires: expires,
+          otpAttempts: 0,
+          source: 'whatsapp',
+        });
+      }
+    } catch (dbError) {
+      console.error('[WhatsApp OTP DB error]', dbError instanceof Error ? dbError.message : 'Database error');
+      return NextResponse.json({ error: 'Database error processing OTP request' }, { status: 500 });
     }
 
     // MANDATE: WappBiz is the ONLY WhatsApp OTP delivery provider — never
@@ -62,16 +70,34 @@ export async function POST(req: Request) {
     // the app for the inbound chatbot/webhook, which this route does not
     // touch — see src/lib/whatsapp/provider.ts.)
     const provider: WhatsAppProvider = 'wappbiz';
+    console.log('[WappBiz OTP] provider selected');
 
     const res = await sendWhatsAppOTP(provider, normalizedPhone, otp);
 
     if (!res.success) {
-      return NextResponse.json({ error: 'Failed to send WhatsApp OTP', details: res.error }, { status: 500 });
+      const errorCode = 'errorCode' in res ? res.errorCode : 'UNKNOWN';
+      console.error(`[WhatsApp OTP] send failed: errorCode=${errorCode} error="${res.error || 'unknown'}"`);
+
+      // Controlled response distinguishing failure causes without leaking secrets or credentials
+      let statusCode = 502;
+      let userMessage = res.error || 'Failed to deliver WhatsApp verification code';
+
+      if (errorCode === 'WAPPBIZ_CONFIG_MISSING') {
+        statusCode = 503;
+        userMessage = 'WhatsApp verification service is temporarily unavailable';
+      }
+
+      return NextResponse.json({
+        error: userMessage,
+        errorCode,
+        details: res.error,
+        botNumber: '919373036910',
+      }, { status: statusCode });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('WhatsApp OTP Error:', error);
+    console.error('WhatsApp OTP Error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

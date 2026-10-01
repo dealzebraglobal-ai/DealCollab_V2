@@ -1,6 +1,6 @@
 import { WhatsAppProvider } from './types';
 import { sendMetaMessage, sendMetaButtons, sendMetaOTP, sendMetaMatchNotification } from './meta';
-import { sendWappBizMessage, sendWappBizButtons, sendWappBizOTP, sendWappBizMatchNotification } from './wappbiz';
+import { sendWappBizMessage, sendWappBizButtons, sendWappBizOTP, sendWappBizMatchNotification, SendWappBizOTPResult } from './wappbiz';
 
 export async function sendWhatsAppMessage(provider: WhatsAppProvider, phone: string, text: string) {
   if (provider === 'wappbiz') {
@@ -16,7 +16,11 @@ export async function sendWhatsAppButtons(provider: WhatsAppProvider, phone: str
   return sendMetaButtons(phone, text, buttons);
 }
 
-export async function sendWhatsAppOTP(provider: WhatsAppProvider, phone: string, otp: string) {
+export async function sendWhatsAppOTP(
+  provider: WhatsAppProvider,
+  phone: string,
+  otp: string,
+): Promise<SendWappBizOTPResult | { success: boolean; error?: string }> {
   if (provider === 'wappbiz') {
     return sendWappBizOTP(phone, otp);
   }

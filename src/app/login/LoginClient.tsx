@@ -16,7 +16,7 @@ import { ShieldCheck, Sparkles, MessageSquare, AlertCircle, Info, Mail } from 'l
 const AuthContent = () => {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
-  const { setOnboarding, onboarding, profile } = useUser();
+  const { setOnboarding, onboarding, profile, isProfileComplete, isProfileLoading } = useUser();
   const router = useRouter();
   
   const source = searchParams.get('source');
@@ -40,18 +40,20 @@ const AuthContent = () => {
   // 1. Redirect Effect (The "Brain")
   useEffect(() => {
     if (isVerified) {
-      console.log("SUCCESS: Identity Verified. Redirecting to /home...");
+      if (isProfileLoading) return;
+      const destination = isProfileComplete ? '/home' : '/profile';
+      console.log(`SUCCESS: Identity Verified. Redirecting to ${destination}...`);
       
       // UX Delay (800ms)
       const redirectTimer = setTimeout(() => {
-        console.log("Redirect triggered → /home");
-        router.push('/home');
+        console.log(`Redirect triggered → ${destination}`);
+        router.push(destination);
       }, 800);
 
       // Fallback Hard Redirect (3000ms) - Safety for edge cases
       const fallbackTimer = setTimeout(() => {
-        console.log("Safety Fallback triggered → Refreshing to /home");
-        window.location.href = '/home';
+        console.log(`Safety Fallback triggered → Refreshing to ${destination}`);
+        window.location.href = destination;
       }, 3000);
 
       return () => {
@@ -59,7 +61,7 @@ const AuthContent = () => {
         clearTimeout(fallbackTimer);
       };
     }
-  }, [isVerified, router]);
+  }, [isVerified, isProfileComplete, isProfileLoading, router]);
 
   const [whatsappVerifiedPhone, setWhatsappVerifiedPhone] = useState<string | null>(null);
 
