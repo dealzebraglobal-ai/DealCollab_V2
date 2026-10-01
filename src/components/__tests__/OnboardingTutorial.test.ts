@@ -2,44 +2,54 @@ import { describe, it, expect } from 'vitest';
 import { ONBOARDING_STEPS } from '../OnboardingTutorial';
 
 describe('OnboardingTutorial Business Logic & Acceptance Criteria', () => {
-  it('Requirement 4: Contains exactly four steps in sequential order', () => {
-    expect(ONBOARDING_STEPS).toHaveLength(4);
+  it('Requirement 4: Contains exactly five steps in sequential order', () => {
+    expect(ONBOARDING_STEPS).toHaveLength(5);
     expect(ONBOARDING_STEPS[0].id).toBe('tokens');
-    expect(ONBOARDING_STEPS[1].id).toBe('search');
-    expect(ONBOARDING_STEPS[2].id).toBe('deal-log');
-    expect(ONBOARDING_STEPS[3].id).toBe('deal-dashboard');
+    expect(ONBOARDING_STEPS[1].id).toBe('deal-log');
+    expect(ONBOARDING_STEPS[2].id).toBe('deal-dashboard');
+    expect(ONBOARDING_STEPS[3].id).toBe('notifications');
+    expect(ONBOARDING_STEPS[4].id).toBe('guide');
   });
 
   it('Step 1: Tokens step explains tokens and targets "tokens"', () => {
     const step1 = ONBOARDING_STEPS[0];
     expect(step1.targetKey).toBe('tokens');
     expect(step1.title).toBe('Tokens');
-    expect(step1.badge).toBe('1 of 4');
+    expect(step1.badge).toBe('1 of 5');
     expect(step1.description).toContain('Tokens are used across DealCollab');
   });
 
-  it('Step 2: Search bar step targets "search" and explains opportunity discovery', () => {
+  it('Step 2: Deal Log step targets "deal-log" with exact description', () => {
     const step2 = ONBOARDING_STEPS[1];
-    expect(step2.targetKey).toBe('search');
-    expect(step2.title).toBe('Search Bar');
-    expect(step2.badge).toBe('2 of 4');
-    expect(step2.description).toBe('Use Search to find relevant deals, mandates, and counterparties across the platform.');
+    expect(step2.targetKey).toBe('deal-log');
+    expect(step2.title).toBe('Deal Log');
+    expect(step2.badge).toBe('2 of 5');
+    expect(step2.description).toBe('Deal Log is where you can see your deals, conversations, and matched opportunities.');
   });
 
-  it('Step 3: Deal Log step targets "deal-log" with exact description', () => {
+  it('Step 3: EOI Activities step targets "deal-dashboard" with exact description', () => {
     const step3 = ONBOARDING_STEPS[2];
-    expect(step3.targetKey).toBe('deal-log');
-    expect(step3.title).toBe('Deal Log');
-    expect(step3.badge).toBe('3 of 4');
-    expect(step3.description).toBe('Deal Log is where you can see your deals, conversations, and matched opportunities.');
+    expect(step3.targetKey).toBe('deal-dashboard');
+    expect(step3.title).toBe('EOI Activities');
+    expect(step3.badge).toBe('3 of 5');
+    expect(step3.description).toBe('EOI Activities helps you track your EOI interactions, mutual interest, and connected parties.');
   });
 
-  it('Step 4: EOI Activities step targets "deal-dashboard" with exact description', () => {
+  it('Step 4: Notifications step targets "notifications" with real-time alerts description', () => {
     const step4 = ONBOARDING_STEPS[3];
-    expect(step4.targetKey).toBe('deal-dashboard');
-    expect(step4.title).toBe('EOI Activities');
-    expect(step4.badge).toBe('4 of 4');
-    expect(step4.description).toBe('EOI Activities helps you track your EOI interactions, mutual interest, and connected parties.');
+    expect(step4.targetKey).toBe('notifications');
+    expect(step4.title).toBe('Notifications');
+    expect(step4.badge).toBe('4 of 5');
+    expect(step4.description).toContain('Stay updated with real-time deal alerts');
+  });
+
+  it('Step 5: Guide & Trust step targets "guide" with platform & trust description', () => {
+    const step5 = ONBOARDING_STEPS[4];
+    expect(step5.targetKey).toBe('guide');
+    expect(step5.title).toBe('Guide & Trust');
+    expect(step5.badge).toBe('5 of 5');
+    expect(step5.description).toContain('Explore comprehensive guides');
+    expect(step5.description).toContain('Trust Center');
   });
 
   describe('Eligibility & Profile-Completion Precedence Rules', () => {

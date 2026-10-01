@@ -75,7 +75,6 @@ export default function InputBar({ onSendMessage, isSending = false }: InputBarP
         <form
           onClick={() => textareaRef.current?.focus()}
           onSubmit={handleSubmit}
-          data-onboarding-target="search"
           className="cursor-text flex flex-col bg-white border border-gray-200 rounded-[28px] shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.12)] focus-within:border-[#EA580C] focus-within:ring-[3px] focus-within:ring-[#EA580C]/15 transition-all duration-200"
         >
           {/* File Attachment Preview Badge */}

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Sparkles, ArrowRight, ArrowLeft, X, Check, Coins, Search, FileText, LayoutDashboard } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, X, Check, Coins, FileText, LayoutDashboard, Bell, BookOpen } from 'lucide-react';
 import { useUser } from './UserProvider';
 
 export interface OnboardingStep {
@@ -18,25 +18,16 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'tokens',
     targetKey: 'tokens',
     title: 'Tokens',
-    badge: '1 of 4',
+    badge: '1 of 5',
     description: 'Tokens are used across DealCollab to access and use platform features. You can earn Tokens through eligible activities (such as completing your profile) and use them where Tokens are required, such as sending Expressions of Interest.',
     preferredPlacement: 'bottom',
     icon: Coins,
   },
   {
-    id: 'search',
-    targetKey: 'search',
-    title: 'Search Bar',
-    badge: '2 of 4',
-    description: 'Use Search to find relevant deals, mandates, and counterparties across the platform.',
-    preferredPlacement: 'bottom',
-    icon: Search,
-  },
-  {
     id: 'deal-log',
     targetKey: 'deal-log',
     title: 'Deal Log',
-    badge: '3 of 4',
+    badge: '2 of 5',
     description: 'Deal Log is where you can see your deals, conversations, and matched opportunities.',
     preferredPlacement: 'right',
     icon: FileText,
@@ -45,10 +36,28 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'deal-dashboard',
     targetKey: 'deal-dashboard',
     title: 'EOI Activities',
-    badge: '4 of 4',
+    badge: '3 of 5',
     description: 'EOI Activities helps you track your EOI interactions, mutual interest, and connected parties.',
     preferredPlacement: 'right',
     icon: LayoutDashboard,
+  },
+  {
+    id: 'notifications',
+    targetKey: 'notifications',
+    title: 'Notifications',
+    badge: '4 of 5',
+    description: 'Stay updated with real-time deal alerts, counterparty responses, EOI status changes, and critical mandate updates.',
+    preferredPlacement: 'right',
+    icon: Bell,
+  },
+  {
+    id: 'guide',
+    targetKey: 'guide',
+    title: 'Guide & Trust',
+    badge: '5 of 5',
+    description: 'Explore comprehensive guides on platform workflows, mandate matching, and token usage, alongside our institutional Trust Center covering privacy, NDAs, and DPDP Act compliance.',
+    preferredPlacement: 'right',
+    icon: BookOpen,
   },
 ];
 

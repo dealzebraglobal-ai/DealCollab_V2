@@ -372,7 +372,7 @@ export default function DealLogPage() {
         {/* Global Toolbar — Search + Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
           {/* Search Bar */}
-          <div data-onboarding-target="search" className="relative group w-full sm:w-96">
+          <div className="relative group w-full sm:w-96">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#EA580C] transition-colors" />
             <input
               type="text"

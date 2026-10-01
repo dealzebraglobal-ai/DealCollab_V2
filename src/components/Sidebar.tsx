@@ -37,8 +37,8 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
     { name: 'Deal Log', icon: FileText, href: '/deal-log', targetId: 'deal-log' },
     { name: 'EOI Activities', icon: LayoutDashboard, href: '/eoi-activities', targetId: 'deal-dashboard' },
     { name: 'Intelligence', icon: BrainIcon, href: '/deal-intelligence' },
-    { name: 'Notifications', icon: Bell, href: '/notifications', badge: unreadCount },
-    { name: 'Guide & Trust', icon: BookOpen, href: '/guide' },
+    { name: 'Notifications', icon: Bell, href: '/notifications', badge: unreadCount, targetId: 'notifications' },
+    { name: 'Guide & Trust', icon: BookOpen, href: '/guide', targetId: 'guide' },
   ];
 
   const handleChatClick = async (id: string) => {
