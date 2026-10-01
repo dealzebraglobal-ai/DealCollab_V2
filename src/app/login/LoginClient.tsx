@@ -16,7 +16,7 @@ import { ShieldCheck, Sparkles, MessageSquare, AlertCircle, Info, Mail } from 'l
 const AuthContent = () => {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
-  const { setOnboarding, onboarding, profile, isProfileComplete, isProfileLoading } = useUser();
+  const { setOnboarding, isProfileComplete, isProfileLoading } = useUser();
   const router = useRouter();
   
   const source = searchParams.get('source');
