@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, ArrowUp, X, Loader2 } from 'lucide-react';
 
 interface InputBarProps {
@@ -15,29 +15,48 @@ export default function InputBar({ onSendMessage, isSending = false }: InputBarP
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevSendingRef = useRef(isSending);
 
   const canSend = (inputValue.trim().length > 0 || !!pendingFile) && !isSending;
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!canSend) return;
-    onSendMessage(inputValue.trim(), pendingFile);
+    const textToSend = inputValue.trim();
+    const fileToSend = pendingFile;
     setInputValue('');
     setPendingFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.focus();
+    }
+    onSendMessage(textToSend, fileToSend);
+    // Double ensure cursor remains focused in textarea across render cycles
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
+      textareaRef.current?.focus();
     }
     // Shift+Enter falls through to the textarea's default newline behavior.
   };
 
+  // Re-focus textarea when sending completes (just like ChatGPT)
+  useEffect(() => {
+    if (prevSendingRef.current && !isSending) {
+      textareaRef.current?.focus();
+    }
+    prevSendingRef.current = isSending;
+  }, [isSending]);
+
   // Auto-resize height based on value, capped so the box never dominates the page.
-  React.useEffect(() => {
+  useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const scrollHeight = textareaRef.current.scrollHeight;
@@ -115,10 +134,9 @@ export default function InputBar({ onSendMessage, isSending = false }: InputBarP
               onKeyDown={handleKeyDown}
               placeholder={pendingFile ? 'Add a message about this document...' : 'Ask DealCollab about a deal, mandate, or opportunity...'}
               rows={1}
-              disabled={isSending}
               autoFocus
               enterKeyHint="send"
-              className="flex-1 bg-transparent border-none outline-none font-normal text-[14px] leading-6 py-1.5 px-1 resize-none min-h-[24px] max-h-[200px] overflow-y-auto scrollbar-hide text-gray-900 placeholder:text-gray-400 disabled:opacity-60"
+              className="flex-1 bg-transparent border-none outline-none font-normal text-[14px] leading-6 py-1.5 px-1 resize-none min-h-[24px] max-h-[200px] overflow-y-auto scrollbar-hide text-gray-900 placeholder:text-gray-400"
             />
 
             <button
