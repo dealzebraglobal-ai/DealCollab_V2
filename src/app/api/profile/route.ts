@@ -217,8 +217,8 @@ export async function POST(req: NextRequest) {
       intent: isBusinessPromoter ? null : ((body.currentFocus !== undefined && body.currentFocus !== null && body.currentFocus.length > 0) ? body.currentFocus : currentUser.intent),
       profile_completion: currentUser.profile_completion, // Will be updated after this save
       profile_completed_once: currentUser.profile_completed_once,
-      // SECURITY: Phone is only verified if it matches the already-verified phone; changing phone resets verified status until OTP is completed
-      is_phone_verified: (incomingPhone && incomingPhone === currentUser.phone) ? (currentUser.is_phone_verified ?? currentUser.isPhoneVerified ?? false) : false,
+      // Phone OTP is not compulsory: saving a phone marks it verified directly
+      is_phone_verified: incomingPhone ? true : (currentUser.is_phone_verified ?? currentUser.isPhoneVerified ?? false),
       tokens: currentUser.tokens ?? 0,
       profile_image: (() => {
         const incoming = (body.profileImage !== undefined)

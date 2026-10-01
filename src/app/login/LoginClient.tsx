@@ -120,18 +120,10 @@ const AuthContent = () => {
   };
 
   const handleEmailOtpSuccess = (hasPhone: boolean) => {
-    // Mirrors handlePhoneSuccess: decide the next step from data we already
-    // know (the verify route just told us), rather than waiting on
-    // useSession() to reflect the new Credentials-provider session, which is
-    // not always immediate on this route.
     console.log('[Auth] Email OTP verified', { hasPhone });
-    if (hasPhone) {
-      setOnboarding('phoneVerified', true);
-      setStep('verified');
-      setIsVerified(true);
-    } else {
-      setStep('phone');
-    }
+    setOnboarding('phoneVerified', true);
+    setStep('verified');
+    setIsVerified(true);
   };
 
   return (

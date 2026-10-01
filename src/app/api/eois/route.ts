@@ -501,12 +501,18 @@ export async function PATCH(req: NextRequest) {
 
     if (eoiErr) throw eoiErr;
 
-    await supabase.from('notifications').insert([{
+    const { data: notification } = await supabase.from('notifications').insert([{
       user_id: existingEoi.sender_id,
       type: `EOI_${String(status).toUpperCase()}`,
       message: `Your Expression of Interest was ${status}.`,
       is_read: false,   // boolean column
-    }]);
+    }]).select('id,user_id,type,message,is_read,created_at').single();
+
+    if (notification) {
+      await deliverNotificationEmail(supabase, notification as NotificationRow).catch((err) => {
+        console.error('[PATCH /api/eois] Decline email delivery error:', err);
+      });
+    }
 
     return NextResponse.json(eoi);
   } catch (error: unknown) {

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendBrevoEmail } from '@/lib/email/brevo';
 import { renderEoiApprovalBlockedEmail } from '@/lib/email/templates/eoiApprovalBlocked';
 import { renderEoiApprovedEmail } from '@/lib/email/templates/eoiApproved';
+import { renderEoiDeclinedEmail } from '@/lib/email/templates/eoiDeclined';
 import { renderEoiReceivedEmail, type RenderedEmail } from '@/lib/email/templates/eoiReceived';
 import { renderNewCounterpartyEmail } from '@/lib/email/templates/newCounterparty';
 
@@ -9,8 +10,13 @@ const EMAIL_CHANNEL = 'email';
 const BREVO_PROVIDER = 'brevo';
 const EOI_RECEIVED = 'EOI_RECEIVED';
 const EOI_APPROVED = 'EOI_APPROVED';
+const EOI_DECLINED = 'EOI_DECLINED';
 const EOI_APPROVAL_BLOCKED = 'EOI_APPROVAL_BLOCKED';
 const NEW_COUNTERPARTY = 'NEW_COUNTERPARTY';
+const MATCH_FOUND = 'MATCH_FOUND';
+const ADMIN_EOI_REMINDER = 'ADMIN_EOI_REMINDER';
+const ADMIN_EOI_APPROVED = 'ADMIN_EOI_APPROVED';
+const ADMIN_EOI_DECLINED = 'ADMIN_EOI_DECLINED';
 
 export interface NotificationRow {
     id: string;
@@ -28,11 +34,20 @@ interface RecipientRow {
 }
 
 function emailNotificationsEnabled(): boolean {
-    return process.env.EMAIL_NOTIFICATIONS_ENABLED === 'true';
+    if (process.env.EMAIL_NOTIFICATIONS_ENABLED === 'false') {
+        return false;
+    }
+    return true;
 }
 
 function appBaseUrl(): string {
-    return (process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '');
+    return (
+        process.env.APP_BASE_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXTAUTH_URL ||
+        process.env.AUTH_URL ||
+        'http://localhost:3000'
+    ).replace(/\/$/, '');
 }
 
 function isPlaceholderEmail(email: string): boolean {
@@ -58,12 +73,18 @@ function renderNotificationEmail(input: {
 
     switch (input.notificationType) {
         case EOI_RECEIVED:
+        case ADMIN_EOI_REMINDER:
             return renderEoiReceivedEmail(shared);
         case EOI_APPROVED:
+        case ADMIN_EOI_APPROVED:
             return renderEoiApprovedEmail(shared);
+        case EOI_DECLINED:
+        case ADMIN_EOI_DECLINED:
+            return renderEoiDeclinedEmail(shared);
         case EOI_APPROVAL_BLOCKED:
             return renderEoiApprovalBlockedEmail(shared);
         case NEW_COUNTERPARTY:
+        case MATCH_FOUND:
             return renderNewCounterpartyEmail(shared);
         default:
             return null;
@@ -237,7 +258,17 @@ export async function deliverNotificationEmail(
     notification: NotificationRow
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if ([EOI_RECEIVED, EOI_APPROVED, EOI_APPROVAL_BLOCKED, NEW_COUNTERPARTY].includes(notification.type)) {
+        if ([
+            EOI_RECEIVED,
+            EOI_APPROVED,
+            EOI_DECLINED,
+            EOI_APPROVAL_BLOCKED,
+            NEW_COUNTERPARTY,
+            MATCH_FOUND,
+            ADMIN_EOI_REMINDER,
+            ADMIN_EOI_APPROVED,
+            ADMIN_EOI_DECLINED,
+        ].includes(notification.type)) {
             return await deliverTemplatedNotificationEmail(supabase, notification);
         }
         return { success: true };

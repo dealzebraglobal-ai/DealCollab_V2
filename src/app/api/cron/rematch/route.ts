@@ -5,6 +5,7 @@
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyMatchViaWhatsApp } from '@/lib/whatsappNotify';
+import { deliverNotificationEmail, type NotificationRow } from '@/lib/email/notifications/delivery';
 import {
   applyHardRejections,
   calculateV2Score,
@@ -185,12 +186,18 @@ export async function GET(req: NextRequest) {
       const indLabel = bestCandidate.industry || bestCandidate.sectors?.[0] || 'Target Industry';
       const geoLabel = bestCandidate.geographies?.[0] || 'Target Region';
 
-      await supabase.from('notifications').insert([{
+      const { data: notification } = await supabase.from('notifications').insert([{
         user_id: ss.user_id,
         type: 'MATCH_FOUND',
         message: `A new ${bestScore >= 80 ? 'verified' : 'high-confidence'} match was found for your mandate in ${indLabel} (${geoLabel}).`,
         is_read: false,
-      }]);
+      }]).select().single();
+
+      if (notification) {
+        void deliverNotificationEmail(supabase, notification as NotificationRow).catch((err) => {
+          console.error('[cron/rematch] Failed to deliver match email:', err);
+        });
+      }
 
       void notifyMatchViaWhatsApp({
         userId: ss.user_id,

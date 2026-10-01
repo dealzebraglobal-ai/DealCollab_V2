@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAccess } from '@/lib/admin';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
+import { deliverNotificationEmail, type NotificationRow } from '@/lib/email/notifications/delivery';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { sql } from 'drizzle-orm';
@@ -38,7 +39,45 @@ type AdminProposal = {
     fraud_flags: string[] | null;
     embedding_status: string | null;
     created_at: string;
-    user?: { name: string | null; email: string | null; firm_name: string | null } | null;
+    user?: { name: string | null; email: string | null; phone?: string | null; firm_name: string | null } | null;
+};
+
+type ProposalWithUser = AdminProposal & {
+    user?: { name: string | null; email: string | null; phone?: string | null; firm_name: string | null } | null;
+};
+
+type MatchDetailRow = {
+    id: string;
+    proposal_id: string;
+    matched_proposal_id?: string;
+    similarity_score?: string | number | null;
+    intent_score?: string | number | null;
+    industry_score?: string | number | null;
+    financial_score?: string | number | null;
+    niche_score?: string | number | null;
+    geography_boost?: string | number | null;
+    final_score: string | number | null;
+    confidence_score: string | number | null;
+    match_reason?: string | null;
+    match_archetype?: string | null;
+    status: string | null;
+    created_at: string;
+    proposal?: {
+        id: string;
+        user_id: string;
+        normalised_text: string | null;
+        intent?: string | null;
+        sectors?: string[] | null;
+        user?: { name: string | null; email: string | null; phone?: string | null; firm_name: string | null } | null;
+    } | null;
+    matched_proposal?: {
+        id: string;
+        user_id: string;
+        normalised_text: string | null;
+        intent?: string | null;
+        sectors?: string[] | null;
+        user?: { name: string | null; email: string | null; phone?: string | null; firm_name: string | null } | null;
+    } | null;
 };
 
 type AdminMatch = {
@@ -167,7 +206,7 @@ async function getDetailRows(supabase: NonNullable<ReturnType<typeof createServe
                 .order('created_at', { ascending: false })
                 .limit(1000);
             if (res.error) return res;
-            const mapped = (res.data || []).map((row: any) => ({
+            const mapped = ((res.data || []) as unknown as ProposalWithUser[]).map((row) => ({
                 uploader_name: row.user?.name || row.user?.email || 'Unknown',
                 uploader_email: row.user?.email || '',
                 uploader_firm: row.user?.firm_name || '',
@@ -196,7 +235,7 @@ async function getDetailRows(supabase: NonNullable<ReturnType<typeof createServe
                 .order('created_at', { ascending: false })
                 .limit(1000);
             if (res.error) return res;
-            const mapped = (res.data || []).map((row: any) => ({
+            const mapped = ((res.data || []) as unknown as MatchDetailRow[]).map((row) => ({
                 uploader_name: row.proposal?.user?.name || row.proposal?.user?.email || 'Unknown',
                 uploader_firm: row.proposal?.user?.firm_name || '',
                 counterparty_name: row.matched_proposal?.user?.name || row.matched_proposal?.user?.email || 'Unknown',
@@ -250,7 +289,7 @@ async function getDetailRows(supabase: NonNullable<ReturnType<typeof createServe
                 .order('created_at', { ascending: false })
                 .limit(1000);
             if (res.error) return res;
-            const mapped = (res.data || []).map((row: any) => ({
+            const mapped = ((res.data || []) as unknown as ProposalWithUser[]).map((row) => ({
                 uploader_name: row.user?.name || row.user?.email || 'Unknown',
                 uploader_email: row.user?.email || '',
                 uploader_firm: row.user?.firm_name || '',
@@ -440,14 +479,14 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
 
     if (matchesRes.error) warnings.push(`matches: ${getErrorMessage(matchesRes.error)}`);
 
-    const sentEois = readRows('sent EOIs', sentEoisRes);
-    const receivedEois = readRows('received EOIs', receivedEoisRes);
-    const savedSearches = readRows('saved searches', savedSearchesRes);
+    const sentEois = (readRows('sent EOIs', sentEoisRes) || []) as unknown as AdminEoi[];
+    const receivedEois = (readRows('received EOIs', receivedEoisRes) || []) as unknown as AdminEoi[];
+    const savedSearches = (readRows('saved searches', savedSearchesRes) || []) as unknown as SavedSearch[];
     const tokenTransactions = readRows('token transactions', tokenTransactionsRes);
     const notifications = readRows('notifications', notificationsRes);
     const documents = readRows('documents', documentsRes);
     const chatSessions = readRows('chat sessions', chatSessionsRes);
-    const matches = matchesRes.error ? [] : matchesRes.data || [];
+    const matches = (matchesRes.error ? [] : matchesRes.data || []) as unknown as MatchDetailRow[];
 
     const results = users.map((user) => {
         const userProposals = proposals
@@ -459,7 +498,7 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
             }));
         const userProposalIds = new Set(userProposals.map((proposal) => proposal.id));
 
-        const userMatches = (matches as any[])
+        const userMatches = matches
             .filter((match) => userProposalIds.has(match.proposal_id) || (!!match.matched_proposal_id && userProposalIds.has(match.matched_proposal_id)))
             .map((match) => {
                 const isSource = userProposalIds.has(match.proposal_id);
@@ -477,8 +516,8 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
             });
 
         const userSentEois = sentEois
-            .filter((eoi: any) => eoi.sender_id === user.id)
-            .map((eoi: any) => {
+            .filter((eoi) => eoi.sender_id === user.id)
+            .map((eoi) => {
                 const receiverName = eoi.receiver?.name || eoi.receiver?.email || 'Unknown receiver';
                 const firmPart = eoi.receiver?.firm_name ? ` (${eoi.receiver.firm_name})` : '';
                 const dealText = summarizeProposal(eoi.deal);
@@ -491,8 +530,8 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
             });
 
         const userReceivedEois = receivedEois
-            .filter((eoi: any) => eoi.receiver_id === user.id)
-            .map((eoi: any) => {
+            .filter((eoi) => eoi.receiver_id === user.id)
+            .map((eoi) => {
                 const senderName = eoi.sender?.name || eoi.sender?.email || 'Unknown sender';
                 const firmPart = eoi.sender?.firm_name ? ` (${eoi.sender.firm_name})` : '';
                 const dealText = summarizeProposal(eoi.deal);
@@ -508,7 +547,7 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
             .filter((savedSearch) => savedSearch.user_id === user.id)
             .map((savedSearch) => ({
                 ...savedSearch,
-                display_title: summarizeSavedSearch(savedSearch as any),
+                display_title: summarizeSavedSearch(savedSearch),
                 display_subtitle: `Status: ${savedSearch.status} • Exp: ${savedSearch.expires_at ? new Date(savedSearch.expires_at).toLocaleDateString() : 'None'}`,
             }));
 
@@ -524,8 +563,8 @@ async function getMasterSearchResults(supabase: NonNullable<ReturnType<typeof cr
                 matchCount: userMatches.length,
                 sentEoiCount: userSentEois.length,
                 receivedEoiCount: userReceivedEois.length,
-                pendingSentEoiCount: userSentEois.filter((eoi: any) => eoi.status === 'sent').length,
-                approvedSentEoiCount: userSentEois.filter((eoi: any) => eoi.status === 'approved').length,
+                pendingSentEoiCount: userSentEois.filter((eoi) => eoi.status === 'sent').length,
+                approvedSentEoiCount: userSentEois.filter((eoi) => eoi.status === 'approved').length,
                 savedSearchCount: userSavedSearches.length,
                 documentCount: userDocuments.length,
                 chatSessionCount: userChatSessions.length,
@@ -863,12 +902,18 @@ export async function PATCH(req: NextRequest) {
                 return NextResponse.json({ error: 'EOI has no receiver to nudge' }, { status: 400 });
             }
 
-            await supabase.from('notifications').insert([{
+            const { data: notification } = await supabase.from('notifications').insert([{
                 user_id: existingEoi.receiver_id,
                 type: 'ADMIN_EOI_REMINDER',
                 message: 'Reminder: You have an Expression of Interest awaiting review.',
-                is_read: 'false',
-            }]);
+                is_read: false,
+            }]).select().single();
+
+            if (notification) {
+                void deliverNotificationEmail(supabase, notification as NotificationRow).catch((err) => {
+                    console.error('[ADMIN_DASHBOARD] Failed to deliver nudge email:', err);
+                });
+            }
 
             return NextResponse.json({ success: true, action, eoiId, actedBy: access.email });
         }
@@ -881,12 +926,18 @@ export async function PATCH(req: NextRequest) {
 
         if (updateErr) throw updateErr;
 
-        await supabase.from('notifications').insert([{
+        const { data: notification } = await supabase.from('notifications').insert([{
             user_id: existingEoi.sender_id,
             type: `ADMIN_EOI_${status.toUpperCase()}`,
             message: `Your Expression of Interest was ${status} after admin review.`,
-            is_read: 'false',
-        }]);
+            is_read: false,
+        }]).select().single();
+
+        if (notification) {
+            void deliverNotificationEmail(supabase, notification as NotificationRow).catch((err) => {
+                console.error('[ADMIN_DASHBOARD] Failed to deliver admin EOI status email:', err);
+            });
+        }
 
         return NextResponse.json({ success: true, action, eoiId, status, actedBy: access.email });
     } catch (error: unknown) {
