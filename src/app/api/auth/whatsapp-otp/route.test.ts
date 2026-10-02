@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
+import type { RateLimitResult } from '@/lib/rateLimit';
 
-const checkRateLimitMock = vi.hoisted(() => vi.fn(() => ({ allowed: true })));
+const checkRateLimitMock = vi.hoisted(() => vi.fn<() => RateLimitResult>(() => ({ allowed: true, remaining: 5, retryAfterMs: 0 })));
 const getClientIpMock = vi.hoisted(() => vi.fn(() => '127.0.0.1'));
 
 const findFirstMock = vi.hoisted(() => vi.fn());
@@ -62,7 +63,7 @@ describe('POST /api/auth/whatsapp-otp — route handler error handling & diagnos
   });
 
   it('returns 429 when rate limit is exceeded', async () => {
-    checkRateLimitMock.mockReturnValueOnce({ allowed: false } as any);
+    checkRateLimitMock.mockReturnValueOnce({ allowed: false, remaining: 0, retryAfterMs: 60000 });
     const { POST } = await import('./route');
     const res = await POST(jsonRequest({ phone: '+919999999999' }));
     const data = await res.json();
