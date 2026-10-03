@@ -117,32 +117,15 @@ export function getProfileCompletion(user: ProfileUser | null | undefined): Cano
   }
 
   const checks: { key: string; passed: boolean }[] = [
-    // Section 1: Basic Identity
+    // Moment 1: Identity
     { key: 'name', passed: !!name },
     { key: 'email', passed: !!email },
     { key: 'phone', passed: !!phone },
     { key: 'role', passed: !!role },
+    { key: 'base_city', passed: !!baseCity },
     { key: 'category', passed: categories.length > 0 },
 
-    // Section 2: Geography
-    { key: 'base_city', passed: !!baseCity },
-    { key: 'base_country', passed: !!baseCountry },
-    { key: 'geographies', passed: geographies.length > 0 },
-
-    // Section 3: Expertise
-    { key: 'sectors', passed: sectors.length > 0 },
-
-    // Section 4: Intent & Expertise Description
-    { key: 'intent', passed: intent.length > 0 },
-    { key: 'expertise_description', passed: expertiseDescription.length > 0 },
-
-    // Section 5: Active Mandates
-    { key: 'active_mandates', passed: activeMandates.length > 0 },
-
-    // Section 6: Collaboration
-    { key: 'co_advisory', passed: coAdvisory !== null && coAdvisory !== undefined },
-
-    // Section 9: Terms and Conditions
+    // Moment 3: Verification (Gating & Token Grant)
     { key: 'terms_accepted', passed: termsAccepted },
   ];
 

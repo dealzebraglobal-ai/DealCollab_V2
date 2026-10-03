@@ -45,15 +45,15 @@ describe('Canonical Profile Completion & Synchronization Suite', () => {
       expect(res.missingFields).toHaveLength(0);
     });
 
-    it('TEST 2: Incomplete profile (missing expertise description) returns isComplete=false and percentage < 100', () => {
+    it('TEST 2: Incomplete profile (missing role) returns isComplete=false and percentage < 100', () => {
       const incompleteProfile: ProfileUser = {
         ...completeAdvisorProfile,
-        expertise_description: '', // empty
+        role: '', // empty
       };
       const res = getProfileCompletion(incompleteProfile);
       expect(res.isComplete).toBe(false);
       expect(res.percentage).toBeLessThan(100);
-      expect(res.missingFields).toContain('expertise_description');
+      expect(res.missingFields).toContain('role');
     });
 
     it('TEST 2b: Incomplete profile missing terms acceptance returns isComplete=false', () => {

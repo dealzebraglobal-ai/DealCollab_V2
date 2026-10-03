@@ -71,7 +71,14 @@ export async function GET(
       if (m.role === 'assistant') {
         try {
           const parsed = JSON.parse(m.content as string);
-          return { ...m, content: parsed.message || m.content };
+          const isComplete = Boolean(parsed.type === 'complete' || parsed.state?.is_complete || parsed.state?.phase === 'CLOSURE');
+          return {
+            ...m,
+            content: parsed.message || m.content,
+            type: isComplete ? 'complete' : (parsed.type || 'conversation'),
+            questions: parsed.questions,
+            proposalId: parsed.proposalId || parsed.state?.proposal_id,
+          };
         } catch { return m; }
       }
       return m;

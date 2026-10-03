@@ -206,6 +206,7 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
           <DataRow label="Phone" value={data.phone} />
           <DataRow label="Firm" value={data.firmName || 'Not provided'} />
           <DataRow label="Role" value={data.role === 'Other' ? data.customRole : data.role} />
+          <DataRow label="Base City" value={data.baseCity || 'Not provided'} />
           <div className="space-y-3 pt-2">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Professional Category</span>
             <div className="flex flex-wrap gap-2">
@@ -221,92 +222,71 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
           </div>
         </SectionCard>
 
-        {/* Section 2: Geography & Coverage */}
-        <SectionCard title="Geography & Coverage" icon={<MapPin size={20} />} onClick={onEdit}>
-          <DataRow label="Base Location" value={`${data.baseCity}, ${data.baseCountry}`} />
-          <DataRow label="Active Geographies" value={Array.isArray(data.geographies) ? data.geographies.join(', ') : 'Not provided'} />
-          <DataRow label="Cross-border" value={data.crossBorder ? 'Enabled' : 'Disabled'} />
-          {data.crossBorder && (
-            <DataRow label="Key Corridors" value={Array.isArray(data.corridors) ? data.corridors.join(', ') : 'Not provided'} />
+        {/* Section 2: Standing Buy-Side Requirements */}
+        <SectionCard title="Target Requirements (Buy-Side)" icon={<Target size={20} />} onClick={onEdit}>
+          {Array.isArray((data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements) && (data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.length > 0 ? (
+            <div className="space-y-3">
+              {(data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.map((req, idx) => (
+                <div key={idx} className="p-3 bg-amber-50/40 rounded-xl border border-amber-200/60 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-900">{req.sectors.join(', ')}</span>
+                    <span className="text-xs font-bold text-[#9A6E22]">{req.revenue}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-700 font-medium">{req.niche}</p>
+                  <p className="text-[11px] text-gray-500">{req.cities.join(', ')}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-brand-secondary font-medium">No target requirements filled yet. Click to add.</p>
           )}
         </SectionCard>
 
-        {/* Section 3: Expertise & Deal Capability */}
-        <SectionCard title="Expertise" icon={<Target size={20} />} onClick={onEdit}>
-          <div className="space-y-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Primary Industry Sectors</span>
-            <div className="flex flex-wrap gap-2">
-              {Array.isArray(data.sectors) && data.sectors.map((sector: string) => (
-                <span 
-                  key={sector} 
-                  className="px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-600 text-[11px] font-bold rounded-lg"
-                >
-                  {sector}
-                </span>
-              ))}
+        {/* Section 3: Track Record & Verification */}
+        <SectionCard title="Track Record & Verification" icon={<Briefcase size={20} />} onClick={onEdit}>
+          {Array.isArray(data.activeMandates) && data.activeMandates.length > 0 && (
+            <div className="space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Currently Mandated On</span>
+              <div className="flex flex-wrap gap-2">
+                {data.activeMandates.map((mandate: string) => (
+                  <span 
+                    key={mandate} 
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-gray-600 text-[11px] font-bold rounded-lg"
+                  >
+                    {mandate}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        </SectionCard>
-
-        {/* Section 4: Current Intent */}
-        <SectionCard title="Current Intent" icon={<Zap size={20} />} onClick={onEdit}>
-          <DataRow label="Current Focus" value={Array.isArray(data.intent) ? data.intent.join(', ') : 'Not provided'} />
+          )}
           <div className="space-y-1 pt-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Core Professional Expertise</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Track Record</span>
             <p className="text-sm font-medium text-foreground leading-relaxed italic">
               &quot;{data.expertiseDescription || 'No description provided.'}&quot;
             </p>
           </div>
         </SectionCard>
 
-        {/* Section 5: Active Mandates */}
-        <SectionCard title="Active Client Mandates" icon={<Briefcase size={20} />} onClick={onEdit}>
-          <div className="flex flex-wrap gap-2">
-            {Array.isArray(data.activeMandates) && data.activeMandates.map((mandate: string) => (
-              <span 
-                key={mandate} 
-                className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-gray-600 text-[11px] font-bold rounded-lg"
-              >
-                {mandate}
-              </span>
-            ))}
-          </div>
-        </SectionCard>
-
-        {/* Section 6: Collaboration */}
-        <SectionCard title="Collaboration" icon={<Globe size={20} />} onClick={onEdit}>
+        {/* Section 4: Collaboration & Credentials */}
+        <SectionCard title="Collaboration & Credentials" icon={<Globe size={20} />} onClick={onEdit}>
           <DataRow label="Open to Co-Advisory" value={data.co_advisory || data.coAdvisory ? 'Yes' : 'No'} />
           <DataRow label="Preferred Models" value={Array.isArray(data.collaboration_model) ? data.collaboration_model.join(', ') : Array.isArray(data.collaborationModels) ? data.collaborationModels.join(', ') : 'Not provided'} />
-        </SectionCard>
-
-        {/* Section 7: Attachments */}
-        <SectionCard title="Credentials" icon={<FileText size={20} />} onClick={onEdit}>
-          {data.profileAttachmentUrl ? (
-            <a 
-              href={data.profileAttachmentUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-100 text-green-700 hover:bg-green-100 transition-all group"
-            >
-              <FileText size={24} className="group-hover:scale-110 transition-transform" />
-              <div>
-                <span className="block text-sm font-bold">Professional Profile</span>
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Click to view attachment</span>
-              </div>
-            </a>
-          ) : (
-            <p className="text-sm text-brand-secondary font-medium">No profile attachment uploaded.</p>
+          {data.profileAttachmentUrl && (
+            <div className="pt-2">
+              <a 
+                href={data.profileAttachmentUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100 text-green-700 hover:bg-green-100 transition-all group"
+              >
+                <FileText size={20} className="group-hover:scale-110 transition-transform" />
+                <div>
+                  <span className="block text-xs font-bold">Attached Profile / Deck</span>
+                  <span className="text-[10px] uppercase opacity-60">View document</span>
+                </div>
+              </a>
+            </div>
           )}
-        </SectionCard>
-
-        {/* Section 8: Additional Information */}
-        <SectionCard title="Additional Info" icon={<MessageSquare size={20} />} onClick={onEdit}>
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Deal Preferences & Focus</span>
-            <p className="text-sm font-medium text-foreground leading-relaxed">
-              {data.additionalInfo || 'No additional details provided.'}
-            </p>
-          </div>
         </SectionCard>
       </div>
     </div>

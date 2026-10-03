@@ -109,8 +109,20 @@ export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ─── Form Data Shape ────────────────────────────────────────────
 
+export interface AdvisorRequirementItem {
+  id?: string;
+  slotIndex: number;
+  sectors: string[];
+  niche: string;
+  cities: string[];
+  revenue: string;
+  details?: string;
+  businessModels?: string[];
+  dealStructures?: string[];
+}
+
 export interface ProfileFormData {
-  // Section 1: Basic Identity
+  // Moment 1: Basic Identity
   fullName: string;
   workEmail: string;
   phone: string;
@@ -122,11 +134,14 @@ export interface ProfileFormData {
   avatarFile: File | null;
   profileImage: string;
 
+  // Moment 2: Requirements (1 to 5 slots)
+  requirements?: AdvisorRequirementItem[];
+
   // End User specific
   companyName: string;
   website: string;
 
-  // Section 2: Geography & Coverage
+  // Geography & Coverage
   baseCity: string;
   baseCountry: string;
   activeGeographies: string[];
@@ -134,28 +149,20 @@ export interface ProfileFormData {
   corridors: string[];
   customCorridor: string;
 
-  // Section 3: Expertise & Deal Capability
+  // Expertise & Deal Capability
   primarySectors: string[];
 
-  // Section 4: Current Intent
+  // Current Intent
   currentFocus: string[];
   expertiseDescription: string;
 
-  // Section 5: Active Client Mandates
+  // Moment 3: Client Mandates & Verification
   activeMandates: string[];
-
-  // Section 6: Collaboration Preferences
   coAdvisory: boolean;
   collaborationModels: string[];
-
-  // Section 7: Profile Attachment
   attachmentFile: File | null;
   attachmentUrl: string;
-
-  // Section 8: Additional Information
   additionalInfo: string;
-
-  // Section 9: Terms and Conditions
   termsAccepted: boolean;
 
   // Metadata / Tokens / DB Aliases
@@ -290,7 +297,7 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
   }
 
   switch (step) {
-    case 1: // Basic Identity
+    case 1: // Moment 1: Identity
       if (!data.fullName.trim()) {
         errors.push({ field: 'fullName', message: 'Full Name is required' });
       }
@@ -304,12 +311,14 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
       } else if (!isValidPhone(data.phone)) {
         errors.push({ field: 'phone', message: 'Enter a valid phone number with country code' });
       }
-      // firmName is optional per PRD
       if (!data.role) {
         errors.push({ field: 'role', message: 'Role is required' });
       }
       if (data.role === 'Other' && !data.customRole.trim()) {
         errors.push({ field: 'customRole', message: 'Please specify your role' });
+      }
+      if (!data.baseCity.trim()) {
+        errors.push({ field: 'baseCity', message: 'Base city is required' });
       }
       if (data.professionalCategory.length === 0) {
         errors.push({ field: 'professionalCategory', message: 'Select at least one Professional Category' });
@@ -319,66 +328,10 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
       }
       break;
 
-    case 2: // Geography & Coverage
-      if (!data.baseCity.trim()) {
-        errors.push({ field: 'baseCity', message: 'City is required' });
-      }
-      if (!data.baseCountry.trim()) {
-        errors.push({ field: 'baseCountry', message: 'Country is required' });
-      }
-      if (data.activeGeographies.length === 0) {
-        errors.push({ field: 'activeGeographies', message: 'Select at least one active geography' });
-      }
-      if (data.crossBorder && data.corridors.includes('Other') && !data.customCorridor.trim()) {
-        errors.push({ field: 'customCorridor', message: 'Please specify the corridor' });
-      }
+    case 2: // Moment 2: Requirements (Slots are optional for profile submission)
       break;
 
-    case 3: // Expertise & Deal Capability
-      if (data.primarySectors.length === 0) {
-        errors.push({ field: 'primarySectors', message: 'Enter at least one industry sector' });
-      }
-      if (data.primarySectors.length > 5) {
-        errors.push({ field: 'primarySectors', message: 'Maximum 5 industry sectors allowed' });
-      }
-      break;
-
-    case 4: // Current Intent
-      if (data.currentFocus.length === 0) {
-        errors.push({ field: 'currentFocus', message: 'Select at least one focus area' });
-      }
-      if (data.currentFocus.length > 3) {
-        errors.push({ field: 'currentFocus', message: 'Maximum 3 selections allowed' });
-      }
-      // Requirement 17: Expertise description has no minimum character requirement. Can be empty, short, or long.
-      break;
-
-    case 5: // Active Client Mandates
-      if (data.activeMandates.length === 0) {
-        errors.push({ field: 'activeMandates', message: 'Select at least one active mandate' });
-      }
-      break;
-
-    case 6: // Collaboration Preferences
-      // coAdvisory is required (boolean, always has a value via toggle)
-      // collaborationModels is optional per PRD
-      break;
-
-    case 7: // Profile Attachment — all optional
-      if (data.attachmentFile) {
-        if (!ACCEPTED_FILE_TYPES.includes(data.attachmentFile.type as typeof ACCEPTED_FILE_TYPES[number])) {
-          errors.push({ field: 'attachmentFile', message: 'Only PDF, DOC, DOCX, PPT, PPTX files are accepted' });
-        }
-        if (data.attachmentFile.size > MAX_FILE_SIZE_BYTES) {
-          errors.push({ field: 'attachmentFile', message: `File size must be under ${MAX_FILE_SIZE_MB}MB` });
-        }
-      }
-      break;
-
-    case 8: // Additional Information — all optional
-      break;
-
-    case 9: // Terms and Conditions
+    case 3: // Moment 3: Verification
       if (!data.termsAccepted) {
         errors.push({ field: 'termsAccepted', message: 'You must accept the Terms of Service & Privacy Policy' });
       }
@@ -390,18 +343,12 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
 
 /**
  * Validate the entire form (used on final submit / backend)
- * Skips step 7 (attachments) since file uploads are handled 
- * by a separate endpoint with its own validation.
- * The File object cannot be serialized to JSON, so checking
- * it here on the backend would always produce false positives.
  */
 export function validateFullProfile(data: ProfileFormData): ValidationError[] {
   const allErrors: ValidationError[] = [];
   const isBusinessPromoter = data.professionalCategory.includes('Business Owner / Promoter');
-  const totalSteps = isBusinessPromoter ? 3 : TOTAL_STEPS;
+  const totalSteps = isBusinessPromoter ? 3 : 3;
   for (let step = 1; step <= totalSteps; step++) {
-    // Skip step 7 for non-business promoter — file validation is handled by /api/profile/upload
-    if (!isBusinessPromoter && step === 7) continue;
     allErrors.push(...validateStep(step, data));
   }
   return allErrors;

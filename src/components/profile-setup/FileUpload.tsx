@@ -4,12 +4,13 @@ import { Upload, FileText, X, CheckCircle2 } from 'lucide-react';
 import { ACCEPTED_FILE_EXTENSIONS, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES, ACCEPTED_FILE_TYPES } from '@/lib/validation/profile';
 
 interface FileUploadProps {
+  label?: string;
   file: File | null;
   existingUrl: string;
   onFileSelect: (file: File | null) => void;
 }
 
-export default function FileUpload({ file, existingUrl, onFileSelect }: FileUploadProps) {
+export default function FileUpload({ label = 'Attach Professional / Company Profile', file, existingUrl, onFileSelect }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export default function FileUpload({ file, existingUrl, onFileSelect }: FileUplo
   return (
     <div className="space-y-3 w-full">
       <label className="text-[11px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-70 px-1 block">
-        Attach Professional / Company Profile
+        {label}
       </label>
       <div
         onDragOver={e => { e.preventDefault(); setDragActive(true); }}

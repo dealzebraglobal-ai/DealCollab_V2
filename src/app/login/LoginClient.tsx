@@ -165,12 +165,18 @@ const AuthContent = () => {
           {/* Feedback Banners */}
           {error && (
             <div className="mb-6 p-4 bg-primary-soft border border-border rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
-               <div className="bg-primary/20 p-1.5 rounded-lg text-primary-hover">
+               <div className="bg-primary/20 p-1.5 rounded-lg text-primary-hover shrink-0">
                   <AlertCircle size={18} />
                </div>
                <p className="text-sm font-bold text-foreground leading-tight">
                   {error === 'phone_linked_to_other' 
                     ? 'Security Rule: Number linked to another account' 
+                    : error === 'OAuthAccountNotLinked'
+                    ? 'Account linking error. Please try signing in again.'
+                    : error === 'AccessDenied'
+                    ? 'Access denied. Please check your permissions or contact support.'
+                    : error === 'Configuration'
+                    ? 'Server configuration error. Please try again or contact support.'
                     : 'Session update failed. Please retry.'}
                </p>
             </div>

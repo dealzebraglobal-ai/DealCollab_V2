@@ -16,7 +16,6 @@ export default function ProfilePage() {
    const [showSuccess, setShowSuccess] = useState(false);
 
    const handleComplete = useCallback((shouldShowSuccess?: boolean) => {
-      // Force exit from editing/setup mode
       setIsEditing(false);
 
       if (shouldShowSuccess) {
@@ -72,12 +71,12 @@ export default function ProfilePage() {
    return (
       <div className="flex-1 flex flex-col w-full bg-[#F9FAFB] relative min-h-screen">
          {isEditing ? (
-            <div className="w-full py-12">
-               <div className="max-w-5xl mx-auto px-6 mb-8 flex justify-between items-center">
-                  <h2 className="text-2xl font-black text-foreground tracking-tight">Update Your Profile</h2>
+            <div className="w-full py-8">
+               <div className="max-w-7xl mx-auto px-6 mb-6 flex justify-between items-center">
+                  <h2 className="text-xl font-serif font-bold text-gray-900 tracking-tight">Edit Your Profile</h2>
                   <button
                      onClick={() => setIsEditing(false)}
-                     className="text-sm font-bold text-brand-secondary hover:text-brand-accent transition-colors"
+                     className="text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors"
                   >
                      Cancel Changes
                   </button>

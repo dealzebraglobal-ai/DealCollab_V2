@@ -7,12 +7,13 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   id: string;
-  type?: 'intro' | 'conversation' | 'clarification' | 'complete' | 'error' | 'deal_ready' | 'deal_saved';
+  type?: 'intro' | 'conversation' | 'clarification' | 'complete' | 'error' | 'deal_ready' | 'deal_saved' | 'new_chat_prompt';
   questions?: string[];
   file?: {
     name: string;
     url?: string;
   };
+  proposalId?: string | null;
 }
 
 interface Session {

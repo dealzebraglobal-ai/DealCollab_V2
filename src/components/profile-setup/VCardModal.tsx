@@ -22,19 +22,28 @@ interface RequiredField {
 function buildRequiredFields(data: UserProfile | null): RequiredField[] {
   const name = data?.fullName || data?.name;
   const role = data?.role === 'Other' ? data?.customRole : data?.role;
+  const isBusinessPromoter = Array.isArray(data?.category) && data?.category.includes('Business Owner / Promoter');
   const company = data?.firmName || data?.companyName;
   const place = data?.baseCity || data?.base_city;
   const sectors = data?.sectors || data?.priority_sectors;
 
-  return [
+  const fields: RequiredField[] = [
     { key: 'name', label: 'Full Name', present: !!name },
     { key: 'phone', label: 'Contact Number', present: !!data?.phone },
     { key: 'email', label: 'Email', present: !!data?.email },
-    { key: 'company', label: 'Company Name', present: !!company },
+  ];
+
+  if (isBusinessPromoter) {
+    fields.push({ key: 'company', label: 'Company Name', present: !!company });
+  }
+
+  fields.push(
     { key: 'role', label: 'Profession', present: !!role },
     { key: 'place', label: 'Place', present: !!place },
     { key: 'sectors', label: 'Interested Sector', present: !!(sectors && sectors.length > 0) },
-  ];
+  );
+
+  return fields;
 }
 
 // Escapes text per RFC 6350 (vCard 4.0) — commas, semicolons and backslashes are

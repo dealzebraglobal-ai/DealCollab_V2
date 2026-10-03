@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         // Resolve user
         const { data: user } = await supabase
             .from('users')
-            .select('id, profile_completion, profile_completed_once')
+            .select('id, tokens, profile_completion, profile_completed_once')
             .ilike('email', session.user.email.trim().toLowerCase())
             .single();
 
@@ -65,6 +65,61 @@ export async function POST(req: NextRequest) {
                     { status: 403 },
                 );
             }
+        }
+
+        // Check if matchedProposalId is a standing advisor requirement ID
+        const { data: advReq } = await supabase
+            .from('advisor_requirements')
+            .select('id, user_id, sectors, niche')
+            .eq('id', body.matchedProposalId)
+            .maybeSingle();
+
+        if (advReq) {
+            const userTokens = user.tokens ?? 0;
+            if (userTokens < TOKEN_COST) {
+                return NextResponse.json({
+                    success: false,
+                    errorCode: 'INSUFFICIENT_TOKENS',
+                    message: `You need at least ${TOKEN_COST} tokens to connect.`,
+                    newBalance: userTokens,
+                    tokensRequired: TOKEN_COST,
+                }, { status: 402 });
+            }
+
+            const newBalance = userTokens - TOKEN_COST;
+            await supabase.from('users').update({ tokens: newBalance }).eq('id', user.id);
+            await supabase.from('token_transactions').insert([{
+                user_id: user.id,
+                type: 'debit',
+                action: 'CONNECT_REQUIREMENT',
+                amount: TOKEN_COST,
+                balance_after: newBalance,
+            }]);
+
+            const { data: newEoi } = await supabase.from('eois').insert([{
+                deal_id: body.proposalId,
+                requirement_id: advReq.id,
+                sender_id: user.id,
+                receiver_id: advReq.user_id,
+                status: 'approved',
+            }]).select().single();
+
+            const { data: advUser } = await supabase
+                .from('users')
+                .select('phone, name, firm_name')
+                .eq('id', advReq.user_id)
+                .maybeSingle();
+
+            return NextResponse.json({
+                success: true,
+                message: 'Connected to standing requirement successfully',
+                newBalance,
+                counterparty: {
+                    phone: advUser?.phone || null,
+                    advisor: advUser?.name || advUser?.firm_name || null,
+                },
+                eoi: newEoi,
+            });
         }
 
         // Atomic RPC: token check + deduct + ledger + connection record
