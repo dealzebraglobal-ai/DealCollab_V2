@@ -649,7 +649,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
             <AnimatedStepWrapper direction={direction} isActive={currentStep === 2 && !isBusinessPromoter}>
               <StepCard 
                 title="What You Are Looking For" 
-                helper="5 standing buy-side requirement slots. When no direct live match appears for sellers, we recommend these standing requirements."
+                helper="Share your acquisition interests and sectors of focus. We’ll route relevant sell-side opportunities from the network to you"
               >
                 <div className="space-y-6">
                   <div className="flex items-center justify-between pb-2 border-b border-gray-100">
