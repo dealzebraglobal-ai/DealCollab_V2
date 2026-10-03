@@ -2,17 +2,10 @@ import { auth } from '@/auth';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveDbUser } from '@/lib/resolveDbUser';
+import { formatTicketBand, deriveTicketBandFromProposals } from '@/lib/ticketBand';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function band(min: number | string | null | undefined, max: number | string | null | undefined): string {
-  const minN = min != null ? Number(min) : null;
-  const maxN = max != null ? Number(max) : null;
-  if (!minN && !maxN) return '₹20–250 Cr';
-  if (minN && maxN && minN !== maxN) return `₹${minN}–${maxN} Cr`;
-  return `₹${maxN ?? minN} Cr`;
-}
 
 function truncateText(text: string | null | undefined, maxLen = 120): string | null {
   if (!text) return null;
@@ -84,6 +77,16 @@ export async function GET(
       const geographies = (userProfile.geographies || []).slice(0, 3);
       const headline = truncateText(userProfile.expertise_description, 120);
 
+      const { data: userProposals } = await supabase
+        .from('proposals')
+        .select('deal_size_min_cr, deal_size_max_cr, status')
+        .eq('user_id', targetUserId);
+
+      const derivedTicket = deriveTicketBandFromProposals(
+        userProposals,
+        userProfile.expertise_description
+      );
+
       const publicCard = {
         mode: 'public',
         fullName: userProfile.name,
@@ -91,8 +94,8 @@ export async function GET(
         organisation: userProfile.firm_name || 'DealCollab Member',
         headline: headline || 'Sell-side & Buy-side M&A advisory. Readiness through closing.',
         mandateSide: (userProfile.intent && userProfile.intent[0]) ? userProfile.intent[0].replace('_', '-').toLowerCase() : 'Sell-side',
-        ticketBand: '₹20–250 Cr',
-        closedCount: '12 mandates',
+        ticketBand: derivedTicket.ticketBand,
+        closedCount: derivedTicket.closedCount,
         expertise: expertiseList.length > 0 ? expertiseList : ['Sell-side M&A', 'Carve-outs', 'Founder exits'],
         sectors: sectors.length > 0 ? sectors : ['B2B SaaS', 'Healthtech', 'Fintech infra', 'D2C'],
         geographies: geographies.length > 0 ? geographies : ['India', 'GCC', 'Southeast Asia'],
@@ -171,7 +174,23 @@ export async function GET(
     const sideText = counterpartyProposal.intent
       ? counterpartyProposal.intent.replace('_', '-').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())
       : 'Sell-side';
-    const ticketBanded = band(counterpartyProposal.deal_size_min_cr, counterpartyProposal.deal_size_max_cr);
+    const ticketBanded = formatTicketBand(
+      counterpartyProposal.deal_size_min_cr,
+      counterpartyProposal.deal_size_max_cr,
+      counterpartyProposal.summary_text
+    );
+
+    let cpClosedCount = 'Active mandates';
+    if (counterpartyProposal.user_id) {
+      const { count: cpCount } = await supabase
+        .from('proposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', counterpartyProposal.user_id);
+      if (cpCount && cpCount > 0) {
+        cpClosedCount = `${cpCount} ${cpCount === 1 ? 'mandate' : 'mandates'}`;
+      }
+    }
+
     const sectors = (counterpartyProposal.sectors || []).slice(0, 4);
     const geos = (counterpartyProposal.geographies || []).slice(0, 3);
     const matchRef = `DC-M-${String(match.id).slice(-4).toUpperCase()} · ${sideText} · ${sectors[0] || 'Advisory'} · ${ticketBanded}`;
@@ -188,7 +207,7 @@ export async function GET(
         headline: null, // STRICT SECURITY: Withheld
         mandateSide: sideText,
         ticketBand: ticketBanded,
-        closedCount: '34 mandates',
+        closedCount: cpClosedCount,
         expertise: ['Sell-side M&A', 'Carve-outs', 'Founder exits'],
         sectors: sectors.length > 0 ? sectors : ['B2B SaaS', 'Healthtech', 'Fintech infra', 'D2C'],
         geographies: geos.length > 0 ? geos : ['India', 'GCC', 'Southeast Asia'],
@@ -221,7 +240,7 @@ export async function GET(
       headline: truncateText(counterpartyProposal.summary_text, 120) || 'Sell-side for founder-led businesses. Readiness through signing.',
       mandateSide: sideText,
       ticketBand: ticketBanded,
-      closedCount: '34 mandates',
+      closedCount: cpClosedCount,
       expertise: ['Sell-side M&A', 'Carve-outs', 'Founder exits'],
       sectors: sectors.length > 0 ? sectors : ['B2B SaaS', 'Healthtech', 'Fintech infra', 'D2C'],
       geographies: geos.length > 0 ? geos : ['India', 'GCC', 'Southeast Asia'],

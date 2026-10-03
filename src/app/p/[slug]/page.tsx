@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import IdentityCard from '@/components/IdentityCard';
+import { deriveTicketBandFromProposals } from '@/lib/ticketBand';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +69,19 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const place = [user.base_city, user.base_country].filter(Boolean).join(', ');
   const headline = user.expertise_description ? user.expertise_description.slice(0, 120) : undefined;
 
+  const supabase = createServerSupabaseClient();
+  let ticketBand = 'Flexible';
+  let closedCount = 'Active member';
+  if (supabase) {
+    const { data: userProposals } = await supabase
+      .from('proposals')
+      .select('deal_size_min_cr, deal_size_max_cr, status')
+      .eq('user_id', user.id);
+    const derived = deriveTicketBandFromProposals(userProposals, user.expertise_description);
+    ticketBand = derived.ticketBand;
+    closedCount = derived.closedCount;
+  }
+
   return (
     <main className="min-h-screen w-full flex flex-col items-center px-4 py-10 bg-[#0B0D0F]">
       <div className="w-full max-w-md">
@@ -80,6 +94,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             organisation: user.firm_name || 'DealCollab Member',
             headline,
             mandateSide: (user.intent && user.intent[0]) ? user.intent[0].replace('_', '-').toLowerCase() : undefined,
+            ticketBand,
+            closedCount,
             sectors,
             geographies: geographies.length > 0 ? geographies : ['India'],
             location: place || undefined,

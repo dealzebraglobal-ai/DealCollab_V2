@@ -6,23 +6,17 @@ describe('Canonical Profile Completion & Synchronization Suite', () => {
     name: 'Jane Doe',
     email: 'jane@advisory.com',
     phone: '+919876543210',
-    role: 'Founder / Partner',
-    category: ['M&A Advisor'],
-    base_city: 'Mumbai',
-    base_country: 'India',
-    geographies: ['India', 'United States'],
+    company_name: 'Doe Advisory Group',
+    website: 'https://doeadvisory.com',
     sectors: ['Technology', 'Financial Services'],
     intent: ['Closing Existing Deals'],
-    expertise_description: 'We specialize in mid-market cross-border technology and healthcare M&A advisory transactions across India and US corridors.',
-    active_mandates: ['Sell-Side Mandates'],
-    co_advisory: true,
+    expertise_description: 'We specialize in mid-market cross-border technology transactions.',
     terms_accepted: true,
   };
 
   const completeBusinessPromoterProfile: ProfileUser = {
     name: 'Rajesh Sharma',
     email: 'rajesh@fintechscale.com',
-    category: ['Business Owner / Promoter'],
     company_name: 'FinTechScale Pvt Ltd',
     website: 'https://fintechscale.com',
     intent: ['Buyer Introductions', 'Strategic Acquisitions'],
@@ -45,15 +39,15 @@ describe('Canonical Profile Completion & Synchronization Suite', () => {
       expect(res.missingFields).toHaveLength(0);
     });
 
-    it('TEST 2: Incomplete profile (missing expertise description) returns isComplete=false and percentage < 100', () => {
+    it('TEST 2: Incomplete profile (missing company name) returns isComplete=false and percentage < 100', () => {
       const incompleteProfile: ProfileUser = {
         ...completeAdvisorProfile,
-        expertise_description: '', // empty
+        company_name: '', // empty
       };
       const res = getProfileCompletion(incompleteProfile);
       expect(res.isComplete).toBe(false);
       expect(res.percentage).toBeLessThan(100);
-      expect(res.missingFields).toContain('expertise_description');
+      expect(res.missingFields).toContain('company_name');
     });
 
     it('TEST 2b: Incomplete profile missing terms acceptance returns isComplete=false', () => {

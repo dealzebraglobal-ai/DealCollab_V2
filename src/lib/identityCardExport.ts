@@ -283,7 +283,7 @@ export async function exportIdentityCardToImage(
   };
 
   renderMetric('SIDE', data.mandateSide || 'Sell-side', paddingX);
-  renderMetric('TICKET BAND', data.ticketBand || '₹20–250 Cr', paddingX + colW);
+  renderMetric('TICKET BAND', data.ticketBand || 'Flexible', paddingX + colW);
 
   cursorY += 125;
 

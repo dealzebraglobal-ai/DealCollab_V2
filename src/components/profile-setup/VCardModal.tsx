@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import type { UserProfile } from '../UserProvider';
 import IdentityCard from '@/components/IdentityCard';
 import { buildPublicProfileUrl } from '@/lib/publicProfileUrl';
+import { formatTicketBand } from '@/lib/ticketBand';
 
 export interface ExtendedUserProfile extends UserProfile {
   professionalCategory?: string[] | null;
@@ -490,10 +491,12 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
                   mandateSide: (profile?.intent && (profile.intent as string[])[0])
                     ? ((profile.intent as string[])[0]).replace(/_/g, '-').toLowerCase()
                     : undefined,
-                  // Use real profile ticket band if available, otherwise omit
-                  ticketBand: profile?.dealSizeMin && profile?.dealSizeMax
-                    ? `₹${profile.dealSizeMin}–${profile.dealSizeMax} Cr`
-                    : profile?.ticketBand || undefined,
+                  // Use dynamic ticket band from profile or calculate from deal sizes / expertise description
+                  ticketBand: profile?.ticketBand || formatTicketBand(
+                    profile?.dealSizeMin,
+                    profile?.dealSizeMax,
+                    profile?.expertiseDescription || profile?.headline || null
+                  ),
                   // Use real closed count if available
                   closedCount: profile?.closedCount ?? profile?.closed_count ?? undefined,
                   expertise: profile?.expertiseDescription

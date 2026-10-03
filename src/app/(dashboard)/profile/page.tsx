@@ -59,7 +59,7 @@ export default function ProfilePage() {
       return (
          <div className="flex-1 flex flex-col w-full bg-[#F9FAFB] relative min-h-screen">
             <HeroSection />
-            <div className="w-full bg-gray-50/50">
+            <div className="w-full bg-gray-50/50 flex-1 flex flex-col">
                <ProfileStepper
                   onComplete={handleComplete}
                   initialData={profile}
@@ -72,7 +72,7 @@ export default function ProfilePage() {
    return (
       <div className="flex-1 flex flex-col w-full bg-[#F9FAFB] relative min-h-screen">
          {isEditing ? (
-            <div className="w-full py-12">
+            <div className="w-full flex-1 flex flex-col py-8">
                <div className="max-w-5xl mx-auto px-6 mb-8 flex justify-between items-center">
                   <h2 className="text-2xl font-black text-foreground tracking-tight">Update Your Profile</h2>
                   <button

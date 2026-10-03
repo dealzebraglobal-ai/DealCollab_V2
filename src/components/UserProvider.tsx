@@ -58,6 +58,10 @@ export interface UserProfile {
   profileCompletedOnce?: boolean;
   onboardingTutorialCompleted?: boolean;
   currentFocus?: string[] | null;
+  ticketBand?: string | null;
+  dealSizeMin?: number | string | null;
+  dealSizeMax?: number | string | null;
+  closedCount?: number | string | null;
   coAdvisory?: boolean | null;
   collaborationModels?: string[] | null;
 }

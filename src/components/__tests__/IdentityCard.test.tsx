@@ -96,4 +96,15 @@ describe('IdentityCard Unified Component (Server Rendering & Data Guard)', () =>
     expect(html).toContain('RELEASED TO');
     expect(html).toContain('ANANYA RAO');
   });
+
+  it('renders "Flexible" as ticket band when ticketBand is omitted', () => {
+    const dataWithoutTicketBand: IdentityCardData = {
+      ...samplePublicData,
+      ticketBand: undefined,
+    };
+
+    const html = renderToString(<IdentityCard mode="public" data={dataWithoutTicketBand} />);
+    expect(html).toContain('Flexible');
+    expect(html).not.toContain('₹20–250 Cr');
+  });
 });

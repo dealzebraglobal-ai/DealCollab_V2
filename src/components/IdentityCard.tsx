@@ -415,7 +415,7 @@ export default function IdentityCard({
                   isDisclosure ? 'text-[#111827]' : 'text-white'
                 }`}
               >
-                {data.ticketBand || '₹20–250 Cr'}
+                {data.ticketBand || 'Flexible'}
               </p>
             </div>
           </div>
