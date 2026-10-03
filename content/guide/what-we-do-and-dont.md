@@ -53,4 +53,4 @@ us directly.
 
 You're being asked to trust a platform with confidential mandates. That trust
 should be based on what we actually do — not on what a marketing page implies.
-If any behavior of the platform ever contradicts this page, tell us: [letsconnect@dealzebra.io]. We treat that as a bug.
+If any behavior of the platform ever contradicts this page, tell us: [join@dealcollab.in](mailto:join@dealcollab.in). We treat that as a bug.

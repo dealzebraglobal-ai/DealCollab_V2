@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       'id, name, email, phone',
     );
 
-    const supportInbox = process.env.SUPPORT_INBOX_EMAIL || process.env.BREVO_REPLY_TO_EMAIL || process.env.BREVO_SENDER_EMAIL;
+    const supportInbox = process.env.SUPPORT_INBOX_EMAIL || process.env.BREVO_REPLY_TO_EMAIL || process.env.BREVO_SENDER_EMAIL || 'join@dealcollab.in';
     if (!supportInbox) {
       console.error('[POST /api/support] No support inbox configured (SUPPORT_INBOX_EMAIL / BREVO_REPLY_TO_EMAIL / BREVO_SENDER_EMAIL all unset)');
       return NextResponse.json({ error: 'Support email is not configured yet. Please use WhatsApp support instead.' }, { status: 503 });

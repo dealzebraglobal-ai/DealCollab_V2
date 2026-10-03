@@ -114,4 +114,4 @@ exclusive jurisdiction.
 
 ## 15. Contact
 
-[letsconnect@dealzebra.io] · Dealzebra Global Intelligence LLP
+[join@dealcollab.in](mailto:join@dealcollab.in) · DealZebra Global Intelligence LLP

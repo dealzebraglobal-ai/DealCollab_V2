@@ -22,11 +22,11 @@ connects with opportunity.
 | **Legal entity** | DealZebra Global Intelligence LLP |
 | **Structure** | Limited Liability Partnership |
 | **Registered with** | Registrar of Companies (ROC), Pune |
-| **LLPIN** | [LLPIN — add your registration number] |
+| **LLPIN** | AAZFD1413F |
 | **Incorporated** | 2025 |
-| **Registered office** | [Sr No. 55, Sukh Niwas Office No. 106, B- Wing Mangalwar Peth Pune, Maharashtra 411011 India] |
+| **Registered office** | Sr No. 55, Sukh Niwas Office No. 106, B- Wing Mangalwar Peth Pune, Maharashtra 411011 India |
 | **Website** | [dealzebra.io](https://dealzebra.io) |
-| **Contact** | [letsconnect@dealzebra.io] |
+| **Contact** | [join@dealcollab.in](https://mail.google.com/mail/?view=cm&fs=1&to=join@dealcollab.in&su=DealCollab%20Inquiry) |
 
 DealCollab is a product of DealZebra Global Intelligence LLP. All mandates,
 data, and platform activity are operated under this registered entity, and
@@ -72,5 +72,5 @@ value for entrepreneurs, advisors, and capital alike.
 
 ## Talk to us
 
-Questions about the company, partnerships, or press: [letsconnect@dealzebra.io].
+Questions about the company, partnerships, or press: [join@dealcollab.in](https://mail.google.com/mail/?view=cm&fs=1&to=join@dealcollab.in&su=DealCollab%20Partnership%20or%20Press%20Inquiry).
 Building something in this space and want to join us: [dealzebra.io/career](https://dealzebra.io/career).

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildVCardText, vcardEscape } from '../VCardModal';
+import { buildVCardText, vcardEscape, isUserBusinessPromoter, buildRequiredFields } from '../VCardModal';
+import type { UserProfile } from '../../UserProvider';
 
 describe('vcardEscape — RFC 6350 field escaping', () => {
   it('escapes commas, semicolons, backslashes, and newlines', () => {
@@ -52,3 +53,42 @@ describe('buildVCardText — produces a valid minimal vCard 3.0 record', () => {
     expect(text).toContain('EMAIL:jane@example.com');
   });
 });
+
+describe('Business Promoter persona & required fields', () => {
+  it('identifies Business Promoter persona correctly', () => {
+    expect(isUserBusinessPromoter({ category: ['Business Owner / Promoter'] } as unknown as UserProfile)).toBe(true);
+    expect(isUserBusinessPromoter({ category: ['M&A Advisor'] } as unknown as UserProfile)).toBe(false);
+    expect(isUserBusinessPromoter({ companyName: 'Acme Corp', role: null } as unknown as UserProfile)).toBe(true);
+  });
+
+  it('does not require Profession or Place for Business Promoters', () => {
+    const promoterData = {
+      fullName: 'Sneha Jadhav',
+      email: 'snehu364@gmail.com',
+      companyName: 'Gogle',
+      category: ['Business Owner / Promoter'],
+      role: null,
+      baseCity: null,
+    } as unknown as UserProfile;
+
+    const fields = buildRequiredFields(promoterData);
+    expect(fields.map(f => f.key)).toEqual(['name', 'email', 'company']);
+    expect(fields.every(f => f.present)).toBe(true);
+  });
+
+  it('requires Profession and Place for Intermediaries', () => {
+    const intermediaryData = {
+      fullName: 'Jeevan Jadhav',
+      email: 'jeevan@example.com',
+      firmName: 'Dealzebra',
+      category: ['Investment Banker'],
+      role: 'Director / VP',
+      baseCity: 'Pune',
+    } as unknown as UserProfile;
+
+    const fields = buildRequiredFields(intermediaryData);
+    expect(fields.map(f => f.key)).toEqual(['name', 'email', 'company', 'role', 'place']);
+    expect(fields.every(f => f.present)).toBe(true);
+  });
+});
+

@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { X, LifeBuoy, Mail, MessageCircle, HelpCircle, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, LifeBuoy, Mail, MessageCircle, HelpCircle, Send, CheckCircle2, AlertCircle, Copy, Check, ExternalLink } from 'lucide-react';
+import { SUPPORT_EMAIL, getGmailComposeUrl, getMailtoUrl, openSupportEmail } from '@/lib/supportEmail';
 
 interface HelpSupportModalProps {
   isOpen: boolean;
@@ -14,6 +15,41 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [emailActionNotice, setEmailActionNotice] = useState<string | null>(null);
+
+  const handleCopyEmail = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    navigator.clipboard?.writeText(SUPPORT_EMAIL);
+    setCopiedEmail(true);
+    setEmailActionNotice('Email address copied to clipboard (join@dealcollab.in)!');
+    setTimeout(() => {
+      setCopiedEmail(false);
+      setEmailActionNotice(null);
+    }, 3000);
+  };
+
+  const handleOpenEmail = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      navigator.clipboard?.writeText(SUPPORT_EMAIL);
+      setCopiedEmail(true);
+    } catch {
+      // ignore
+    }
+    const opened = openSupportEmail('DealCollab Support Request');
+    setEmailActionNotice(opened ? 'Opening Gmail compose in a new tab...' : 'Email copied to clipboard (join@dealcollab.in)!');
+    setTimeout(() => {
+      setCopiedEmail(false);
+      setEmailActionNotice(null);
+    }, 4000);
+  };
 
   if (!isOpen) return null;
 
@@ -76,20 +112,80 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-6">
+          {/* Notice banner for email action */}
+          {emailActionNotice && (
+            <div className="p-3 rounded-2xl bg-orange-50 border border-orange-200 text-xs text-orange-950 font-medium flex items-center justify-between animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-[#F97316] shrink-0" />
+                <span>{emailActionNotice}</span>
+              </div>
+              <span className="text-[10px] font-bold text-[#F97316] uppercase tracking-wider shrink-0">{SUPPORT_EMAIL}</span>
+            </div>
+          )}
+
           {/* Quick Contact Options */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <a 
-              href="mailto:support@dealcollab.org?subject=Support%20Request"
-              className="flex items-center gap-3 p-4 rounded-2xl border border-gray-200/80 bg-gray-50/60 hover:bg-white hover:border-[#F97316]/50 hover:shadow-md transition-all group"
+            <div 
+              role="button"
+              tabIndex={0}
+              onClick={() => handleOpenEmail()}
+              onKeyDown={(e) => e.key === 'Enter' && handleOpenEmail()}
+              className="p-4 rounded-2xl border border-gray-200/80 bg-gray-50/60 hover:bg-white hover:border-[#F97316]/50 hover:shadow-md transition-all group flex flex-col justify-between cursor-pointer text-left select-none"
             >
-              <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#F97316] group-hover:scale-105 transition-transform">
-                <Mail size={18} />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#F97316] group-hover:scale-105 transition-transform shrink-0">
+                    <Mail size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-gray-900">Email Support</p>
+                      <ExternalLink size={11} className="text-gray-400 group-hover:text-[#F97316]" />
+                    </div>
+                    <p className={`text-[10px] truncate ${copiedEmail ? 'text-emerald-600 font-semibold' : 'text-gray-500'}`}>
+                      {copiedEmail ? 'Copied to clipboard!' : SUPPORT_EMAIL}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyEmail(e);
+                  }}
+                  title="Copy email address"
+                  className="p-2 rounded-xl bg-white/80 hover:bg-orange-50 border border-gray-200/60 hover:border-orange-200 text-gray-400 hover:text-[#F97316] transition-all shrink-0 ml-2 cursor-pointer"
+                >
+                  {copiedEmail ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                </button>
               </div>
-              <div>
-                <p className="text-xs font-bold text-gray-900">Email Support</p>
-                <p className="text-[10px] text-gray-500 truncate">support@dealcollab.org</p>
+              <div className="mt-2.5 pt-2 border-t border-gray-200/60 flex items-center justify-between text-[10px]" onClick={(e) => e.stopPropagation()}>
+                <a
+                  href={getGmailComposeUrl('DealCollab Support Request')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-[#F97316] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  Open in Gmail ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyEmail(e);
+                  }}
+                  className="text-gray-500 hover:text-gray-800 font-medium hover:underline cursor-pointer"
+                >
+                  {copiedEmail ? '✓ Copied' : 'Copy Email'}
+                </button>
+                <a
+                  href={getMailtoUrl('DealCollab Support Request')}
+                  className="text-gray-400 hover:text-gray-600 hover:underline cursor-pointer"
+                >
+                  Mail App
+                </a>
               </div>
-            </a>
+            </div>
 
             <a 
               href="https://wa.me/919987654321?text=Hi%20DealCollab%20Support,%20I%20need%20assistance"

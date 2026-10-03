@@ -1,10 +1,25 @@
 'use client';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Download, Share2, AlertCircle, Check } from 'lucide-react';
 import QRCode from 'qrcode';
 import type { UserProfile } from '../UserProvider';
 import IdentityCard from '@/components/IdentityCard';
 import { buildPublicProfileUrl } from '@/lib/publicProfileUrl';
+
+export interface ExtendedUserProfile extends UserProfile {
+  professionalCategory?: string[] | null;
+  userType?: string | null;
+  profile_completed?: boolean | null;
+  profile_completed_once?: boolean | null;
+  headline?: string | null;
+  dealSizeMin?: number | string | null;
+  dealSizeMax?: number | string | null;
+  ticketBand?: string | null;
+  closedCount?: number | string | null;
+  closed_count?: number | string | null;
+  expertise?: string[] | null;
+  kycVerified?: boolean | null;
+}
 
 interface VCardModalProps {
   isOpen: boolean;
@@ -19,21 +34,42 @@ interface RequiredField {
   present: boolean;
 }
 
-function buildRequiredFields(data: UserProfile | null): RequiredField[] {
+export function isUserBusinessPromoter(data: UserProfile | null): boolean {
+  if (!data) return false;
+  const profile = data as ExtendedUserProfile;
+  const categories = profile.category || profile.professionalCategory || [];
+  return (
+    (Array.isArray(categories) && categories.includes('Business Owner / Promoter')) ||
+    profile.customCategory === 'promoter' ||
+    profile.userType === 'promoter' ||
+    (!profile.role && !!(profile.companyName || profile.company_name))
+  );
+}
+
+export function buildRequiredFields(data: UserProfile | null): RequiredField[] {
+  const isPromoter = isUserBusinessPromoter(data);
   const name = data?.fullName || data?.name;
+  const company = data?.companyName || data?.company_name || data?.firmName || data?.firm_name;
+
+  if (isPromoter) {
+    // For Business Promoters, the 3-step profile requires Full Name, Email, and Company Name.
+    // Profession defaults to 'Business Promoter', and place/sectors are optional.
+    return [
+      { key: 'name', label: 'Full Name', present: !!name },
+      { key: 'email', label: 'Email', present: !!data?.email },
+      { key: 'company', label: 'Company Name', present: !!company },
+    ];
+  }
+
   const role = data?.role === 'Other' ? data?.customRole : data?.role;
-  const company = data?.firmName || data?.companyName;
-  const place = data?.baseCity || data?.base_city;
-  const sectors = data?.sectors || data?.priority_sectors;
+  const place = data?.baseCity || data?.base_city || data?.baseLocation || data?.base_location;
 
   return [
     { key: 'name', label: 'Full Name', present: !!name },
-    { key: 'phone', label: 'Contact Number', present: !!data?.phone },
     { key: 'email', label: 'Email', present: !!data?.email },
     { key: 'company', label: 'Company Name', present: !!company },
     { key: 'role', label: 'Profession', present: !!role },
     { key: 'place', label: 'Place', present: !!place },
-    { key: 'sectors', label: 'Interested Sector', present: !!(sectors && sectors.length > 0) },
   ];
 }
 
@@ -73,18 +109,32 @@ export function buildVCardText(input: {
 
 export default function VCardModal({ isOpen, onClose, data, isProfileComplete }: VCardModalProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
-  const cardRef = useRef<HTMLDivElement>(null);
+  const profile = data as ExtendedUserProfile | null;
 
-  const fields = useMemo(() => buildRequiredFields(data), [data]);
+  const isPromoter = isUserBusinessPromoter(profile);
+  const fields = useMemo(() => buildRequiredFields(profile), [profile]);
   const missing = fields.filter(f => !f.present);
-  const canRender = isProfileComplete && missing.length === 0;
 
-  const name = data?.fullName || data?.name || '';
-  const role = data?.role === 'Other' ? data?.customRole : data?.role;
-  const company = data?.firmName || data?.companyName;
-  const place = [data?.baseCity || data?.base_city, data?.baseCountry || data?.base_country].filter(Boolean).join(', ');
-  const sectors = data?.sectors || data?.priority_sectors || [];
-  const photo = data?.profileImage || data?.profile_image || data?.userAvatar;
+  const isProfileActuallyComplete = !!(
+    isProfileComplete ||
+    profile?.profileCompleted ||
+    profile?.profile_completed ||
+    profile?.profileCompletedOnce ||
+    profile?.profile_completed_once ||
+    (profile?.profileCompletion ?? 0) >= 100 ||
+    (profile?.profile_completion ?? 0) >= 100
+  );
+
+  const name = profile?.fullName || profile?.name || '';
+  const canRender = (isProfileActuallyComplete || missing.length === 0) && !!name;
+
+  const role = (profile?.role === 'Other' ? profile?.customRole : profile?.role) ||
+    (isPromoter ? 'Business Promoter' : (profile?.customRole || ''));
+  const company = profile?.companyName || profile?.company_name || profile?.firmName || profile?.firm_name || '';
+  const place = [profile?.baseCity || profile?.base_city, profile?.baseCountry || profile?.base_country].filter(Boolean).join(', ') ||
+    (profile?.baseLocation || profile?.base_location || '');
+  const sectors = profile?.sectors || profile?.priority_sectors || [];
+  const photo = profile?.profileImage || profile?.profile_image || profile?.userAvatar;
 
   if (!isOpen) return null;
 
@@ -421,7 +471,7 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
                   </li>
                 ))}
               </ul>
-              {!isProfileComplete && missing.length === 0 && (
+              {!isProfileActuallyComplete && missing.length === 0 && (
                 <p className="text-xs text-amber-700 font-medium">Finish onboarding to unlock your vCard.</p>
               )}
             </div>
@@ -436,31 +486,31 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
                   photoUrl: photo || undefined,
                   designation: role || undefined,
                   organisation: company || undefined,
-                  headline: data?.expertiseDescription || (data as any)?.headline || undefined,
-                  mandateSide: (data?.intent && (data.intent as string[])[0])
-                    ? ((data.intent as string[])[0]).replace(/_/g, '-').toLowerCase()
+                  headline: profile?.expertiseDescription || profile?.headline || undefined,
+                  mandateSide: (profile?.intent && (profile.intent as string[])[0])
+                    ? ((profile.intent as string[])[0]).replace(/_/g, '-').toLowerCase()
                     : undefined,
                   // Use real profile ticket band if available, otherwise omit
-                  ticketBand: (data as any)?.dealSizeMin && (data as any)?.dealSizeMax
-                    ? `₹${(data as any).dealSizeMin}–${(data as any).dealSizeMax} Cr`
-                    : (data as any)?.ticketBand || undefined,
+                  ticketBand: profile?.dealSizeMin && profile?.dealSizeMax
+                    ? `₹${profile.dealSizeMin}–${profile.dealSizeMax} Cr`
+                    : profile?.ticketBand || undefined,
                   // Use real closed count if available
-                  closedCount: (data as any)?.closedCount ?? (data as any)?.closed_count ?? undefined,
-                  expertise: data?.expertiseDescription
-                    ? [data.expertiseDescription]
-                    : (data as any)?.expertise?.length
-                      ? (data as any).expertise.slice(0, 3)
+                  closedCount: profile?.closedCount ?? profile?.closed_count ?? undefined,
+                  expertise: profile?.expertiseDescription
+                    ? [profile.expertiseDescription]
+                    : profile?.expertise?.length
+                      ? profile.expertise.slice(0, 3)
                       : undefined,
                   sectors: sectors.slice(0, 4),
-                  geographies: (data?.geographies && (data.geographies as string[]).length > 0
-                    ? data.geographies as string[]
+                  geographies: (profile?.geographies && (profile.geographies as string[]).length > 0
+                    ? profile.geographies as string[]
                     : ['India']).slice(0, 3),
-                  phone: data?.phone || undefined,
-                  email: data?.email || undefined,
+                  phone: profile?.phone || undefined,
+                  email: profile?.email || undefined,
                   location: place || undefined,
-                  isVerified: (data as any)?.kycVerified !== undefined ? !!(data as any).kycVerified : true,
-                  verifiedCode: String(data?.id || '').slice(-4).toUpperCase() || undefined,
-                  profileSlug: `usr_${String(data?.id || 'dc').slice(0, 8)}`,
+                  isVerified: profile?.kycVerified !== undefined ? !!profile.kycVerified : true,
+                  verifiedCode: String(profile?.id || '').slice(-4).toUpperCase() || undefined,
+                  profileSlug: `usr_${String(profile?.id || 'dc').slice(0, 8)}`,
                 }}
                 showExportButtons={false}
               />
