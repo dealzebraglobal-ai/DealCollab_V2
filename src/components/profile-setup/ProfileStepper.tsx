@@ -129,7 +129,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
         termsAccepted: !!((initialData as { termsAccepted?: boolean; terms_accepted?: boolean }).termsAccepted || (initialData as { termsAccepted?: boolean; terms_accepted?: boolean }).terms_accepted),
         role: initialData.role || '',
         customRole: (initialData as any).customRole || (initialData as any).custom_role || '',
-        professionalCategory: (initialData.category || initialData.professionalCategory || []) as string[],
+        professionalCategory: (initialData.category || (initialData as any).professionalCategory || []) as string[],
         baseCity: initialData.baseCity || initialData.base_city || '',
         baseCountry: initialData.baseCountry || initialData.base_country || '',
         activeGeographies: (initialData as any).geographies || (initialData as any).activeGeographies || [],
