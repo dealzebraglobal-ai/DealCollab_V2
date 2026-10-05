@@ -87,7 +87,6 @@ export function getProfileCompletion(user: ProfileUser | null | undefined): Cano
   const checks: { key: string; passed: boolean }[] = [
     { key: 'name', passed: !!name },
     { key: 'email', passed: !!email },
-    { key: 'intent', passed: intent.length > 0 },
     { key: 'terms_accepted', passed: termsAccepted },
   ];
 
@@ -99,6 +98,7 @@ export function getProfileCompletion(user: ProfileUser | null | undefined): Cano
     (user as Record<string, unknown>).userType === 'promoter';
 
   if (isBusinessPromoter) {
+    checks.push({ key: 'intent', passed: intent.length > 0 });
     checks.push({ key: 'company_name', passed: !!companyName });
     checks.push({ key: 'website', passed: !!website });
   } else {

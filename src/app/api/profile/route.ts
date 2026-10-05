@@ -285,16 +285,22 @@ export async function POST(req: NextRequest) {
     }
     logProfileCreate(requestId, 'database_insert', 'success', { userId: currentUser.id });
 
+    const { data: existingEup } = await supabase
+      .from('end_user_profiles')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
     // Always keep end_user_profiles in sync for 3-step setup (stores company_name and website)
     const { error: eupError } = await supabase
       .from('end_user_profiles')
       .upsert({
         user_id: currentUser.id,
-        company_name: company || '',
-        website: body.website || '',
-        sectors: body.primarySectors || [],
-        intent: body.currentFocus || [],
-        description: body.expertiseDescription || null,
+        company_name: company || existingEup?.company_name || '',
+        website: body.website !== undefined ? body.website : (existingEup?.website || ''),
+        sectors: body.primarySectors !== undefined ? body.primarySectors : (existingEup?.sectors || []),
+        intent: body.currentFocus !== undefined ? body.currentFocus : (existingEup?.intent || []),
+        description: body.expertiseDescription !== undefined ? body.expertiseDescription : (existingEup?.description || null),
       }, { onConflict: 'user_id' });
 
     if (eupError) {
