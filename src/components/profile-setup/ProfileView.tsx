@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import {
-  User, Target, Edit3, IdCard
+  User, Target, Edit3, IdCard, Briefcase, Globe, FileText
 } from 'lucide-react';
 import { UserProfile, useUser } from '../UserProvider';
 import VCardModal from './VCardModal';
@@ -89,7 +89,7 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
           {data.website && (
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Business Website</span>
-              <a 
+              <a
                 href={data.website.startsWith('http') ? data.website : `https://${data.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -99,17 +99,99 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
               </a>
             </div>
           )}
+          <DataRow label="Role" value={data.role === 'Other' ? data.customRole : data.role} />
+          <DataRow label="Base City" value={data.baseCity || 'Not provided'} />
+          <div className="space-y-3 pt-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Professional Category</span>
+            <div className="flex flex-wrap gap-2">
+              {Array.isArray(data.category) && data.category.map((cat: string) => (
+                <span 
+                  key={cat} 
+                  className="px-3 py-1.5 bg-brand-accent/5 border border-brand-accent/20 text-brand-accent text-[11px] font-bold rounded-lg"
+                >
+                  {cat === 'Other' && data.customCategory ? `${data.customCategory}` : cat}
+                </span>
+              ))}
+            </div>
+          </div>
         </SectionCard>
 
-        {/* Section 2: Business Details */}
+        {/* Section 2: Standing Buy-Side Requirements */}
+        <SectionCard title="Target Requirements (Buy-Side)" icon={<Target size={20} />} onClick={onEdit}>
+          {Array.isArray((data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements) && (data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.length > 0 ? (
+            <div className="space-y-3">
+              {(data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.map((req, idx) => (
+                <div key={idx} className="p-3 bg-amber-50/40 rounded-xl border border-amber-200/60 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-900">{req.sectors.join(', ')}</span>
+                    <span className="text-xs font-bold text-[#9A6E22]">{req.revenue}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-700 font-medium">{req.niche}</p>
+                  <p className="text-[11px] text-gray-500">{req.cities.join(', ')}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-brand-secondary font-medium">No target requirements filled yet. Click to add.</p>
+          )}
+        </SectionCard>
+
+        {/* Section 3: Track Record & Verification */}
+        <SectionCard title="Track Record & Verification" icon={<Briefcase size={20} />} onClick={onEdit}>
+          {Array.isArray(data.activeMandates) && data.activeMandates.length > 0 && (
+            <div className="space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Currently Mandated On</span>
+              <div className="flex flex-wrap gap-2">
+                {data.activeMandates.map((mandate: string) => (
+                  <span 
+                    key={mandate} 
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-gray-600 text-[11px] font-bold rounded-lg"
+                  >
+                    {mandate}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="space-y-1 pt-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Track Record</span>
+            <p className="text-sm font-medium text-foreground leading-relaxed italic">
+              &quot;{data.expertiseDescription || 'No description provided.'}&quot;
+            </p>
+          </div>
+        </SectionCard>
+
+        {/* Section 4: Collaboration & Credentials */}
+        <SectionCard title="Collaboration & Credentials" icon={<Globe size={20} />} onClick={onEdit}>
+          <DataRow label="Open to Co-Advisory" value={data.co_advisory || data.coAdvisory ? 'Yes' : 'No'} />
+          <DataRow label="Preferred Models" value={Array.isArray(data.collaboration_model) ? data.collaboration_model.join(', ') : Array.isArray(data.collaborationModels) ? data.collaborationModels.join(', ') : 'Not provided'} />
+          {data.profileAttachmentUrl && (
+            <div className="pt-2">
+              <a 
+                href={data.profileAttachmentUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100 text-green-700 hover:bg-green-100 transition-all group"
+              >
+                <FileText size={20} className="group-hover:scale-110 transition-transform" />
+                <div>
+                  <span className="block text-xs font-bold">Attached Profile / Deck</span>
+                  <span className="text-[10px] uppercase opacity-60">View document</span>
+                </div>
+              </a>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* Section 5: Business Details */}
         <SectionCard title="Business Details" icon={<Target size={20} />} onClick={onEdit}>
           <div className="space-y-3">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Industry / Sector</span>
             <div className="flex flex-wrap gap-2">
               {Array.isArray(data.sectors) && data.sectors.length > 0 ? (
                 data.sectors.map((sector: string) => (
-                  <span 
-                    key={sector} 
+                  <span
+                    key={sector}
                     className="px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-600 text-[11px] font-bold rounded-lg"
                   >
                     {sector}
@@ -126,8 +208,8 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
             <div className="flex flex-wrap gap-2">
               {Array.isArray(data.intent) && data.intent.length > 0 ? (
                 data.intent.map((focus: string) => (
-                  <span 
-                    key={focus} 
+                  <span
+                    key={focus}
                     className="px-3 py-1.5 bg-brand-accent/5 border border-brand-accent/20 text-brand-accent text-[11px] font-bold rounded-lg"
                   >
                     {focus}
@@ -137,13 +219,6 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
                 <span className="text-sm font-medium text-brand-secondary">Not provided</span>
               )}
             </div>
-          </div>
-
-          <div className="space-y-1 pt-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Brief Requirement Description</span>
-            <p className="text-sm font-medium text-foreground leading-relaxed italic">
-              {data.expertiseDescription ? `"${data.expertiseDescription}"` : 'No description provided.'}
-            </p>
           </div>
         </SectionCard>
       </div>

@@ -121,6 +121,8 @@ export interface Candidate {
 
 export interface MatchCard {
   matchedProposalId: string;
+  requirementId?: string;
+  isStandingRequirement?: boolean;
   sector: string | null;
   geography: string | null;
   sizeRange: string | null;
@@ -296,6 +298,69 @@ export async function embed(text: string): Promise<number[]> {
 }
 
 // ─────────────────────────────────────────────────────────────
+// CAPITAL & TRANSACTION STRUCTURE NORMALIZATION (HR-3)
+// ─────────────────────────────────────────────────────────────
+
+export type CapitalStructure =
+  | 'FULL_BUYOUT'
+  | 'CONTROL_ACQUISITION'
+  | 'MINORITY_EQUITY'
+  | 'GROWTH_EQUITY'
+  | 'STRUCTURED_EQUITY'
+  | 'DEBT'
+  | 'ASSET_ACQUISITION'
+  | 'UNKNOWN';
+
+export function normalizeCapitalStructure(
+  intent: string,
+  rawStructure?: string | null
+): CapitalStructure {
+  const s = (rawStructure || '').toLowerCase().trim();
+
+  // 1. Debt Intent / Instrument Check
+  if (intent === 'DEBT' || s.includes('structured debt') || s.includes('term loan') || s.includes('credit facility') || s.includes('nbfc debt') || s.includes('debt financing') || s.includes('working capital') || s.includes('loan')) {
+    return 'DEBT';
+  }
+
+  // 2. Structured / Convertible Instruments
+  if (s.includes('convertible') || s.includes('ccd') || s.includes('ccps') || s.includes('debenture') || s.includes('safe') || s.includes('mezzanine') || s.includes('preferred equity') || s.includes('structured equity') || s.includes('quasi-equity')) {
+    return 'STRUCTURED_EQUITY';
+  }
+
+  // 3. Full Buyout / 100%
+  if (s.includes('100%') || s.includes('full buyout') || s.includes('full acquisition') || s.includes('complete acquisition') || s.includes('outright purchase')) {
+    return 'FULL_BUYOUT';
+  }
+
+  // 4. Majority / Control Acquisition
+  if (s.includes('majority') || s.includes('control acquisition') || s.includes('controlling stake') || s.includes('majority stake') || s.includes('majority buyout')) {
+    return 'CONTROL_ACQUISITION';
+  }
+
+  // 5. Growth Equity / Expansion
+  if (s.includes('growth equity') || s.includes('growth capital') || s.includes('growth investment') || s.includes('expansion capital') || s.includes('growth round')) {
+    return 'GROWTH_EQUITY';
+  }
+
+  // 6. Minority Stake / Fundraise
+  if (s.includes('minority') || s.includes('minority stake') || s.includes('minority investment') || intent === 'FUNDRAISING') {
+    return 'MINORITY_EQUITY';
+  }
+
+  // 7. Asset / Slump Sale
+  if (s.includes('asset sale') || s.includes('slump sale') || s.includes('carve-out') || s.includes('carveout') || s.includes('plant sale')) {
+    return 'ASSET_ACQUISITION';
+  }
+
+  // 8. General Buyout / Acquisition mentions
+  if (s.includes('buyout') || s.includes('acquisition')) {
+    return 'FULL_BUYOUT';
+  }
+
+  return 'UNKNOWN';
+}
+
+// ─────────────────────────────────────────────────────────────
 // PHASE 7: HARD REJECTION RULES
 // HR-1 to HR-8 — any rejection = discard candidate, no score computed
 // ─────────────────────────────────────────────────────────────
@@ -327,27 +392,45 @@ export function applyHardRejections(
     }
   }
 
-  // HR-3: Deal structure & Fundraising compatibility
-  const src = (source.structure || source.deal_structure || '').toLowerCase();
-  const cnd = (candidate.deal_structure || '').toLowerCase();
+  // HR-3: Deal structure & Capital compatibility hardening
+  const srcCap = normalizeCapitalStructure(source.intent, source.structure || source.deal_structure);
+  const cndCap = normalizeCapitalStructure(candidate.intent, candidate.deal_structure);
 
-  const sourceFullAcquisition = src.includes('100%') || src.includes('full buyout') || src.includes('majority') || src.includes('acquisition') || src.includes('slump sale') || src.includes('asset sale');
-  const candidateFullAcquisition = cnd.includes('100%') || cnd.includes('full buyout') || cnd.includes('majority') || cnd.includes('acquisition') || cnd.includes('slump sale') || cnd.includes('asset sale');
-  const sourceFundraise = source.intent === 'FUNDRAISING' || src.includes('minority') || src.includes('fundrais') || src.includes('convertible') || src.includes('debenture') || src.includes('ccd') || src.includes('equity');
-  const candidateFundraise = candidate.intent === 'FUNDRAISING' || cnd.includes('minority') || cnd.includes('fundrais') || cnd.includes('convertible') || cnd.includes('debenture') || cnd.includes('ccd') || cnd.includes('equity');
+  const isBuyout = (cap: CapitalStructure): boolean =>
+    cap === 'FULL_BUYOUT' || cap === 'CONTROL_ACQUISITION';
 
-  // If source is doing a fundraise without full buyout permission:
-  if (sourceFundraise && !sourceFullAcquisition) {
-    if (candidateFullAcquisition || (candidate.intent === 'BUY_SIDE' && (cnd.includes('100%') || cnd.includes('majority')))) {
-      return { rejected: true, reason: 'HR-3: Majority/100% buyout acquisition buyer incompatible with convertible debenture / equity fundraise' };
-    }
+  const isNonControlFundraise = (cap: CapitalStructure, intent?: string): boolean => {
+    if (cap === 'FULL_BUYOUT' || cap === 'CONTROL_ACQUISITION') return false;
+    return intent === 'FUNDRAISING' || cap === 'MINORITY_EQUITY' || cap === 'GROWTH_EQUITY' || cap === 'STRUCTURED_EQUITY';
+  };
+
+  const isSourceBuyout = isBuyout(srcCap);
+  const isCandidateBuyout = isBuyout(cndCap);
+
+  const isSourceNonControlFundraise = isNonControlFundraise(srcCap, source.intent);
+  const isCandidateNonControlFundraise = isNonControlFundraise(cndCap, candidate.intent);
+
+  if (isSourceNonControlFundraise && isCandidateBuyout) {
+    return { rejected: true, reason: 'HR-3: Minority/growth fundraising mandate incompatible with full buyout / control acquisition mandate' };
   }
 
-  // Symmetrically, if candidate is fundraise without full buyout permission and source is full buyout:
-  if (candidateFundraise && !candidateFullAcquisition) {
-    if (sourceFullAcquisition || (source.intent === 'BUY_SIDE' && (src.includes('100%') || src.includes('majority')))) {
-      return { rejected: true, reason: 'HR-3: Full buyout mandate incompatible with minority fundraise / convertible debenture' };
-    }
+  if (isSourceBuyout && isCandidateNonControlFundraise) {
+    return { rejected: true, reason: 'HR-3: Full buyout / control acquisition mandate incompatible with minority/growth fundraising mandate' };
+  }
+
+  // Sell-side 100% full buyout cannot match with BUY_SIDE minority stake
+  if (srcCap === 'FULL_BUYOUT' && (cndCap === 'MINORITY_EQUITY' || cndCap === 'GROWTH_EQUITY')) {
+    return { rejected: true, reason: 'HR-3: 100% Full buyout divestment mandate incompatible with minority stake / growth equity buyer' };
+  }
+  if (cndCap === 'FULL_BUYOUT' && (srcCap === 'MINORITY_EQUITY' || srcCap === 'GROWTH_EQUITY')) {
+    return { rejected: true, reason: 'HR-3: Minority stake / growth equity mandate incompatible with 100% full buyout divestment candidate' };
+  }
+
+  // Debt incompatibility with Equity Buyouts / Equity Sales
+  const isSourceDebt = source.intent === 'DEBT' || srcCap === 'DEBT';
+  const isCandidateDebt = candidate.intent === 'DEBT' || cndCap === 'DEBT';
+  if ((isSourceDebt && (isCandidateBuyout || candidate.intent === 'SELL_SIDE')) || (isCandidateDebt && (isSourceBuyout || source.intent === 'SELL_SIDE'))) {
+    return { rejected: true, reason: 'HR-3: Debt financing mandate incompatible with equity buyout / divestment mandate' };
   }
 
   // HR-4: Industry-first compatibility
@@ -870,12 +953,20 @@ export async function executeMatchmaking(
       return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'Searching for counterparties...', status: 'MATCHMAKING_FAILED', persistedCount: 0 };
     }
 
-    const candidates = (rawCandidates ?? []) as Candidate[];
+    const candidates: Candidate[] = (rawCandidates as Candidate[]) || [];
 
     if (candidates.length === 0) {
-      console.log('[DEALCOLLAB MATCH TRACE]', { proposalId: proposal.id, candidatesEvaluated: 0, matchesGenerated: 0, matchesPersisted: 0, status: 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES' });
+      console.log('[DEALCOLLAB MATCH TRACE]', { proposalId: proposal.id, candidatesEvaluated: 0, matchesGenerated: 0, matchesPersisted: 0, status: 'NO_PROPOSAL_CANDIDATES' });
       await registerWatch(0, false);
-      return { proposalId: proposal.id, matchCount: 0, topScore: 0, cards: [], summary: 'No immediate matches. Your mandate runs continuously for 90 days.', status: 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES', persistedCount: 0 };
+      return {
+        proposalId: proposal.id,
+        matchCount: 0,
+        topScore: 0,
+        cards: [],
+        summary: 'No immediate matches. Your mandate runs continuously for 90 days.',
+        status: 'MATCHMAKING_COMPLETED_WITH_ZERO_MATCHES',
+        persistedCount: 0
+      };
     }
 
     // ── Phase 7/8: Hard rejections + V2 scoring ──────────────
@@ -994,7 +1085,7 @@ export async function executeMatchmaking(
     await registerWatch(persistedRows.length, notifiedCount > 0);
 
     // ── Phase 10: Build match cards for frontend ──────────────
-    const cards: MatchCard[] = persistedRows.slice(0, 3).map(row => {
+    let cards: MatchCard[] = persistedRows.slice(0, 3).map(row => {
       const cand = candidates.find(c => c.id === row.matched_proposal_id)!;
       const cMin = cand.deal_size_min_cr ?? 0;
       const cMax = cand.deal_size_max_cr ?? 0;

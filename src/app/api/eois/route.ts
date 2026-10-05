@@ -211,9 +211,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { dealId, matchId } = body;
-    if (!dealId || !matchId) {
-      return NextResponse.json({ error: 'dealId and matchId are required' }, { status: 400 });
+    const { dealId, matchId, requirementId } = body;
+    if (!dealId && !requirementId) {
+      return NextResponse.json({ error: 'dealId or requirementId is required' }, { status: 400 });
     }
 
     const supabase = createServerSupabaseClient();
@@ -246,8 +246,6 @@ export async function POST(req: NextRequest) {
     }
 
     // SERVER-AUTHORITATIVE TOKEN VALIDATION:
-    // User must have at least TOKEN_COST tokens to send an EOI.
-    // If insufficient, fail immediately without creating an EOI or notification.
     const userTokens = dbUser.tokens ?? 0;
     if (userTokens < TOKEN_COST) {
       return NextResponse.json(
@@ -262,63 +260,107 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // SECURITY (IDOR): Verify proposal ownership
-    const { data: dealProposal, error: dealErr } = await supabase
-      .from('proposals')
-      .select('id, user_id')
-      .eq('id', dealId)
-      .single();
+    let receiverUserId: string | null = null;
+    let notificationText = 'You have received a new Expression of Interest.';
 
-    if (dealErr || !dealProposal || dealProposal.user_id !== dbUser.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (requirementId) {
+      // Flow for connecting to a standing advisor requirement
+      const { data: reqRow, error: reqErr } = await supabase
+        .from('advisor_requirements')
+        .select('id, user_id, sectors, niche')
+        .eq('id', requirementId)
+        .single();
 
-    const { data: matchRow, error: matchErr } = await supabase
-      .from('proposal_matches')
-      .select('id, proposal_id, matched_proposal_id')
-      .eq('id', matchId)
-      .single();
+      if (reqErr || !reqRow) {
+        return NextResponse.json({ error: 'Advisor requirement not found' }, { status: 404 });
+      }
 
-    if (matchErr || !matchRow || matchRow.proposal_id !== dealId) {
-      return NextResponse.json({ error: 'Match does not correspond to this proposal' }, { status: 400 });
-    }
+      receiverUserId = reqRow.user_id;
+      notificationText = `A counterparty sent an Expression of Interest for your standing requirement (${reqRow.sectors?.join(', ') || reqRow.niche}).`;
 
-    const { data: counterpartyProposal, error: cpErr } = await supabase
-      .from('proposals')
-      .select('user_id')
-      .eq('id', matchRow.matched_proposal_id)
-      .single();
+      // Check existing EOI for this requirement
+      const { data: existingReqEoi } = await supabase
+        .from('eois')
+        .select('id, status, created_at, sender_id, receiver_id')
+        .eq('requirement_id', requirementId)
+        .eq('sender_id', dbUser.id)
+        .maybeSingle();
 
-    if (cpErr || !counterpartyProposal) {
-      return NextResponse.json({ error: 'Counterparty proposal not found' }, { status: 404 });
-    }
+      if (existingReqEoi) {
+        return NextResponse.json({
+          success: true,
+          errorCode: 'EOI_ALREADY_EXISTS',
+          message: 'An Expression of Interest has already been sent for this requirement.',
+          eoi: existingReqEoi,
+          currentBalance: userTokens,
+        });
+      }
+    } else {
+      // Standard Flow for connecting to a live proposal match
+      if (!matchId) {
+        return NextResponse.json({ error: 'matchId is required for proposal matches' }, { status: 400 });
+      }
 
-    // IDEMPOTENCY / DUPLICATE CHECK:
-    // If an EOI already exists for this match from this sender, return it idempotently.
-    const { data: existingEoi } = await supabase
-      .from('eois')
-      .select('id, status, created_at, sender_id, receiver_id')
-      .eq('match_id', matchId)
-      .eq('sender_id', dbUser.id)
-      .maybeSingle();
+      // SECURITY (IDOR): Verify proposal ownership
+      const { data: dealProposal, error: dealErr } = await supabase
+        .from('proposals')
+        .select('id, user_id')
+        .eq('id', dealId)
+        .single();
 
-    if (existingEoi) {
-      return NextResponse.json({
-        success: true,
-        errorCode: 'EOI_ALREADY_EXISTS',
-        message: 'An Expression of Interest has already been sent for this match.',
-        eoi: existingEoi,
-        currentBalance: userTokens,
-      });
+      if (dealErr || !dealProposal || dealProposal.user_id !== dbUser.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      const { data: matchRow, error: matchErr } = await supabase
+        .from('proposal_matches')
+        .select('id, proposal_id, matched_proposal_id')
+        .eq('id', matchId)
+        .single();
+
+      if (matchErr || !matchRow || matchRow.proposal_id !== dealId) {
+        return NextResponse.json({ error: 'Match does not correspond to this proposal' }, { status: 400 });
+      }
+
+      const { data: counterpartyProposal, error: cpErr } = await supabase
+        .from('proposals')
+        .select('user_id')
+        .eq('id', matchRow.matched_proposal_id)
+        .single();
+
+      if (cpErr || !counterpartyProposal) {
+        return NextResponse.json({ error: 'Counterparty proposal not found' }, { status: 404 });
+      }
+
+      receiverUserId = counterpartyProposal.user_id;
+
+      // IDEMPOTENCY / DUPLICATE CHECK:
+      const { data: existingEoi } = await supabase
+        .from('eois')
+        .select('id, status, created_at, sender_id, receiver_id')
+        .eq('match_id', matchId)
+        .eq('sender_id', dbUser.id)
+        .maybeSingle();
+
+      if (existingEoi) {
+        return NextResponse.json({
+          success: true,
+          errorCode: 'EOI_ALREADY_EXISTS',
+          message: 'An Expression of Interest has already been sent for this match.',
+          eoi: existingEoi,
+          currentBalance: userTokens,
+        });
+      }
     }
 
     const { data: eoi, error: eoiErr } = await supabase
       .from('eois')
       .insert([{
-        deal_id: dealId,
-        match_id: matchId,
+        deal_id: dealId || null,
+        match_id: matchId || null,
+        requirement_id: requirementId || null,
         sender_id: dbUser.id,
-        receiver_id: counterpartyProposal.user_id,
+        receiver_id: receiverUserId,
         status: 'sent'
       }])
       .select()
@@ -326,17 +368,15 @@ export async function POST(req: NextRequest) {
 
     if (eoiErr) {
       if (eoiErr.code === '23505') {
-        // Unique constraint violation from concurrent request
         const { data: dupEoi } = await supabase
           .from('eois')
           .select('id, status, created_at, sender_id, receiver_id')
-          .eq('match_id', matchId)
           .eq('sender_id', dbUser.id)
           .maybeSingle();
         return NextResponse.json({
           success: true,
           errorCode: 'EOI_ALREADY_EXISTS',
-          message: 'An Expression of Interest has already been sent for this match.',
+          message: 'An Expression of Interest has already been sent.',
           eoi: dupEoi,
           currentBalance: userTokens,
         });
@@ -344,29 +384,54 @@ export async function POST(req: NextRequest) {
       throw eoiErr;
     }
 
+    // Deduct tokens and log ledger transaction
+    const newBalance = Math.max(0, userTokens - TOKEN_COST);
+    try {
+      await supabase
+        .from('users')
+        .update({ tokens: newBalance })
+        .eq('id', dbUser.id);
+
+      await supabase
+        .from('token_transactions')
+        .insert([{
+          user_id: dbUser.id,
+          type: 'debit',
+          action: 'EOI_SENT',
+          amount: TOKEN_COST,
+          balance_after: newBalance,
+          reference_type: 'eoi',
+          reference_id: eoi.id,
+        }]);
+    } catch (tokenErr) {
+      console.error('[POST /api/eois] Token deduction error:', tokenErr);
+    }
+
     // Trigger Notification for Receiver (post-commit side effect)
     try {
-      const { data: notification, error: notificationErr } =
-        await supabase.from('notifications').insert([{
-          user_id: counterpartyProposal.user_id,
-          type: 'EOI_RECEIVED',
-          message: 'You have received a new Expression of Interest.',
-          is_read: false,
-        }]).select('id,user_id,type,message,is_read,created_at').single();
+      if (receiverUserId) {
+        const { data: notification, error: notificationErr } =
+          await supabase.from('notifications').insert([{
+            user_id: receiverUserId,
+            type: 'EOI_RECEIVED',
+            message: notificationText,
+            is_read: false,
+          }]).select('id,user_id,type,message,is_read,created_at').single();
 
-      if (!notificationErr && notification) {
-        const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow).catch((emailErr) => {
-          console.error('[POST /api/eois] Email delivery error:', emailErr);
-          return { success: false, error: String(emailErr) };
-        });
-        if (!emailResult.success) {
-           return NextResponse.json({
-             success: true,
-             errorCode: 'OK_BUT_EMAIL_FAILED',
-             message: 'EOI submitted. Email notification could not be delivered.',
-             eoi,
-             currentBalance: userTokens,
-           });
+        if (!notificationErr && notification) {
+          const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow).catch((emailErr) => {
+            console.error('[POST /api/eois] Email delivery error:', emailErr);
+            return { success: false, error: String(emailErr) };
+          });
+          if (!emailResult.success) {
+             return NextResponse.json({
+               success: true,
+               errorCode: 'OK_BUT_EMAIL_FAILED',
+               message: 'EOI submitted. Email notification could not be delivered.',
+               eoi,
+               currentBalance: newBalance,
+             });
+          }
         }
       }
     } catch (notifErr) {
@@ -377,7 +442,7 @@ export async function POST(req: NextRequest) {
       success: true,
       errorCode: 'OK',
       eoi,
-      currentBalance: userTokens,
+      currentBalance: newBalance,
     });
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : String(error);

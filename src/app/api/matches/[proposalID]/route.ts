@@ -96,7 +96,7 @@ export async function GET(
 
         const { data: proposal } = await supabase
             .from('proposals')
-            .select('id, user_id, intent, sectors, geographies, status, mandate_id, created_at')
+            .select('id, user_id, intent, industry, sectors, geographies, status, mandate_id, raw_text, metadata, created_at')
             .eq('id', proposalID)
             .maybeSingle();
 

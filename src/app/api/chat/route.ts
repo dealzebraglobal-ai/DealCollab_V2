@@ -326,6 +326,28 @@ export async function POST(req: NextRequest) {
       content: message,
     }]);
 
+    // ─── COMPLETED SESSION GUARD: Start a New Conversation ─────
+    if (storedState.is_complete || storedState.proposal_id) {
+      console.log("[STATE] Chat session already completed — prompting for new conversation");
+      const closureMsg = "This deal mandate has already been processed. To discuss a new deal or create another mandate, please start a new conversation.";
+
+      await supabase.from("chat_messages").insert([{
+        chat_id: activeChatId,
+        role: 'assistant',
+        content: JSON.stringify({ message: closureMsg, questions: ['Start a new conversation'], type: 'new_chat_prompt' }),
+      }]);
+
+      return NextResponse.json({
+        success: true,
+        message: closureMsg,
+        is_complete: true,
+        chatId: activeChatId,
+        proposalId: storedState.proposal_id || null,
+        type: 'new_chat_prompt',
+        questions: ['Start a new conversation'],
+      });
+    }
+
     // ─── FETCH HISTORY ────────────────────────────────────────
     const { data: history } = await supabase
       .from("chat_messages")

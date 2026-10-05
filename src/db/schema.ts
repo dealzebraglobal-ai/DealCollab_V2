@@ -131,8 +131,9 @@ export const matches = pgTable('matches', {
 // 4. EOIs (Expressions of Interest)
 export const eois = pgTable('eois', {
   id: uuid('id').primaryKey().defaultRandom(),
-  dealId: uuid('deal_id').references(() => proposals.id, { onDelete: 'cascade' }).notNull(),
+  dealId: uuid('deal_id').references(() => proposals.id, { onDelete: 'cascade' }),
   matchId: uuid('match_id').references(() => proposalMatches.id, { onDelete: 'cascade' }),
+  requirementId: uuid('requirement_id').references(() => advisorRequirements.id, { onDelete: 'set null' }),
   senderId: uuid('sender_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   receiverId: uuid('receiver_id').references(() => users.id, { onDelete: 'cascade' }),
   status: eoiStatusEnum('status').default('sent').notNull(),
@@ -328,6 +329,31 @@ export const proposalMatches = pgTable('proposal_matches', {
   scoreIdx: index('idx_pm_final_score').on(table.finalScore),
 }));
 
+// 8.3 ADVISOR STANDING REQUIREMENTS (Onboarding Requirement Slots)
+export const advisorRequirements = pgTable('advisor_requirements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  slotIndex: integer('slot_index').notNull(),
+  intent: text('intent').default('BUY_SIDE').notNull(),
+  sectors: text('sectors').array().default([]).notNull(),
+  niche: text('niche').notNull(),
+  cities: text('cities').array().default([]).notNull(),
+  revenueRaw: text('revenue_raw'),
+  revenueMinCr: numeric('revenue_min_cr'),
+  revenueMaxCr: numeric('revenue_max_cr'),
+  details: text('details'),
+  businessModels: text('business_models').array().default([]),
+  dealStructures: text('deal_structures').array().default([]),
+  embeddingStatus: text('embedding_status').default('PENDING').notNull(),
+  status: text('status').default('ACTIVE').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('idx_adv_reqs_user_id').on(table.userId),
+  statusIdx: index('idx_adv_reqs_status').on(table.status),
+  userSlotUq: index('idx_adv_reqs_user_slot_uq').on(table.userId, table.slotIndex),
+}));
+
 // 8.5 DOCUMENTS
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -413,6 +439,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   chatSessions: many(chatSessions),
   sentEois: many(eois, { relationName: 'sender' }),
   receivedEois: many(eois, { relationName: 'receiver' }),
+  advisorRequirements: many(advisorRequirements),
   endUserProfile: one(endUserProfiles),
 }));
 
@@ -437,8 +464,14 @@ export const matchesRelations = relations(matches, ({ one }) => ({
 export const eoisRelations = relations(eois, ({ one }) => ({
   deal: one(proposals, { fields: [eois.dealId], references: [proposals.id] }),
   match: one(proposalMatches, { fields: [eois.matchId], references: [proposalMatches.id] }),
+  requirement: one(advisorRequirements, { fields: [eois.requirementId], references: [advisorRequirements.id] }),
   sender: one(users, { fields: [eois.senderId], references: [users.id], relationName: 'sender' }),
   receiver: one(users, { fields: [eois.receiverId], references: [users.id], relationName: 'receiver' }),
+}));
+
+export const advisorRequirementsRelations = relations(advisorRequirements, ({ one, many }) => ({
+  user: one(users, { fields: [advisorRequirements.userId], references: [users.id] }),
+  eois: many(eois),
 }));
 
 export const tokenTransactionsRelations = relations(tokenTransactions, ({ one }) => ({

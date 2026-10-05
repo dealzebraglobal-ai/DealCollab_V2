@@ -6,7 +6,6 @@ import { ChatSkeleton } from '@/components/Skeleton';
 import { useChat } from '@/components/ChatProvider';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { MatchPanel } from '@/components/MatchPanel';
 import { validateParseDocumentRequest, type ParseDocumentRequest } from '@/lib/parseDocumentContract';
 
 export default function Home() {
@@ -20,6 +19,7 @@ export default function Home() {
     documentId,
     activeProposalId,
     setActiveProposalId,
+    createNewChat,
   } = useChat();
 
   const [isTyping, setIsTyping] = React.useState(false);
@@ -37,6 +37,19 @@ export default function Home() {
   const handleSendMessage = async (text: string, file?: File | null) => {
     if (!text.trim() && !file) return;
 
+    // Handle Start a New Conversation action
+    const normalizedText = text.trim().toLowerCase();
+    if (
+      normalizedText === 'start a new conversation' ||
+      normalizedText === 'new conversation' ||
+      normalizedText === 'start new conversation' ||
+      normalizedText === 'new chat'
+    ) {
+      createNewChat();
+      router.push('/home');
+      return;
+    }
+
     // Build the display message for the user bubble
     // If file only (no text), show a placeholder so the bubble is not empty
     const displayText = text.trim() || (file ? `Please extract and analyse this document: ${file.name}` : '');
@@ -49,6 +62,24 @@ export default function Home() {
     };
 
     setMessages(prev => [...prev, userMsg]);
+
+    // If chat already completed with matches, guide user to start a new conversation
+    if (activeProposalId) {
+      setIsTyping(true);
+      setTimeout(() => {
+        const assistantMsg: Message = {
+          role: 'assistant' as const,
+          content: 'This deal mandate has already been processed. To discuss a new deal or create another mandate, please start a new conversation.',
+          id: (Date.now() + 1).toString(),
+          type: 'new_chat_prompt',
+          questions: ['Start a new conversation'],
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+        setIsTyping(false);
+      }, 400);
+      return;
+    }
+
     setIsTyping(true);
 
     try {
@@ -60,15 +91,15 @@ export default function Home() {
 
       if (file) {
         console.log("=== UPLOADING FILE DIRECT TO STORAGE ===", file.name, file.type, file.size);
-        
+
         // 1. Get signed upload URL
         const signedUrlRes = await fetch(`/api/profile/upload/signed-url?file=${encodeURIComponent(file.name)}&type=${encodeURIComponent(file.type)}&bucket=pdfs`);
-        
+
         if (!signedUrlRes.ok) {
           const errData = await signedUrlRes.json().catch(() => ({}));
           throw new Error(errData.error || `Failed to get upload authorization (status ${signedUrlRes.status})`);
         }
-        
+
         const { uploadUrl, path } = await signedUrlRes.json();
         // Defensive: fail fast with an actionable message rather than
         // sending a parse-document request we already know is malformed.
@@ -108,11 +139,11 @@ export default function Home() {
           },
           body: file
         });
-        
+
         if (!uploadRes.ok) {
           throw new Error(`Direct upload to storage failed with status ${uploadRes.status}`);
         }
-        
+
         // 3. Send the storage bucket/path to parse-document — NOT a
         // manually constructed public URL. The server downloads the object
         // itself via its own authenticated Supabase client, which is more
@@ -135,7 +166,7 @@ export default function Home() {
         }
 
         console.log("=== PARSE RESPONSE STATUS ===", parseRes.status);
-        
+
         // Safety check for non-JSON responses (timeouts, redirects, etc)
         const contentType = parseRes.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
@@ -206,7 +237,7 @@ export default function Home() {
       if (!chatContentType || !chatContentType.includes('application/json')) {
         const errorText = await response.text();
         console.error("Non-JSON response from chat API:", errorText.slice(0, 500));
-        
+
         if (response.status === 504 || response.status === 500) {
           throw new Error("The AI processing is taking longer than expected. Please try again in a moment.");
         }
@@ -225,6 +256,7 @@ export default function Home() {
         id: (Date.now() + 1).toString(),
         type: chatData.type,
         questions: chatData.questions,
+        proposalId: chatData.proposalId || (chatData.is_complete ? activeProposalId : null),
       };
 
       setMessages(prev => [...prev, aiMsg]);
@@ -344,7 +376,7 @@ export default function Home() {
         <div className="chat-container-max px-4 py-6 pb-24">
           {loading ? (
             <div className="max-w-3xl mx-auto">
-                <ChatSkeleton />
+              <ChatSkeleton />
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -356,30 +388,23 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-6">
-                <ChatArea 
-                    messages={messages} 
-                    isTyping={isTyping}
-                    onQuestionClick={(q) => handleSendMessage(q, null)}
-                />
-                {/* Matchmaking Results Panel */}
-                {activeProposalId && (
-                  <div className="mt-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <MatchPanel
-                      proposalId={activeProposalId}
-                      onStartOver={() => {
-                        setActiveProposalId(null);
-                        router.push('/home');
-                      }}
-                    />
-                  </div>
-                )}
+              <ChatArea
+                messages={messages}
+                isTyping={isTyping}
+                onQuestionClick={(q) => handleSendMessage(q, null)}
+                activeProposalId={activeProposalId}
+                onStartOver={() => {
+                  createNewChat();
+                  router.push('/home');
+                }}
+              />
             </div>
           )}
           {/* Invisible element for auto-scrolling */}
           <div ref={messagesEndRef} />
         </div>
       </div>
-      
+
       {/* Fixed Sticky Input Bar */}
       <div className="sticky bottom-0 left-0 w-full z-40">
         <InputBar onSendMessage={handleSendMessage} isSending={isTyping} />

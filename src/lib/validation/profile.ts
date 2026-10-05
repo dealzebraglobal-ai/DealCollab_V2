@@ -109,8 +109,20 @@ export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ─── Form Data Shape ────────────────────────────────────────────
 
+export interface AdvisorRequirementItem {
+  id?: string;
+  slotIndex: number;
+  sectors: string[];
+  niche: string;
+  cities: string[];
+  revenue: string;
+  details?: string;
+  businessModels?: string[];
+  dealStructures?: string[];
+}
+
 export interface ProfileFormData {
-  // Section 1: Basic Identity
+  // Moment 1: Basic Identity
   fullName: string;
   workEmail: string;
   phone: string;
@@ -122,11 +134,14 @@ export interface ProfileFormData {
   avatarFile: File | null;
   profileImage: string;
 
+  // Moment 2: Requirements (1 to 5 slots)
+  requirements?: AdvisorRequirementItem[];
+
   // End User specific
   companyName: string;
   website: string;
 
-  // Section 2: Geography & Coverage
+  // Geography & Coverage
   baseCity: string;
   baseCountry: string;
   activeGeographies: string[];
@@ -134,28 +149,20 @@ export interface ProfileFormData {
   corridors: string[];
   customCorridor: string;
 
-  // Section 3: Expertise & Deal Capability
+  // Expertise & Deal Capability
   primarySectors: string[];
 
-  // Section 4: Current Intent
+  // Current Intent
   currentFocus: string[];
   expertiseDescription: string;
 
-  // Section 5: Active Client Mandates
+  // Moment 3: Client Mandates & Verification
   activeMandates: string[];
-
-  // Section 6: Collaboration Preferences
   coAdvisory: boolean;
   collaborationModels: string[];
-
-  // Section 7: Profile Attachment
   attachmentFile: File | null;
   attachmentUrl: string;
-
-  // Section 8: Additional Information
   additionalInfo: string;
-
-  // Section 9: Terms and Conditions
   termsAccepted: boolean;
 
   // Metadata / Tokens / DB Aliases
@@ -239,9 +246,52 @@ export function isValidWebsite(url: string): boolean {
 
 export function validateStep(step: number, data: ProfileFormData): ValidationError[] {
   const errors: ValidationError[] = [];
+  const isBusinessPromoter = data.professionalCategory.includes('Business Owner / Promoter');
+
+  if (isBusinessPromoter) {
+    switch (step) {
+      case 1: // Basic Identity
+        if (!data.fullName.trim()) {
+          errors.push({ field: 'fullName', message: 'Full Name is required' });
+        }
+        if (!data.workEmail.trim()) {
+          errors.push({ field: 'workEmail', message: 'Work Email is required' });
+        } else if (!isValidEmail(data.workEmail)) {
+          errors.push({ field: 'workEmail', message: 'Enter a valid professional email address' });
+        }
+        if (!data.companyName.trim()) {
+          errors.push({ field: 'companyName', message: 'Company / Business Name is required' });
+        }
+        if (!data.website.trim()) {
+          errors.push({ field: 'website', message: 'Business Website is required' });
+        } else if (!isValidWebsite(data.website)) {
+          errors.push({ field: 'website', message: 'Enter a valid business website URL' });
+        }
+        if (data.phone.trim() && !isValidPhone(data.phone)) {
+          errors.push({ field: 'phone', message: 'Enter a valid phone number with country code' });
+        }
+        break;
+
+      case 2: // Business Details
+        if (data.currentFocus.length === 0) {
+          errors.push({ field: 'currentFocus', message: 'Select at least one intent' });
+        }
+        if (data.primarySectors.length > 5) {
+          errors.push({ field: 'primarySectors', message: 'Maximum 5 industry sectors allowed' });
+        }
+        break;
+
+      case 3: // Terms and Conditions
+        if (!data.termsAccepted) {
+          errors.push({ field: 'termsAccepted', message: 'You must accept the Terms of Service & Privacy Policy' });
+        }
+        break;
+    }
+    return errors;
+  }
 
   switch (step) {
-    case 1: // Basic Identity
+    case 1: // Moment 1: Identity
       if (!data.fullName.trim()) {
         errors.push({ field: 'fullName', message: 'Full Name is required' });
       }
@@ -250,29 +300,32 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
       } else if (!isValidEmail(data.workEmail)) {
         errors.push({ field: 'workEmail', message: 'Enter a valid professional email address' });
       }
-      if (!data.companyName.trim() && !data.firmName.trim()) {
-        errors.push({ field: 'companyName', message: 'Company / Business Name is required' });
-      }
-      if (!data.website.trim()) {
-        errors.push({ field: 'website', message: 'Business Website is required' });
-      } else if (!isValidWebsite(data.website)) {
-        errors.push({ field: 'website', message: 'Enter a valid business website URL' });
-      }
-      if (data.phone.trim() && !isValidPhone(data.phone)) {
+      if (!data.phone.trim()) {
+        errors.push({ field: 'phone', message: 'Phone Number is required' });
+      } else if (!isValidPhone(data.phone)) {
         errors.push({ field: 'phone', message: 'Enter a valid phone number with country code' });
       }
+      if (!data.role) {
+        errors.push({ field: 'role', message: 'Role is required' });
+      }
+      if (data.role === 'Other' && !data.customRole.trim()) {
+        errors.push({ field: 'customRole', message: 'Please specify your role' });
+      }
+      if (!data.baseCity.trim()) {
+        errors.push({ field: 'baseCity', message: 'Base city is required' });
+      }
+      if (data.professionalCategory.length === 0) {
+        errors.push({ field: 'professionalCategory', message: 'Select at least one Professional Category' });
+      }
+      if (data.professionalCategory.includes('Other') && !data.customCategory.trim()) {
+        errors.push({ field: 'customCategory', message: 'Please specify your category' });
+      }
       break;
 
-    case 2: // Business Details
-      if (data.currentFocus.length === 0) {
-        errors.push({ field: 'currentFocus', message: 'Select at least one intent' });
-      }
-      if (data.primarySectors.length > 5) {
-        errors.push({ field: 'primarySectors', message: 'Maximum 5 industry sectors allowed' });
-      }
+    case 2: // Moment 2: Requirements (Slots are optional for profile submission)
       break;
 
-    case 3: // Terms and Conditions
+    case 3: // Moment 3: Verification
       if (!data.termsAccepted) {
         errors.push({ field: 'termsAccepted', message: 'You must accept the Terms of Service & Privacy Policy' });
       }

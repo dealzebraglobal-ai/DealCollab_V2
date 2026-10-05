@@ -5,6 +5,8 @@ import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { hasAcceptedTerms, recordAcceptance } from '@/lib/consent';
 import { deriveTicketBandFromProposals } from '@/lib/ticketBand';
+import { fetchAdvisorRequirements, syncAdvisorRequirements } from '@/lib/advisorRequirements';
+import { resolveDbUser } from '@/lib/resolveDbUser';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,35 +29,45 @@ export async function GET(_req: NextRequest) {
       userId: session?.user?.id
     });
 
-    if (!session?.user?.email) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const email = session.user.email.trim().toLowerCase();
-    console.log('[PROFILE GET] Fetching user by email:', email);
-
-    const { data: initialProfile, error: dbError } = await supabase
-      .from("users")
-      .select("*")
-      .ilike("email", email)
-      .maybeSingle();
-
-    if (dbError) {
-      console.error('[PROFILE GET] Database error:', dbError);
-      return NextResponse.json({ error: dbError.message }, { status: 500 });
-    }
+    const initialProfile = await resolveDbUser<{ id: string; [key: string]: any }>(supabase, session.user, '*');
 
     console.log('[PROFILE GET] Initial profile result:', {
       found: !!initialProfile,
       id: initialProfile?.id
     });
 
-    let profile = initialProfile;
- 
+    let profile: { id: string; [key: string]: any } | null = initialProfile;
+
     if (!profile) {
-      console.warn('[PROFILE GET] User profile does not exist in DB for email:', email);
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+      const email = session.user.email?.trim().toLowerCase() || `${session.user.id}@dealcollab.ai`;
+      const nameFallback = session.user.name || email.split("@")[0];
+      const { data: newProfile, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          email: email,
+          name: nameFallback,
+          tokens: 0,
+          profile_completion: 0
+        })
+        .select()
+        .single();
+
+      if (insertError || !newProfile) {
+        console.error("Supabase error:", insertError);
+        return NextResponse.json({ error: insertError?.message || 'Failed to create user' }, { status: 500 });
+      }
+      profile = newProfile as { id: string; [key: string]: any };
     }
+
+    if (!profile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+    }
+
+    const isBusinessPromoter = profile.category?.includes('Business Owner / Promoter') || false;
 
     const { data: endUserProfile } = await supabase
       .from('end_user_profiles')
@@ -94,6 +106,9 @@ export async function GET(_req: NextRequest) {
       expertiseDescription || profile.additional_info
     );
 
+    // Fetch requirements for advisor
+    const requirements = !isBusinessPromoter ? await fetchAdvisorRequirements(profile.id) : [];
+
     // Map DB (snake_case) to Frontend (camelCase)
     const profileData = {
       id: profile.id,
@@ -122,7 +137,8 @@ export async function GET(_req: NextRequest) {
       collaborationModels: profile.collaboration_model || [],
       profileAttachmentUrl: profile.profile_attachment_url,
       profileImage: profile.profile_image,
-      additionalInfo: profile.additional_info,
+      additionalInfo: isBusinessPromoter ? null : profile.additional_info,
+      requirements,
       profileCompletion: finalPercentage,
       profileCompletedOnce: !!profile.profile_completed_once || isComplete,
       profileCompleted: isComplete,
@@ -170,15 +186,14 @@ export async function POST(req: NextRequest) {
   }
   const session = await auth();
 
-  if (!session?.user?.email) {
+  if (!session?.user) {
     logProfileCreate(requestId, 'auth', 'failed');
     return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401 });
   }
 
   try {
     const body = await req.json() as ProfileFormData;
-    const email = session.user.email.trim().toLowerCase();
-    logProfileCreate(requestId, 'auth', 'success', { userEmailDomain: email.split('@')[1] });
+    logProfileCreate(requestId, 'auth', 'success', { userId: session.user.id });
 
     // 1. Validate Input (Using PRD rules)
     const errors = validateFullProfile(body);
@@ -188,16 +203,12 @@ export async function POST(req: NextRequest) {
     }
     logProfileCreate(requestId, 'validation', 'success');
 
-    // Fetch current user state
-    const { data: currentUser, error: fetchError } = await supabase
-      .from("users")
-      .select("*")
-      .ilike("email", email)
-      .single();
+    // Fetch current user state by ID, email, or phone
+    const currentUser = await resolveDbUser<{ id: string; [key: string]: any }>(supabase, session.user, '*');
 
-    if (fetchError || !currentUser) {
-      logProfileCreate(requestId, 'user_lookup', 'failed', { reason: fetchError?.message || 'not_found' });
-      return NextResponse.json({ error: fetchError?.message || 'User not found', requestId }, { status: 404 });
+    if (!currentUser) {
+      logProfileCreate(requestId, 'user_lookup', 'failed', { reason: 'not_found' });
+      return NextResponse.json({ error: 'User not found', requestId }, { status: 404 });
     }
     logProfileCreate(requestId, 'user_lookup', 'success', { userId: currentUser.id });
 
@@ -206,7 +217,7 @@ export async function POST(req: NextRequest) {
 
     const incomingPhone = body.phone || (body as { phone_number?: string }).phone_number;
     console.log("Saving phone:", incomingPhone);
-    console.log("User ID:", session?.user?.id);
+    console.log("User ID:", currentUser.id);
 
     const company = body.companyName || body.firmName || currentUser.firm_name || '';
 
@@ -262,11 +273,11 @@ export async function POST(req: NextRequest) {
     console.log('[PROFILE API] Final DB value for profile_image:', updateData.profile_image);
     console.log('[PROFILE API] Updating user with data:', updateData);
 
-    // 4. Store in DB
+    // 4. Store in DB by ID
     const { error: updateError } = await supabase
       .from("users")
       .update(updateData)
-      .ilike("email", email);
+      .eq("id", currentUser.id);
 
     if (updateError) {
       logProfileCreate(requestId, 'database_insert', 'failed', { reason: updateError.message });
@@ -291,6 +302,15 @@ export async function POST(req: NextRequest) {
       console.warn('[PROFILE POST] end_user_profiles upsert note:', eupError);
     }
 
+    // Sync standing requirements for advisor if provided
+    if (body.requirements !== undefined) {
+      try {
+        await syncAdvisorRequirements(currentUser.id, body.requirements || []);
+      } catch (reqErr) {
+        console.error('[PROFILE POST] syncAdvisorRequirements error:', reqErr);
+      }
+    }
+
     // Record terms acceptance if accepted in body
     if (body.termsAccepted || (body as { terms_accepted?: boolean }).terms_accepted) {
       try {
@@ -311,7 +331,7 @@ export async function POST(req: NextRequest) {
     const { data: updatedUser } = await supabase
       .from("users")
       .select("*")
-      .ilike("email", email)
+      .eq("id", currentUser.id)
       .single();
 
     const accepted = await hasAcceptedTerms(updatedUser.id, session.user?.id);
@@ -359,7 +379,7 @@ export async function POST(req: NextRequest) {
           profile_completed_once: true,
           tokens: finalTokensWithReward
         })
-        .ilike("email", email);
+        .eq("id", currentUser.id);
 
       shouldShowSuccess = true;
 
@@ -380,7 +400,7 @@ export async function POST(req: NextRequest) {
           profile_completion: score,
           profile_completed_once: currentUser.profile_completed_once || isComplete
         })
-        .ilike("email", email);
+        .eq("id", currentUser.id);
     }
 
     logProfileCreate(requestId, 'complete', 'success', { isComplete, progress: isComplete ? 100 : score });

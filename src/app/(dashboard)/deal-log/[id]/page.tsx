@@ -4,15 +4,13 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
    ArrowLeft, ShieldCheck, Globe,
-   TrendingUp, Clock, Info, AlertCircle,
-   Sparkles, CheckCircle2
+   TrendingUp, Info, AlertCircle
 } from 'lucide-react';
 import { useUser } from '@/components/UserProvider';
 import { useNotifications } from '@/components/NotificationProvider';
 
 import useSWR from 'swr';
 
-import { formatMatchScore, normalizeMatchScoreNum } from '@/utils/formatters';
 import { formatExactDateTime } from '@/utils/date';
 import IdentityCard from '@/components/IdentityCard';
 import EOIContributionModal from '@/components/EOIContributionModal';
@@ -595,43 +593,6 @@ export default function MatchDetailPage() {
                      actionLabel={!eoi ? 'Send Expression of Interest' : undefined}
                      showExportButtons={!!counterparty.isConnected}
                   />
-
-                  {/* UNIFIED ACTION CARD */}
-                  <div className="bg-white rounded-2xl border border-[#E5E7EB] hover:border-black shadow-sm p-6 space-y-5 transition-all duration-200">
-
-                     {/* Match Score */}
-                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#FFF7ED] border border-[#FFEDD5] rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
-                           <Sparkles size={20} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                           <p className="text-[10px] font-bold uppercase tracking-wider text-[#747775]">Intelligence Match</p>
-                           <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xl font-bold text-[#1F1F1F] leading-none">{formatMatchScore(match.finalScore)}</span>
-                              <div className="flex-1 h-1.5 bg-[#F3F4F6] rounded-full overflow-hidden">
-                                 <div className="h-full bg-[#FF6A00] rounded-full transition-all duration-500" style={{ width: `${normalizeMatchScoreNum(match.finalScore)}%` }} />
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* Match Details Line */}
-                     <div className="flex items-center justify-between text-xs border-t border-[#E5E7EB] pt-3">
-                        <span className="font-semibold text-[#747775] uppercase tracking-wider text-[10px]">Match Type</span>
-                        <span className="font-bold text-[#1F1F1F] flex items-center gap-1">
-                           <Clock size={12} className="text-[#747775]" />
-                           {match.matchArchetype}
-                        </span>
-                     </div>
-
-                     {/* Match Explanation Callout */}
-                     <div className="bg-[#F9FAFB] p-4 rounded-xl border border-[#E5E7EB] text-xs leading-relaxed text-[#1F1F1F]">
-                        <strong className="block text-[10px] font-bold uppercase tracking-wider text-[#FF6A00] mb-1">Match Explanation</strong>
-                        <p className="font-normal text-[#1F1F1F]">{match.matchReason}</p>
-                     </div>
-
-
-                  </div>
 
                   {/* BOTTOM DISCLAIMER */}
                   <div className="flex items-start gap-2.5 px-3 text-[#747775]">

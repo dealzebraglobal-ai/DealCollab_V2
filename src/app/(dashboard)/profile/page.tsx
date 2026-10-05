@@ -16,7 +16,6 @@ export default function ProfilePage() {
    const [showSuccess, setShowSuccess] = useState(false);
 
    const handleComplete = useCallback((shouldShowSuccess?: boolean) => {
-      // Force exit from editing/setup mode
       setIsEditing(false);
 
       if (shouldShowSuccess) {
@@ -77,7 +76,7 @@ export default function ProfilePage() {
                   <h2 className="text-2xl font-black text-foreground tracking-tight">Update Your Profile</h2>
                   <button
                      onClick={() => setIsEditing(false)}
-                     className="text-sm font-bold text-brand-secondary hover:text-brand-accent transition-colors"
+                     className="text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors"
                   >
                      Cancel Changes
                   </button>
