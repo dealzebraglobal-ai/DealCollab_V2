@@ -1,6 +1,6 @@
 import React from 'react';
 import { Download, LifeBuoy, PlayCircle } from 'lucide-react';
-import { getGmailComposeUrl } from '@/lib/supportEmail';
+import { getMailtoUrl } from '@/lib/supportEmail';
 
 /**
  * Secondary "quick actions" panel for the Guide index — not the app's main
@@ -48,12 +48,10 @@ export default function GuideSidebar() {
           </p>
         </div>
         <a
-          href={getGmailComposeUrl('DealCollab Support Request')}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={getMailtoUrl('DealCollab Support Request')}
           className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#1F1F1F] px-4 py-2.5 text-xs font-medium text-white transition-colors hover:bg-black"
         >
-          Email support via Gmail
+          Contact Support
         </a>
       </div>
     </div>

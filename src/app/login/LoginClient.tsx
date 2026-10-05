@@ -12,7 +12,7 @@ import EmailVerification from '@/components/auth/EmailVerification';
 import EmailOtpVerification from '@/components/auth/EmailOtpVerification';
 import AuthStepper from '@/components/auth/AuthStepper';
 import { ShieldCheck, Sparkles, MessageSquare, AlertCircle, Info, Mail } from 'lucide-react';
-import { getGmailComposeUrl } from '@/lib/supportEmail';
+import { getMailtoUrl } from '@/lib/supportEmail';
 
 const AuthContent = () => {
   const searchParams = useSearchParams();
@@ -236,9 +236,7 @@ const AuthContent = () => {
                   <p className="text-[10px] font-medium italic">Private Beta Access Only</p>
                 </div>
                 <a 
-                  href={getGmailComposeUrl('DealCollab Private Beta Access Request')} 
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={getMailtoUrl('DealCollab Private Beta Access Request')} 
                   className="text-[10px] font-bold text-brand-secondary hover:text-primary-hover transition-colors underline decoration-border underline-offset-4"
                 >
                   Contact Membership Support

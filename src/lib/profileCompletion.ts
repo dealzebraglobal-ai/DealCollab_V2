@@ -87,11 +87,29 @@ export function getProfileCompletion(user: ProfileUser | null | undefined): Cano
   const checks: { key: string; passed: boolean }[] = [
     { key: 'name', passed: !!name },
     { key: 'email', passed: !!email },
-    { key: 'company_name', passed: !!companyName },
-    { key: 'website', passed: !!website },
     { key: 'intent', passed: intent.length > 0 },
     { key: 'terms_accepted', passed: termsAccepted },
   ];
+
+  // Promoters require company name and website
+  const categories = (user.category || user.professionalCategory || []) as string[];
+  const isBusinessPromoter = 
+    categories.includes('Business Owner / Promoter') || 
+    (user as Record<string, unknown>).customCategory === 'promoter' || 
+    (user as Record<string, unknown>).userType === 'promoter';
+
+  if (isBusinessPromoter) {
+    checks.push({ key: 'company_name', passed: !!companyName });
+    checks.push({ key: 'website', passed: !!website });
+  } else {
+    // For intermediaries, company name is optional but good to have.
+    // If they provided it, we can still count it, or we can just require role/base_city.
+    // Let's require role and place for intermediaries instead.
+    const role = (user.role && user.role !== 'Other' ? user.role : (user as Record<string, unknown>).customRole || (user as Record<string, unknown>).custom_role);
+    const place = user.base_city || user.baseCity;
+    checks.push({ key: 'role', passed: !!role });
+    checks.push({ key: 'place', passed: !!place });
+  }
 
   const passedChecks = checks.filter(c => c.passed);
   const missingFields = checks.filter(c => !c.passed).map(c => c.key);

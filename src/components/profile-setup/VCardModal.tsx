@@ -68,7 +68,6 @@ export function buildRequiredFields(data: UserProfile | null): RequiredField[] {
   return [
     { key: 'name', label: 'Full Name', present: !!name },
     { key: 'email', label: 'Email', present: !!data?.email },
-    { key: 'company', label: 'Company Name', present: !!company },
     { key: 'role', label: 'Profession', present: !!role },
     { key: 'place', label: 'Place', present: !!place },
   ];

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { X, LifeBuoy, Mail, MessageCircle, HelpCircle, Send, CheckCircle2, AlertCircle, Copy, Check, ExternalLink } from 'lucide-react';
-import { SUPPORT_EMAIL, getGmailComposeUrl, getMailtoUrl, openSupportEmail } from '@/lib/supportEmail';
+import { SUPPORT_EMAIL, getMailtoUrl } from '@/lib/supportEmail';
 
 interface HelpSupportModalProps {
   isOpen: boolean;
@@ -43,8 +43,9 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
     } catch {
       // ignore
     }
-    const opened = openSupportEmail('DealCollab Support Request');
-    setEmailActionNotice(opened ? 'Opening Gmail compose in a new tab...' : 'Email copied to clipboard (join@dealcollab.in)!');
+    // Use standard mailto instead of Gmail web compose which has auth redirect issues
+    window.location.href = getMailtoUrl('DealCollab Support Request');
+    setEmailActionNotice('Opening default mail client...');
     setTimeout(() => {
       setCopiedEmail(false);
       setEmailActionNotice(null);
@@ -160,14 +161,6 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
                 </button>
               </div>
               <div className="mt-2.5 pt-2 border-t border-gray-200/60 flex items-center justify-between text-[10px]" onClick={(e) => e.stopPropagation()}>
-                <a
-                  href={getGmailComposeUrl('DealCollab Support Request')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-[#F97316] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  Open in Gmail ↗
-                </a>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -180,9 +173,9 @@ export default function HelpSupportModal({ isOpen, onClose, userEmail }: HelpSup
                 </button>
                 <a
                   href={getMailtoUrl('DealCollab Support Request')}
-                  className="text-gray-400 hover:text-gray-600 hover:underline cursor-pointer"
+                  className="font-bold text-[#F97316] hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  Mail App
+                  Open Mail App ↗
                 </a>
               </div>
             </div>
