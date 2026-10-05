@@ -384,28 +384,9 @@ export async function POST(req: NextRequest) {
       throw eoiErr;
     }
 
-    // Deduct tokens and log ledger transaction
-    const newBalance = Math.max(0, userTokens - TOKEN_COST);
-    try {
-      await supabase
-        .from('users')
-        .update({ tokens: newBalance })
-        .eq('id', dbUser.id);
-
-      await supabase
-        .from('token_transactions')
-        .insert([{
-          user_id: dbUser.id,
-          type: 'debit',
-          action: 'EOI_SENT',
-          amount: TOKEN_COST,
-          balance_after: newBalance,
-          reference_type: 'eoi',
-          reference_id: eoi.id,
-        }]);
-    } catch (tokenErr) {
-      console.error('[POST /api/eois] Token deduction error:', tokenErr);
-    }
+    // We DO NOT deduct tokens here. Tokens are only deducted when the counterparty approves the EOI.
+    // The server-authoritative check above ensures they have enough balance to send it.
+    const newBalance = userTokens;
 
     // Trigger Notification for Receiver (post-commit side effect)
     try {
@@ -480,79 +461,79 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // APPROVE: charge BOTH parties atomically via RPC (blocks if either is short).
-    // The RPC also flips eois.status to 'approved' — do NOT double-update it here.
+    // APPROVE: charge SENDER 50 tokens. Receiver is not charged.
     if (status === 'approved') {
-      const { data: result, error: rpcErr } = await supabase.rpc('approve_eoi_and_charge', {
-        p_eoi_id: id,
-        p_approver_user_id: dbUser.id,
-        p_token_cost: 50,
-      });
-      if (rpcErr) {
-        console.error('🔥 approve_eoi_and_charge RPC error:', rpcErr);
-        return NextResponse.json({ success: false, error: rpcErr.message }, { status: 500 });
-      }
-      const r = Array.isArray(result) ? result[0] : result;
-      if (!r?.success) {
-        // Sender is the one short: notify the SENDER in-app (with a billing link), and tell the
-        // receiver we've notified them. The receiver's own balance is fine, so no "buy tokens" for them.
-        if (r?.error_code === 'SENDER_INSUFFICIENT') {
-          const { data: notification, error: notificationErr } = await supabase.from('notifications').insert([{
-            user_id: existingEoi.sender_id,
-            type: 'EOI_APPROVAL_BLOCKED',
-            message: "Someone tried to approve your EOI, but you don't have enough tokens. Please top up to complete the connection.",
-            is_read: false,
-            metadata: { link: '/profile/billing' },
-          }]).select('id,user_id,type,message,is_read,created_at').single();
+      const { data: sender, error: senderErr } = await supabase
+        .from('users')
+        .select('id, tokens')
+        .eq('id', existingEoi.sender_id)
+        .single();
+      
+      if (senderErr || !sender) throw new Error("Sender not found");
+      const senderTokens = sender.tokens ?? 0;
+      
+      if (senderTokens < 50) {
+        // Sender is short: notify the SENDER in-app (with a billing link), and tell the receiver.
+        const { data: notification, error: notificationErr } = await supabase.from('notifications').insert([{
+          user_id: existingEoi.sender_id,
+          type: 'EOI_APPROVAL_BLOCKED',
+          message: "Someone tried to approve your EOI, but you don't have enough tokens. Please top up to complete the connection.",
+          is_read: false,
+          metadata: { link: '/profile/billing' },
+        }]).select('id,user_id,type,message,is_read,created_at').single();
 
-          if (notificationErr) throw notificationErr;
-          const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow);
-          return NextResponse.json({
-            success: false,
-            errorCode: 'SENDER_INSUFFICIENT',
-            message: emailResult.success
-               ? "Cannot approve because the sender has insufficient tokens. We've notified them."
-               : "Cannot approve because the sender has insufficient tokens. We tried to notify them but the email failed.",
-          }, { status: 409 });
-        }
-        const http =
-          r?.error_code === 'INSUFFICIENT_TOKENS' ? 402 :
-            r?.error_code === 'NOT_RECEIVER' ? 403 :
-              r?.error_code === 'EOI_NOT_FOUND' ? 404 : 400;
+        if (notificationErr) throw notificationErr;
+        const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow);
         return NextResponse.json({
           success: false,
-          errorCode: r?.error_code,
-          message: r?.message,
-          senderBalance: r?.sender_balance,
-          receiverBalance: r?.receiver_balance,
-        }, { status: http });
+          errorCode: 'SENDER_INSUFFICIENT',
+          message: emailResult.success
+             ? "Cannot approve because the sender has insufficient tokens. We've notified them."
+             : "Cannot approve because the sender has insufficient tokens. We tried to notify them but the email failed.",
+        }, { status: 409 });
       }
 
-      // Best-effort: record the real approval time. The RPC above is the transactional source of
-      // truth for status + token charges; this is a non-critical follow-up write, same pattern as
-      // the notification insert below — its failure must not roll back an already-approved EOI.
-      const { error: approvedAtErr } = await supabase
-        .from('eois')
-        .update({ approved_at: new Date().toISOString() })
-        .eq('id', id);
-      if (approvedAtErr) console.error('[EOI] approved_at update failed (non-blocking):', approvedAtErr.message);
+      const newBalance = senderTokens - 50;
+      
+      // 1. Deduct tokens
+      await supabase.from('users').update({ tokens: newBalance }).eq('id', sender.id);
+      
+      // 2. Add token transaction record
+      await supabase.from('token_transactions').insert([{
+        user_id: sender.id,
+        type: 'debit',
+        action: 'EOI_APPROVED',
+        amount: 50,
+        balance_after: newBalance,
+        reference_type: 'eoi',
+        reference_id: id,
+      }]);
 
+      // 3. Mark EOI as approved
+      const { error: eoiUpdateErr } = await supabase
+        .from('eois')
+        .update({ status: 'approved', approved_at: new Date().toISOString() })
+        .eq('id', id);
+        
+      if (eoiUpdateErr) throw eoiUpdateErr;
+
+      // 4. Send Notification
       const { data: notification, error: notificationErr } = await supabase.from('notifications').insert([{
         user_id: existingEoi.sender_id,
         type: 'EOI_APPROVED',
         message: 'Your Expression of Interest was approved.',
-        is_read: false,   // boolean column
+        is_read: false,
       }]).select('id,user_id,type,message,is_read,created_at').single();
 
       if (notificationErr) throw notificationErr;
       const emailResult = await deliverNotificationEmail(supabase, notification as NotificationRow);
+      
       return NextResponse.json({
         success: true,
         status: 'approved',
-        errorCode: emailResult.success ? r.error_code : 'OK_BUT_EMAIL_FAILED',
+        errorCode: emailResult.success ? 'OK' : 'OK_BUT_EMAIL_FAILED',
         message: emailResult.success ? undefined : 'EOI approved. Email notification could not be delivered.',
-        senderBalance: r.sender_balance,
-        receiverBalance: r.receiver_balance,
+        senderBalance: newBalance,
       });
     }
 
