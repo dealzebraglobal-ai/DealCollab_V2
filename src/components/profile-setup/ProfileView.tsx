@@ -5,14 +5,14 @@ import {
   User, Target, Edit3, IdCard, Briefcase, Globe, FileText
 } from 'lucide-react';
 import { UserProfile, useUser } from '../UserProvider';
-import VCardModal from './VCardModal';
+import VCardModal, { isUserBusinessPromoter } from './VCardModal';
 
 interface ProfileViewProps {
   data: UserProfile | null;
   onEdit: () => void;
 }
 
-function VCardButton({ data }: { data: UserProfile }) {
+function VCardButton({ data, onEdit }: { data: UserProfile, onEdit: () => void }) {
   const { isProfileComplete } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   return (
@@ -24,7 +24,7 @@ function VCardButton({ data }: { data: UserProfile }) {
         <IdCard size={18} />
         Your vCard
       </button>
-      <VCardModal isOpen={isOpen} onClose={() => setIsOpen(false)} data={data} isProfileComplete={isProfileComplete} />
+      <VCardModal isOpen={isOpen} onClose={() => setIsOpen(false)} data={data} isProfileComplete={isProfileComplete} onEdit={onEdit} />
     </>
   );
 }
@@ -33,6 +33,7 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
   if (!data) return null;
 
   const company = data.companyName || data.firmName || '';
+  const isBusinessPromoter = isUserBusinessPromoter(data);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8 pb-32">
@@ -68,7 +69,7 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <VCardButton data={data} />
+          <VCardButton data={data} onEdit={onEdit} />
           <button
             onClick={onEdit}
             className="flex items-center gap-2 px-6 py-3 bg-foreground text-white rounded-2xl font-black text-sm hover:bg-brand-accent transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-brand-accent/20"
@@ -81,7 +82,7 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Section 1: Basic Identity */}
-        <SectionCard title="Basic Identity" icon={<User size={20} />} onClick={onEdit}>
+        <SectionCard title={isBusinessPromoter ? "Company Identity" : "Basic Identity"} icon={<User size={20} />} onClick={onEdit}>
           <DataRow label="Full Name" value={data.fullName || data.name} />
           <DataRow label="Work Email" value={data.email} />
           <DataRow label="Phone" value={data.phone || 'Not provided'} />
@@ -99,89 +100,99 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
               </a>
             </div>
           )}
-          <DataRow label="Role" value={data.role === 'Other' ? data.customRole : data.role} />
-          <DataRow label="Base City" value={data.baseCity || 'Not provided'} />
-          <div className="space-y-3 pt-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Professional Category</span>
-            <div className="flex flex-wrap gap-2">
-              {Array.isArray(data.category) && data.category.map((cat: string) => (
-                <span 
-                  key={cat} 
-                  className="px-3 py-1.5 bg-brand-accent/5 border border-brand-accent/20 text-brand-accent text-[11px] font-bold rounded-lg"
-                >
-                  {cat === 'Other' && data.customCategory ? `${data.customCategory}` : cat}
-                </span>
-              ))}
-            </div>
-          </div>
+          {!isBusinessPromoter && (
+            <>
+              <DataRow label="Role" value={data.role === 'Other' ? data.customRole : data.role} />
+              <DataRow label="Base City" value={data.baseCity || 'Not provided'} />
+              <div className="space-y-3 pt-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Professional Category</span>
+                <div className="flex flex-wrap gap-2">
+                  {Array.isArray(data.category) && data.category.map((cat: string) => (
+                    <span 
+                      key={cat} 
+                      className="px-3 py-1.5 bg-brand-accent/5 border border-brand-accent/20 text-brand-accent text-[11px] font-bold rounded-lg"
+                    >
+                      {cat === 'Other' && data.customCategory ? `${data.customCategory}` : cat}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </SectionCard>
 
         {/* Section 2: Standing Buy-Side Requirements */}
-        <SectionCard title="Target Requirements (Buy-Side)" icon={<Target size={20} />} onClick={onEdit}>
-          {Array.isArray((data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements) && (data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.length > 0 ? (
-            <div className="space-y-3">
-              {(data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.map((req, idx) => (
-                <div key={idx} className="p-3 bg-amber-50/40 rounded-xl border border-amber-200/60 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-900">{req.sectors.join(', ')}</span>
-                    <span className="text-xs font-bold text-[#9A6E22]">{req.revenue}</span>
+        {!isBusinessPromoter && (
+          <SectionCard title="Target Requirements (Buy-Side)" icon={<Target size={20} />} onClick={onEdit}>
+            {Array.isArray((data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements) && (data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.length > 0 ? (
+              <div className="space-y-3">
+                {(data as { requirements?: Array<{ slotIndex: number; sectors: string[]; niche: string; cities: string[]; revenue: string }> }).requirements!.map((req, idx) => (
+                  <div key={idx} className="p-3 bg-amber-50/40 rounded-xl border border-amber-200/60 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-900">{req.sectors.join(', ')}</span>
+                      <span className="text-xs font-bold text-[#9A6E22]">{req.revenue}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-700 font-medium">{req.niche}</p>
+                    <p className="text-[11px] text-gray-500">{req.cities.join(', ')}</p>
                   </div>
-                  <p className="text-[11px] text-gray-700 font-medium">{req.niche}</p>
-                  <p className="text-[11px] text-gray-500">{req.cities.join(', ')}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-brand-secondary font-medium">No target requirements filled yet. Click to add.</p>
-          )}
-        </SectionCard>
-
-        {/* Section 3: Track Record & Verification */}
-        <SectionCard title="Track Record & Verification" icon={<Briefcase size={20} />} onClick={onEdit}>
-          {Array.isArray(data.activeMandates) && data.activeMandates.length > 0 && (
-            <div className="space-y-3">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Currently Mandated On</span>
-              <div className="flex flex-wrap gap-2">
-                {data.activeMandates.map((mandate: string) => (
-                  <span 
-                    key={mandate} 
-                    className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-gray-600 text-[11px] font-bold rounded-lg"
-                  >
-                    {mandate}
-                  </span>
                 ))}
               </div>
+            ) : (
+              <p className="text-sm text-brand-secondary font-medium">No target requirements filled yet. Click to add.</p>
+            )}
+          </SectionCard>
+        )}
+
+        {/* Section 3: Track Record & Verification */}
+        {!isBusinessPromoter && (
+          <SectionCard title="Track Record & Verification" icon={<Briefcase size={20} />} onClick={onEdit}>
+            {Array.isArray(data.activeMandates) && data.activeMandates.length > 0 && (
+              <div className="space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Currently Mandated On</span>
+                <div className="flex flex-wrap gap-2">
+                  {data.activeMandates.map((mandate: string) => (
+                    <span 
+                      key={mandate} 
+                      className="px-3 py-1.5 bg-gray-50 border border-gray-100 text-gray-600 text-[11px] font-bold rounded-lg"
+                    >
+                      {mandate}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="space-y-1 pt-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Track Record</span>
+              <p className="text-sm font-medium text-foreground leading-relaxed italic">
+                &quot;{data.expertiseDescription || 'No description provided.'}&quot;
+              </p>
             </div>
-          )}
-          <div className="space-y-1 pt-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Track Record</span>
-            <p className="text-sm font-medium text-foreground leading-relaxed italic">
-              &quot;{data.expertiseDescription || 'No description provided.'}&quot;
-            </p>
-          </div>
-        </SectionCard>
+          </SectionCard>
+        )}
 
         {/* Section 4: Collaboration & Credentials */}
-        <SectionCard title="Collaboration & Credentials" icon={<Globe size={20} />} onClick={onEdit}>
-          <DataRow label="Open to Co-Advisory" value={data.co_advisory || data.coAdvisory ? 'Yes' : 'No'} />
-          <DataRow label="Preferred Models" value={Array.isArray(data.collaboration_model) ? data.collaboration_model.join(', ') : Array.isArray(data.collaborationModels) ? data.collaborationModels.join(', ') : 'Not provided'} />
-          {data.profileAttachmentUrl && (
-            <div className="pt-2">
-              <a 
-                href={data.profileAttachmentUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100 text-green-700 hover:bg-green-100 transition-all group"
-              >
-                <FileText size={20} className="group-hover:scale-110 transition-transform" />
-                <div>
-                  <span className="block text-xs font-bold">Attached Profile / Deck</span>
-                  <span className="text-[10px] uppercase opacity-60">View document</span>
-                </div>
-              </a>
-            </div>
-          )}
-        </SectionCard>
+        {!isBusinessPromoter && (
+          <SectionCard title="Collaboration & Credentials" icon={<Globe size={20} />} onClick={onEdit}>
+            <DataRow label="Open to Co-Advisory" value={data.co_advisory || data.coAdvisory ? 'Yes' : 'No'} />
+            <DataRow label="Preferred Models" value={Array.isArray(data.collaboration_model) ? data.collaboration_model.join(', ') : Array.isArray(data.collaborationModels) ? data.collaborationModels.join(', ') : 'Not provided'} />
+            {data.profileAttachmentUrl && (
+              <div className="pt-2">
+                <a 
+                  href={data.profileAttachmentUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100 text-green-700 hover:bg-green-100 transition-all group"
+                >
+                  <FileText size={20} className="group-hover:scale-110 transition-transform" />
+                  <div>
+                    <span className="block text-xs font-bold">Attached Profile / Deck</span>
+                    <span className="text-[10px] uppercase opacity-60">View document</span>
+                  </div>
+                </a>
+              </div>
+            )}
+          </SectionCard>
+        )}
 
         {/* Section 5: Business Details */}
         <SectionCard title="Business Details" icon={<Target size={20} />} onClick={onEdit}>
@@ -219,6 +230,13 @@ export default function ProfileView({ data, onEdit }: ProfileViewProps) {
                 <span className="text-sm font-medium text-brand-secondary">Not provided</span>
               )}
             </div>
+          </div>
+          
+          <div className="space-y-1 pt-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-secondary opacity-50">Business Description</span>
+            <p className="text-sm font-medium text-foreground leading-relaxed italic">
+              &quot;{data.expertiseDescription || 'No description provided.'}&quot;
+            </p>
           </div>
         </SectionCard>
       </div>

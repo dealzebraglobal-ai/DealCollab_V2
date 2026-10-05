@@ -59,6 +59,8 @@ export interface IdentityCardProps {
   actionLabel?: string;
   className?: string;
   showExportButtons?: boolean;
+  themeColor?: string;
+  accentColor?: string;
 }
 
 export default function IdentityCard({
@@ -69,6 +71,8 @@ export default function IdentityCard({
   actionLabel,
   className = '',
   showExportButtons = true,
+  themeColor,
+  accentColor,
 }: IdentityCardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -224,10 +228,11 @@ export default function IdentityCard({
         className={`w-full rounded-[28px] overflow-hidden transition-all duration-300 relative shadow-2xl ${
           isDisclosure
             ? 'bg-[#F1EFE9] text-[#111827] border border-[#E2DFD7]'
-            : 'bg-[#0E1114] text-white border border-white/10'
+            : 'text-white border border-white/10'
         }`}
         style={{
           minHeight: '620px',
+          backgroundColor: isDisclosure ? undefined : (themeColor || '#0E1114'),
         }}
       >
         {/* DISCLOSURE STATE: Orange Top Alert Bar */}
@@ -257,7 +262,10 @@ export default function IdentityCard({
         {/* DARK STATES (Public & Locked): Subtle Globe Ambient Graphic */}
         {!isDisclosure && (
           <>
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FFA100]/10 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
+            <div 
+              className="absolute top-0 right-0 w-64 h-64 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none opacity-20" 
+              style={{ backgroundColor: accentColor || '#FFA100' }}
+            />
             <div className="absolute right-[-40px] top-[140px] w-60 h-60 rounded-full border border-white/5 pointer-events-none" />
             <div className="absolute right-[-20px] top-[160px] w-44 h-44 rounded-full border border-white/5 pointer-events-none" />
           </>
@@ -275,6 +283,7 @@ export default function IdentityCard({
                 </div>
               ) : showPhoto ? (
                 <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm border border-white/10 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={data.photoUrl || undefined}
                     alt={data.fullName || 'Profile photo'}
@@ -544,6 +553,7 @@ export default function IdentityCard({
                 </div>
               ) : isPublic && qrDataUrl ? (
                 <div className="w-20 h-20 rounded-xl bg-white p-1.5 shadow-sm flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={qrDataUrl} alt="Scan to view public DealCollab profile" className="w-full h-full" />
                 </div>
               ) : isPublic ? (

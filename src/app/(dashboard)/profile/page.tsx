@@ -72,7 +72,7 @@ export default function ProfilePage() {
       <div className="flex-1 flex flex-col w-full bg-[#F9FAFB] relative min-h-screen">
          {isEditing ? (
             <div className="w-full flex-1 flex flex-col py-8">
-               <div className="max-w-5xl mx-auto px-6 mb-8 flex justify-between items-center">
+               <div className="w-full max-w-5xl mx-auto px-6 mb-8 flex justify-between items-center gap-4">
                   <h2 className="text-2xl font-black text-foreground tracking-tight">Update Your Profile</h2>
                   <button
                      onClick={() => setIsEditing(false)}

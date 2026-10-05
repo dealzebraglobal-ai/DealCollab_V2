@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo, useState } from 'react';
-import { X, Download, Share2, AlertCircle, Check } from 'lucide-react';
+import { X, Download, Share2, AlertCircle, Check, Edit3 } from 'lucide-react';
 import QRCode from 'qrcode';
 import type { UserProfile } from '../UserProvider';
 import IdentityCard from '@/components/IdentityCard';
@@ -27,6 +27,7 @@ interface VCardModalProps {
   onClose: () => void;
   data: UserProfile | null;
   isProfileComplete: boolean;
+  onEdit?: () => void;
 }
 
 interface RequiredField {
@@ -109,6 +110,9 @@ export function buildVCardText(input: {
 
 export default function VCardModal({ isOpen, onClose, data, isProfileComplete }: VCardModalProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const [isEditingTheme, setIsEditingTheme] = useState(false);
+  const [themeColor, setThemeColor] = useState('#0B1B2B');
+  const [accentColor, setAccentColor] = useState('#F97316');
   const profile = data as ExtendedUserProfile | null;
 
   const isPromoter = isUserBusinessPromoter(profile);
@@ -133,7 +137,20 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
   const company = profile?.companyName || profile?.company_name || profile?.firmName || profile?.firm_name || '';
   const place = [profile?.baseCity || profile?.base_city, profile?.baseCountry || profile?.base_country].filter(Boolean).join(', ') ||
     (profile?.baseLocation || profile?.base_location || '');
-  const sectors = profile?.sectors || profile?.priority_sectors || [];
+  
+  let sectors = profile?.sectors || profile?.priority_sectors || [];
+  if (!isPromoter && Array.isArray((profile as unknown as Record<string, unknown>)?.requirements)) {
+    const reqSectors = new Set<string>();
+    ((profile as unknown as Record<string, unknown>).requirements as Array<{ sectors?: string[] }>).forEach((req) => {
+      if (Array.isArray(req.sectors)) {
+        req.sectors.forEach((s: string) => reqSectors.add(s));
+      }
+    });
+    if (reqSectors.size > 0) {
+      sectors = Array.from(reqSectors);
+    }
+  }
+
   const photo = profile?.profileImage || profile?.profile_image || profile?.userAvatar;
 
   if (!isOpen) return null;
@@ -159,22 +176,27 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Could not get canvas context');
 
-    // Background gradient (#0B1B2B -> #111827)
+    // Background gradient
     const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-    bgGrad.addColorStop(0, '#0B1B2B');
-    bgGrad.addColorStop(1, '#111827');
+    bgGrad.addColorStop(0, themeColor);
+    bgGrad.addColorStop(1, themeColor === '#0B1B2B' ? '#111827' : themeColor);
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // Decorative ambient glow (#F97316)
+    // Decorative ambient glow
     const glowGrad = ctx.createRadialGradient(width - 100, 100, 20, width - 100, 100, 400);
-    glowGrad.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
-    glowGrad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    // Convert hex accent to rgba
+    let r = 249, g = 115, b = 22;
+    if (accentColor === '#3B82F6') { r = 59; g = 130; b = 246; }
+    else if (accentColor === '#10B981') { r = 16; g = 185; b = 129; }
+    
+    glowGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.25)`);
+    glowGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, width, height);
 
     // Header Badge: DealCollab
-    ctx.fillStyle = '#F97316';
+    ctx.fillStyle = accentColor;
     ctx.beginPath();
     ctx.roundRect(70, 60, 44, 44, [10]);
     ctx.fill();
@@ -224,7 +246,7 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
     }
 
     if (!imageDrawn) {
-      ctx.fillStyle = '#F97316';
+      ctx.fillStyle = accentColor;
       ctx.font = '900 56px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -480,6 +502,8 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
               {/* The DealCollab Public Identity Card */}
               <IdentityCard
                 mode="public"
+                themeColor={themeColor}
+                accentColor={accentColor}
                 data={{
                   fullName: name || 'Verified Member',
                   initials: (name ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('') : 'DC').toUpperCase(),
@@ -517,38 +541,93 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
                 showExportButtons={false}
               />
 
-              {/* Action Buttons: JPG, PNG, VCF, Share */}
-              <div className="space-y-2 mt-4">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    onClick={() => handleDownloadImage('jpeg')}
-                    className="flex items-center justify-center gap-1.5 py-2.5 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
-                  >
-                    <Download size={13} /> Download JPG
-                  </button>
-                  <button
-                    onClick={() => handleDownloadImage('png')}
-                    className="flex items-center justify-center gap-1.5 py-2.5 bg-[#1F2937] hover:bg-[#111827] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
-                  >
-                    <Download size={13} /> Download PNG
-                  </button>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
+
+              {isEditingTheme ? (
+                <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl space-y-4">
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">Background Color</h3>
+                    <div className="flex gap-2">
+                      {[
+                        { color: '#0B1B2B', name: 'Dark Blue' },
+                        { color: '#111827', name: 'Charcoal' },
+                        { color: '#450a0a', name: 'Deep Red' },
+                      ].map(bg => (
+                        <button
+                          key={bg.color}
+                          onClick={() => setThemeColor(bg.color)}
+                          className={`w-8 h-8 rounded-full border-2 ${themeColor === bg.color ? 'border-[#F97316]' : 'border-transparent'}`}
+                          style={{ backgroundColor: bg.color }}
+                          title={bg.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">Accent Color</h3>
+                    <div className="flex gap-2">
+                      {[
+                        { color: '#F97316', name: 'Orange' },
+                        { color: '#3B82F6', name: 'Blue' },
+                        { color: '#10B981', name: 'Green' },
+                      ].map(acc => (
+                        <button
+                          key={acc.color}
+                          onClick={() => setAccentColor(acc.color)}
+                          className={`w-8 h-8 rounded-full border-2 ${accentColor === acc.color ? 'border-gray-900' : 'border-transparent'}`}
+                          style={{ backgroundColor: acc.color }}
+                          title={acc.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
                   <button
-                    onClick={handleDownload}
-                    className="flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                    onClick={() => setIsEditingTheme(false)}
+                    className="w-full py-2 bg-gray-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
                   >
-                    <Download size={13} /> vCard (.vcf)
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center justify-center gap-1.5 py-2.5 bg-white border border-gray-200 hover:border-[#F97316] hover:text-[#F97316] text-gray-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-                  >
-                    {copyState === 'copied' ? <><Check size={13} /> Copied</> : <><Share2 size={13} /> Share</>}
+                    Done
                   </button>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2 mt-4">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      onClick={() => handleDownloadImage('jpeg')}
+                      className="flex items-center justify-center gap-1.5 py-2.5 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
+                    >
+                      <Download size={13} /> Download JPG
+                    </button>
+                    <button
+                      onClick={() => handleDownloadImage('png')}
+                      className="flex items-center justify-center gap-1.5 py-2.5 bg-[#1F2937] hover:bg-[#111827] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
+                    >
+                      <Download size={13} /> Download PNG
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      onClick={handleDownload}
+                      className="flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                    >
+                      <Download size={13} /> vCard (.vcf)
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center justify-center gap-1.5 py-2.5 bg-white border border-gray-200 hover:border-[#F97316] hover:text-[#F97316] text-gray-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                    >
+                      {copyState === 'copied' ? <><Check size={13} /> Copied</> : <><Share2 size={13} /> Share</>}
+                    </button>
+                  </div>
+                  
+                  <button
+                    onClick={() => setIsEditingTheme(true)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 mt-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                  >
+                    <Edit3 size={13} /> Edit vCard Design
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
