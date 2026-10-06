@@ -7,7 +7,7 @@ import { parseJsonResponse } from '@/lib/fetchJson';
 
 interface EmailOtpVerificationProps {
   email: string;
-  onVerify: (hasPhone: boolean) => void;
+  onVerify: (hasPhone: boolean, isExistingUser?: boolean) => void;
   onBack: () => void;
 }
 
@@ -37,7 +37,7 @@ export default function EmailOtpVerification({ email, onVerify, onBack }: EmailO
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code }),
       });
-      const verifyData = await parseJsonResponse<{ error?: string; hasPhone?: boolean; verificationToken?: string }>(verifyRes);
+      const verifyData = await parseJsonResponse<{ error?: string; hasPhone?: boolean; isExistingUser?: boolean; verificationToken?: string }>(verifyRes);
 
       if (!verifyRes.ok) {
         console.warn('[EmailOtpVerification] verify failed:', verifyData.error);
@@ -69,7 +69,7 @@ export default function EmailOtpVerification({ email, onVerify, onBack }: EmailO
       }
 
       console.log('[EmailOtpVerification] Redirecting...');
-      onVerify(!!verifyData.hasPhone);
+      onVerify(!!verifyData.hasPhone, !!verifyData.isExistingUser);
       return;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';

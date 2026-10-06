@@ -111,12 +111,31 @@ export async function GET() {
     // Fetch requirements for advisor
     const requirements = !isBusinessPromoter ? await fetchAdvisorRequirements(profile.id) : [];
 
+    const isInsertedNewUser = !initialProfile;
+    const createdAtMs = profile.created_at ? new Date(profile.created_at as string).getTime() : 0;
+    const isRecentlyCreated = createdAtMs > 0 && (Date.now() - createdAtMs) < (5 * 60 * 1000);
+    const hasExistingData = !!(
+      profile.phone ||
+      profile.is_phone_verified ||
+      profile.isPhoneVerified ||
+      profile.profile_completed_once ||
+      (profile.profile_completion && (profile.profile_completion as number) > 0) ||
+      profile.firm_name ||
+      profile.role ||
+      endUserProfile
+    );
+    const isExistingUser = !isInsertedNewUser && (hasExistingData || !isRecentlyCreated);
+    const isPhoneVerified = !!(profile.is_phone_verified || profile.isPhoneVerified || isExistingUser);
+
     // Map DB (snake_case) to Frontend (camelCase)
     const profileData = {
       id: profile.id,
       fullName: profile.name,
       email: profile.email,
       phone: profile.phone,
+      isPhoneVerified: isPhoneVerified,
+      is_phone_verified: isPhoneVerified,
+      isExistingUser: isExistingUser,
       firmName: compName,
       companyName: compName,
       website: website,

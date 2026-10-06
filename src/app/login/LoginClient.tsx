@@ -81,6 +81,9 @@ const AuthContent = () => {
   useEffect(() => {
     if (!mounted || status !== 'authenticated' || !session?.user || isProfileLoading) return;
     
+    // User is actively in the email sign-in or email-OTP flow — do not interrupt!
+    if (step === 'email' || step === 'otp') return;
+
     // Check if phone is verified
     if (!onboarding.phoneVerified) {
       if (step !== 'phone') {
@@ -112,9 +115,9 @@ const AuthContent = () => {
     setStep('otp');
   };
 
-  const handleEmailOtpSuccess = (hasPhone: boolean) => {
-    console.log('[Auth] Email OTP verified', { hasPhone });
-    if (hasPhone) {
+  const handleEmailOtpSuccess = (hasPhone: boolean, isExistingUser?: boolean) => {
+    console.log('[Auth] Email OTP verified', { hasPhone, isExistingUser });
+    if (hasPhone || isExistingUser) {
       setOnboarding('phoneVerified', true);
       setStep('verified');
       setIsVerified(true);
@@ -183,8 +186,18 @@ const AuthContent = () => {
             </div>
           )}
 
+          {/* Loading state while checking authenticated existing profile */}
+          {((status === 'loading') || (status === 'authenticated' && isProfileLoading && step === 'google')) && (
+            <div className="py-12 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
+              <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
+                Authenticating Deal Intelligence...
+              </p>
+            </div>
+          )}
+
           {/* Step 1: Google Authentication */}
-          {step === 'google' && (
+          {step === 'google' && !(status === 'loading' || (status === 'authenticated' && isProfileLoading)) && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="space-y-2 text-center pb-2">
                 <h2 className="text-2xl font-black text-foreground tracking-tight italic">

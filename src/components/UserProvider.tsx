@@ -242,8 +242,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           tokens: dbTokens,
         });
         
+        const isUserPhoneVerified = !!(
+          data.is_phone_verified ||
+          data.isPhoneVerified ||
+          data.phone ||
+          data.isExistingUser ||
+          data.profileCompleted ||
+          data.profileCompletedOnce ||
+          (data.profileCompletion || 0) > 0
+        );
+
         setOnboardingState(prev => ({
-          phoneVerified: !!(data.is_phone_verified || data.isPhoneVerified),
+          phoneVerified: isUserPhoneVerified,
           profileCompleted,
           dealSubmitted: prev.dealSubmitted,
           tutorialCompleted,

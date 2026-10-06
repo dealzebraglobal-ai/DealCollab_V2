@@ -41,7 +41,20 @@ export async function POST(req: Request) {
     // relational-query default is SELECT <all schema columns>, which throws
     // 42703 for any column the production table is missing).
     const user = await db.query.users.findFirst({
-      columns: { id: true, otpCode: true, otpExpires: true, otpAttempts: true, phone: true },
+      columns: {
+        id: true,
+        otpCode: true,
+        otpExpires: true,
+        otpAttempts: true,
+        phone: true,
+        isPhoneVerified: true,
+        profileCompletedOnce: true,
+        profileCompletion: true,
+        firmName: true,
+        role: true,
+        lastLoginAt: true,
+        createdAt: true,
+      },
       where: eq(users.email, normalizedEmail),
     });
 
@@ -81,7 +94,26 @@ export async function POST(req: Request) {
       userId: user.id,
     });
 
-    return NextResponse.json({ success: true, email: normalizedEmail, hasPhone: !!user.phone, verificationToken });
+    const createdAtMs = user.createdAt ? new Date(user.createdAt).getTime() : 0;
+    const isRecentlyCreated = createdAtMs > 0 && (Date.now() - createdAtMs) < (5 * 60 * 1000);
+    const hasExistingData = !!(
+      user.phone ||
+      user.isPhoneVerified ||
+      user.profileCompletedOnce ||
+      (user.profileCompletion ?? 0) > 0 ||
+      user.firmName ||
+      user.role ||
+      user.lastLoginAt
+    );
+    const isExistingUser = hasExistingData || !isRecentlyCreated;
+
+    return NextResponse.json({ 
+      success: true, 
+      email: normalizedEmail, 
+      hasPhone: !!user.phone, 
+      isExistingUser, 
+      verificationToken 
+    });
   } catch (error: unknown) {
     const info = describeDbError(error);
     console.error('[email-otp/verify] error:', { ...info });
