@@ -81,7 +81,7 @@ export async function sendMetaButtons(phone: string, text: string, buttons: Arra
 
 /** Preserves the original signature — existing callers (if any) keep working unchanged. */
 export async function sendMetaOTP(phone: string, otp: string) {
-  const message = `Your DealCollab verification code is: ${otp}. It expires in 10 minutes.`;
+  const message = `Your DealCollab verification code is: ${otp}. It expires in 5 minutes.`;
   return sendMetaMessage(phone, message);
 }
 

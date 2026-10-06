@@ -10,7 +10,7 @@ import crypto from 'crypto';
  */
 
 const OTP_LENGTH = 6;
-const OTP_TTL_MINUTES = 10;
+const OTP_TTL_MINUTES = 5;
 const MAX_OTP_ATTEMPTS = 5;
 
 export function generateOtp(): string {

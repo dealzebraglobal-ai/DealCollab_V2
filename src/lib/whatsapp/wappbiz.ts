@@ -187,12 +187,14 @@ async function fetchAuthTemplates() {
 
 /** POST /sendAuthTemplate — the documented way to deliver an OTP; works even outside the 24h window. */
 export async function sendAuthTemplate(params: { templateName: string; phone: string; name: string; otp: string }) {
+  const config = getWappBizConfig();
   return wappBizRequest<{ _id: string; template_id: string; template_name: string }>('/sendAuthTemplate', {
     body: {
       template_name: params.templateName,
       phone: normalizePhone(params.phone),
       name: params.name,
       otp: params.otp,
+      ...(config?.businessNumber ? { business_number: config.businessNumber } : {}),
     },
   });
 }
@@ -492,7 +494,7 @@ export async function sendWappBizOTP(phone: string, otp: string): Promise<SendWa
   }
 
   // Fallback: Deliver OTP via simple free-text service message (sendServiceTextMessage)
-  const message = `Your DealCollab verification code is: ${otp}. It expires in 10 minutes.`;
+  const message = `Your DealCollab verification code is: ${otp}. It expires in 5 minutes.`;
   const textRes = await sendServiceTextMessage(phone, message);
 
   if (textRes.success) {

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { generateOtp } from '@/lib/otp';
+import { generateOtp, otpExpiryDate } from '@/lib/otp';
 import { sendWhatsAppOTP } from '@/lib/whatsapp/provider';
 import { WhatsAppProvider } from '@/lib/whatsapp/types';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     const otp = generateOtp();
-    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expires = otpExpiryDate(); // 5 minutes (matches template)
     const hashedOtp = hashOtp(otp);
 
     console.log(`[WhatsApp OTP] Generated verification code for ${normalizedPhone}: ${otp}`);
