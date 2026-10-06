@@ -1,7 +1,9 @@
 'use client';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Smartphone, ArrowRight, ShieldCheck, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import OTPInput from './OTPInput';
+import { parseJsonResponse } from '@/lib/fetchJson';
 
 interface PhoneVerificationProps {
   onVerify: () => void;
@@ -10,32 +12,102 @@ interface PhoneVerificationProps {
   isFromWhatsApp?: boolean;
 }
 
+const RESEND_COOLDOWN_SECONDS = 30;
+
 export default function PhoneVerification({ onVerify, onBack, initialPhone }: PhoneVerificationProps) {
   const [phone, setPhone] = useState(initialPhone || '');
+  const [step, setStep] = useState<'input' | 'otp'>('input');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  const [digits, setDigits] = useState<string[]>(Array(6).fill(''));
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  const [isResending, setIsResending] = useState(false);
 
   const { data: session, update } = useSession();
 
-  const formatPhone = () => {
+  useEffect(() => {
+    if (cooldown <= 0 || step !== 'otp') return;
+    const timer = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown, step]);
+
+  const formatPhone = useCallback(() => {
     const cleaned = phone.replace(/[^\d+]/g, '');
     return cleaned.startsWith('+') ? cleaned : `+91${cleaned}`;
+  }, [phone]);
+
+  const requestOtp = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
+    if (!phone.trim()) return;
+
+    const formattedPhone = formatPhone();
+    const digitsOnly = formattedPhone.replace(/\D/g, '');
+
+    if (digitsOnly.length < 10) {
+      setError("Please enter a valid 10-digit phone number.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const res = await fetch('/api/auth/whatsapp-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone }),
+      });
+      
+      const data = await parseJsonResponse<{ success?: boolean; error?: string }>(res);
+      if (!res.ok) {
+        setError(data.error || "Failed to send WhatsApp verification code");
+        return;
+      }
+      
+      setStep('otp');
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const completeVerification = useCallback(async (phoneNumber: string) => {
+  const verifyOtp = useCallback(async (code: string) => {
     try {
       setIsLoading(true);
       setError(null);
 
+      const formattedPhone = formatPhone();
+      
+      const verifyRes = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone, code }),
+      });
+      
+      const verifyData = await parseJsonResponse<{ error?: string; verificationToken?: string }>(verifyRes);
+      
+      if (!verifyRes.ok) {
+        setError(verifyData.error || 'Verification failed');
+        setIsLoading(false);
+        return;
+      }
+
       if (session) {
-        // User logged in — link phone to account directly (no OTP compulsion)
+        // Link phone to account
         const saveRes = await fetch('/api/auth/save-phone', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: phoneNumber }),
+          body: JSON.stringify({ 
+            phone: formattedPhone,
+            verificationToken: verifyData.verificationToken
+          }),
         });
-        const saveData = await saveRes.json();
+        const saveData = await parseJsonResponse<{ success?: boolean; error?: string }>(saveRes);
+        
         if (!saveRes.ok || !saveData.success) {
           setError(saveData.error || "Failed to link phone number");
           setIsLoading(false);
@@ -47,44 +119,93 @@ export default function PhoneVerification({ onVerify, onBack, initialPhone }: Ph
         } catch (updateErr) {
           console.warn("[PhoneVerification] session.update() failed (non-fatal):", updateErr);
         }
-
-        setIsSuccess(true);
-        setTimeout(() => {
-          onVerify();
-        }, 600);
-      } else {
-        onVerify();
       }
+
+      setIsSuccess(true);
+      setTimeout(() => {
+        onVerify();
+      }, 600);
+      
     } catch (err: unknown) {
-      console.error("[PhoneVerification] Completion error:", err);
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-      setError(errorMessage);
-    } finally {
+      console.error("[PhoneVerification] Verification error:", err);
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setIsLoading(false);
     }
-  }, [session, update, onVerify]);
+  }, [phone, session, update, onVerify, formatPhone]);
 
-  const handleContinue = async (e?: React.SyntheticEvent) => {
-    if (e) e.preventDefault();
-    if (!phone.trim()) {
-      onVerify();
-      return;
-    }
-
-    const formattedPhone = formatPhone();
-    const digitsOnly = formattedPhone.replace(/\D/g, '');
-
-    if (digitsOnly.length < 10) {
-      setError("Please enter a valid 10-digit phone number, or tap 'Skip for now'.");
-      return;
-    }
-
-    await completeVerification(formattedPhone);
+  const handleResend = async () => {
+    if (cooldown > 0) return;
+    setIsResending(true);
+    await requestOtp();
+    setIsResending(false);
   };
+
+  const handleChange = (index: number, value: string) => {
+    setDigits((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  if (step === 'otp') {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-700">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setStep('input')}
+            className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-all active:scale-90 text-gray-400 group"
+          >
+            <ArrowLeft size={18} className="group-hover:text-[#F97316] transition-colors" />
+          </button>
+          <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">
+            WhatsApp Verification
+          </span>
+        </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-100/50 rounded-2xl flex flex-col gap-2">
+            <div className="flex items-start gap-3">
+              <div className="bg-red-500/10 p-1.5 rounded-lg text-red-600 shrink-0 mt-0.5">
+                <AlertCircle size={18} />
+              </div>
+              <p className="text-xs font-bold text-red-700 leading-tight flex-1">{error}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <h3 className="text-xl font-bold text-[#1F2937] tracking-tight">Enter Code</h3>
+          <p className="text-sm text-gray-500 leading-relaxed font-medium">
+            We sent a verification code to <span className="text-[#1F2937] font-semibold">{formatPhone()}</span> via WhatsApp.
+          </p>
+        </div>
+
+        <div className="flex justify-center w-full py-4">
+          <OTPInput
+            value={digits}
+            onChange={handleChange}
+            onComplete={verifyOtp}
+            isLoading={isLoading}
+          />
+        </div>
+
+        <div className="flex flex-col items-center gap-4 mt-6">
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={cooldown > 0 || isLoading || isResending}
+            className="text-sm font-semibold text-gray-500 hover:text-[#F97316] transition-colors disabled:opacity-50 disabled:hover:text-gray-500"
+          >
+            {isResending ? 'Resending...' : cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend WhatsApp Code'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-700">
-      {/* Header with Back Button */}
       <div className="flex items-center gap-3">
         <button 
           type="button"
@@ -119,12 +240,12 @@ export default function PhoneVerification({ onVerify, onBack, initialPhone }: Ph
             <CheckCircle2 size={32} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-green-900">Phone Saved!</h3>
+            <h3 className="text-lg font-bold text-green-900">Phone Verified!</h3>
             <p className="text-xs text-green-700 font-medium">Your profile has been updated. Proceeding...</p>
           </div>
         </div>
       ) : (
-        <form onSubmit={handleContinue} className="space-y-6">
+        <form onSubmit={requestOtp} className="space-y-6">
           <div className="space-y-2">
             <h3 className="text-xl font-bold text-[#1F2937] tracking-tight">Contact Information</h3>
             <p className="text-sm text-gray-500 leading-relaxed font-medium">
@@ -156,19 +277,10 @@ export default function PhoneVerification({ onVerify, onBack, initialPhone }: Ph
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  Save & Continue
+                  Verify via WhatsApp
                   <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onVerify()}
-              disabled={isLoading}
-              className="w-full text-center text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors py-2 block"
-            >
-              Skip for now →
             </button>
           </div>
         </form>

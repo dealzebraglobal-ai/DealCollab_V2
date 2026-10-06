@@ -465,7 +465,33 @@ export async function sendWappBizOTP(phone: string, otp: string): Promise<SendWa
     };
   }
 
-  // Deliver OTP via simple free-text service message (sendServiceTextMessage)
+  // Attempt to resolve an approved authentication template
+  const templateResolution = await resolveAuthTemplateName();
+
+  if (templateResolution.success) {
+    // Deliver via the approved template (works outside 24h window)
+    const templateRes = await sendAuthTemplate({
+      templateName: templateResolution.templateName,
+      phone,
+      name: 'User', // WappBiz template API requires a name field; 'User' is a safe fallback
+      otp,
+    });
+
+    if (templateRes.success) {
+      return {
+        success: true,
+        messageId: templateRes.data?._id,
+        status: templateRes.status,
+      };
+    }
+    
+    console.error(`[WappBiz OTP] template delivery failed — status=${templateRes.status ?? 0} (${templateRes.error || 'unknown'})`);
+    // Fall back to service message if template delivery fails, just in case
+  } else {
+    console.warn(`[WappBiz OTP] No approved template found (${templateResolution.error}). Falling back to free-text message.`);
+  }
+
+  // Fallback: Deliver OTP via simple free-text service message (sendServiceTextMessage)
   const message = `Your DealCollab verification code is: ${otp}. It expires in 10 minutes.`;
   const textRes = await sendServiceTextMessage(phone, message);
 
@@ -478,7 +504,7 @@ export async function sendWappBizOTP(phone: string, otp: string): Promise<SendWa
   }
 
   console.error(
-    `[WappBiz OTP] delivery failed — text status=${textRes.status ?? 0} (${textRes.error || 'unknown'})`,
+    `[WappBiz OTP] service text delivery failed — status=${textRes.status ?? 0} (${textRes.error || 'unknown'})`,
   );
 
   const isWindowClosed =
@@ -487,7 +513,7 @@ export async function sendWappBizOTP(phone: string, otp: string): Promise<SendWa
 
   let errorMessage: string;
   if (isWindowClosed) {
-    errorMessage = 'WhatsApp 24h window closed. Please click "Verify via WhatsApp" to verify your number directly with zero templates.';
+    errorMessage = 'WhatsApp 24h window closed. Please configure an approved WappBiz OTP template in the dashboard or via WAPPBIZ_OTP_TEMPLATE_NAME in your .env.';
   } else {
     errorMessage = textRes.error || 'Failed to deliver WhatsApp verification code';
   }

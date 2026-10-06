@@ -40,12 +40,11 @@ export default function ChatArea({
   console.log("[ChatArea] Rendering with messages:", messages.length);
 
   const [processStep, setProcessStep] = React.useState(0);
-  const processWords = [
-    "Analyzing deal parameters & intent...",
-    "Scanning intelligence network for matches...",
-    "Structuring mandate criteria & financial scope...",
-    "Evaluating strategic synergy & alignment...",
-    "Synthesizing response..."
+  const matchmakingSteps = [
+    "Reading your requirement",
+    "Finding relevant profiles",
+    "Calculating compatibility",
+    "Preparing results"
   ];
 
   React.useEffect(() => {
@@ -54,10 +53,10 @@ export default function ChatArea({
       return;
     }
     const interval = setInterval(() => {
-      setProcessStep((prev) => (prev + 1) % processWords.length);
-    }, 1800);
+      setProcessStep((prev) => (prev < matchmakingSteps.length - 1 ? prev + 1 : prev));
+    }, 2200);
     return () => clearInterval(interval);
-  }, [isTyping, processWords.length]);
+  }, [isTyping, matchmakingSteps.length]);
 
   // Determine which message index should have the MatchPanel rendered immediately below it
   const matchPanelIndex = useMemo(() => {
@@ -198,12 +197,32 @@ export default function ChatArea({
       ))}
 
       {isTyping && (
-        <div className="flex items-center gap-3 w-full animate-in fade-in duration-300 py-1">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl shadow-sm">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF] animate-pulse shrink-0" />
-            <span className="text-[12px] font-normal text-[#747775] transition-all duration-300">
-              {processWords[processStep]}
-            </span>
+        <div className="flex flex-col gap-2 w-full max-w-sm animate-in fade-in duration-300 py-2">
+          <div className="p-4 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl shadow-xs space-y-2.5">
+            <div className="flex items-center gap-2 pb-1 border-b border-gray-200">
+              <div className="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse" />
+              <span className="text-[12px] font-bold text-[#1F2937]">Finding your best matches...</span>
+            </div>
+            <div className="space-y-1.5 pt-0.5">
+              {matchmakingSteps.map((step, idx) => {
+                const isPassed = processStep > idx;
+                const isCurrent = processStep === idx;
+                return (
+                  <div key={step} className="flex items-center gap-2 text-[11.5px] transition-colors">
+                    {isPassed ? (
+                      <span className="text-emerald-600 font-bold">✓</span>
+                    ) : isCurrent ? (
+                      <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-ping inline-block" />
+                    ) : (
+                      <span className="w-2 h-2 rounded-full border border-gray-300 inline-block" />
+                    )}
+                    <span className={isPassed ? 'text-gray-700 font-medium' : isCurrent ? 'text-[#EA580C] font-semibold' : 'text-gray-400 font-normal'}>
+                      {step}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

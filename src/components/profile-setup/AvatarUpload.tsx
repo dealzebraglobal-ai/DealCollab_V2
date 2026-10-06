@@ -60,30 +60,29 @@ export default function AvatarUpload({ file, existingUrl, onFileSelect }: Avatar
           >
             <Camera className="text-white mb-1" size={24} />
             <span className="text-[10px] font-bold text-white uppercase tracking-widest">Change Photo</span>
+            <span className="text-[8px] font-medium text-white/80 mt-1 uppercase">Max 5MB</span>
           </div>
         </div>
 
-        {(file || existingUrl) && (
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onFileSelect(null);
-            }}
-            className="absolute -top-2 -right-2 w-8 h-8 rounded-xl bg-red-50 text-red-500 border border-red-100 flex items-center justify-center shadow-sm hover:bg-red-100 transition-all z-10"
-          >
-            <X size={16} />
-          </button>
-        )}
+
       </div>
 
-      {!preview && (
+      <div className="flex items-center gap-3">
         <button 
           onClick={() => inputRef.current?.click()}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#fffaf3] border border-[#FFE4B5] text-[#FFA000] text-xs font-bold hover:bg-white hover:border-[#FFA000] transition-all"
         >
-          <Upload size={14} /> Upload Avatar
+          <Upload size={14} /> {preview ? 'Change Photo' : 'Upload Avatar'}
         </button>
-      )}
+        {preview && (
+          <button
+            onClick={() => onFileSelect(null)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 border border-red-100 text-red-500 text-xs font-bold hover:bg-red-100 transition-all"
+          >
+            <X size={14} /> Remove Photo
+          </button>
+        )}
+      </div>
 
       <input 
         ref={inputRef} 
@@ -93,8 +92,9 @@ export default function AvatarUpload({ file, existingUrl, onFileSelect }: Avatar
         className="hidden" 
       />
       
-      <p className="text-[10px] text-brand-secondary font-medium uppercase tracking-[0.1em] opacity-60">
-        Recommended: Square 400x400px · Max 5MB
+      <p className="text-[10px] text-brand-secondary font-medium uppercase tracking-[0.1em] opacity-60 flex flex-col items-center gap-1">
+        <span>Recommended: Square 400x400px</span>
+        <span className="bg-gray-100 px-2 py-0.5 rounded-md text-[9px] font-bold text-gray-500">MAX FILE SIZE: 5MB</span>
       </p>
     </div>
   );

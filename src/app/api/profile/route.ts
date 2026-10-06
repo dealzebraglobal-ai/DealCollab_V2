@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { calculateProfileCompletion, getProfileCompletion } from '@/lib/profileCompletion';
+import { getProfileCompletion } from '@/lib/profileCompletion';
 import { ProfileFormData, validateFullProfile } from '@/lib/validation/profile';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,7 +10,7 @@ import { resolveDbUser } from '@/lib/resolveDbUser';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   try {
     const supabase = createServerSupabaseClient();
     if (!supabase) {
@@ -33,14 +33,14 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const initialProfile = await resolveDbUser<{ id: string; [key: string]: any }>(supabase, session.user, '*');
+    const initialProfile = await resolveDbUser<{ id: string; [key: string]: unknown }>(supabase, session.user, '*');
 
     console.log('[PROFILE GET] Initial profile result:', {
       found: !!initialProfile,
       id: initialProfile?.id
     });
 
-    let profile: { id: string; [key: string]: any } | null = initialProfile;
+    let profile: { id: string } & Record<string, unknown> | null = initialProfile as unknown as { id: string } & Record<string, unknown> | null;
 
     if (!profile) {
       const email = session.user.email?.trim().toLowerCase() || `${session.user.id}@dealcollab.ai`;
@@ -60,14 +60,15 @@ export async function GET(_req: NextRequest) {
         console.error("Supabase error:", insertError);
         return NextResponse.json({ error: insertError?.message || 'Failed to create user' }, { status: 500 });
       }
-      profile = newProfile as { id: string; [key: string]: any };
+      profile = newProfile as unknown as { id: string } & Record<string, unknown>;
     }
 
     if (!profile) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
     }
 
-    const isBusinessPromoter = profile.category?.includes('Business Owner / Promoter') || false;
+    const profileCategory = profile.category as string[] | undefined;
+    const isBusinessPromoter = profileCategory?.includes('Business Owner / Promoter') || false;
 
     const { data: endUserProfile } = await supabase
       .from('end_user_profiles')
@@ -93,7 +94,8 @@ export async function GET(_req: NextRequest) {
       terms_accepted: accepted,
     };
     const canonical = getProfileCompletion(mergedUser);
-    const isComplete = canonical.isComplete || !!profile.profile_completed_once || (profile.profile_completion ?? 0) >= 100;
+    const profileCompletion = profile.profile_completion as number | undefined;
+    const isComplete = canonical.isComplete || !!profile.profile_completed_once || (profileCompletion ?? 0) >= 100;
     const finalPercentage = isComplete ? 100 : canonical.percentage;
 
     const { data: userProposals } = await supabase
@@ -204,7 +206,7 @@ export async function POST(req: NextRequest) {
     logProfileCreate(requestId, 'validation', 'success');
 
     // Fetch current user state by ID, email, or phone
-    const currentUser = await resolveDbUser<{ id: string; [key: string]: any }>(supabase, session.user, '*');
+    const currentUser = await resolveDbUser<{ id: string; [key: string]: unknown }>(supabase, session.user, '*');
 
     if (!currentUser) {
       logProfileCreate(requestId, 'user_lookup', 'failed', { reason: 'not_found' });

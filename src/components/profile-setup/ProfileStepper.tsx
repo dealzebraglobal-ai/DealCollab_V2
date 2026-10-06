@@ -3,14 +3,13 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useUser } from '../UserProvider';
 import {
   Globe,
-  ChevronRight, ChevronLeft, Zap, Check, Plus, X, FileText
+  ChevronRight, Zap, Check, X
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { UserProfile } from '../UserProvider';
 
 // PRD-aligned validation and types
 import { 
-  STEPS, 
   INITIAL_FORM_DATA, 
   ProfileFormData, 
   AdvisorRequirementItem,
@@ -19,7 +18,6 @@ import {
   calculateProgress,
   ROLE_OPTIONS,
   PROFESSIONAL_CATEGORY_OPTIONS,
-  MANDATE_OPTIONS,
   COLLABORATION_MODEL_OPTIONS,
   END_USER_INTENT_OPTIONS,
 } from '@/lib/validation/profile';
@@ -34,7 +32,7 @@ import FileUpload from './FileUpload';
 import AvatarUpload from './AvatarUpload';
 
 const SECTORS_LIST = [
-  "Pharma & Lifesciences", "Specialty Chemicals", "Auto & Components", "Engineering & Capital Goods",
+  "Manufacturing", "Pharma & Lifesciences", "Specialty Chemicals", "Auto & Components", "Engineering & Capital Goods",
   "Textiles & Apparel", "Food & Agri Processing", "FMCG & Consumer Brands", "IT Services & ITES",
   "Software & SaaS", "Healthcare & Hospitals", "Defence & Aerospace", "Education", "BFSI & Fintech",
   "Logistics & Supply Chain", "Real Estate & Infra", "Metals & Mining", "Packaging", "Renewables & Power",
@@ -94,6 +92,8 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
   const [direction, setDirection] = useState<'next' | 'back'>('next');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hasSelectedType, setHasSelectedType] = useState<boolean>(!!((initialData as unknown as Record<string, unknown>)?.professionalCategory && ((initialData as unknown as Record<string, unknown>).professionalCategory as string[]).length > 0));
   const dbHydrated = useRef(false);
   const sessionHydrated = useRef(false);
 
@@ -106,6 +106,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
   const [showMoreModalOptions, setShowMoreModalOptions] = useState(false);
   const [sectorSearch, setSectorSearch] = useState('');
   const [citySearch, setCitySearch] = useState('');
+  const [primarySectorSearch, setPrimarySectorSearch] = useState('');
   const [isSavingCard, setIsSavingCard] = useState(false);
   const [cardSaveError, setCardSaveError] = useState<string | null>(null);
 
@@ -114,43 +115,47 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
     if (initialData && !dbHydrated.current) {
       dbHydrated.current = true;
       const comp = initialData.companyName || initialData.company_name || initialData.firmName || initialData.firm_name || '';
-      setFormData(prev => ({
-        ...prev,
-        fullName: initialData.fullName || initialData.name || '',
-        workEmail: initialData.email || '',
-        phone: initialData.phone || '',
-        companyName: comp,
-        firmName: comp,
-        website: initialData.website || '',
-        primarySectors: initialData.sectors as string[] || [],
-        currentFocus: (initialData.currentFocus || initialData.intent || []) as string[],
-        expertiseDescription: initialData.expertiseDescription || initialData.expertise_description || '',
-        profileImage: initialData.profileImage || initialData.profile_image || '',
-        termsAccepted: !!((initialData as { termsAccepted?: boolean; terms_accepted?: boolean }).termsAccepted || (initialData as { termsAccepted?: boolean; terms_accepted?: boolean }).terms_accepted),
-        role: initialData.role || '',
-        customRole: (initialData as any).customRole || (initialData as any).custom_role || '',
-        professionalCategory: (initialData.category || (initialData as any).professionalCategory || []) as string[],
-        baseCity: initialData.baseCity || initialData.base_city || '',
-        baseCountry: initialData.baseCountry || initialData.base_country || '',
-        activeGeographies: (initialData as any).geographies || (initialData as any).activeGeographies || [],
-        crossBorder: (initialData as any).cross_border ?? (initialData as any).crossBorder ?? false,
-        corridors: (initialData as any).corridors || [],
-        coAdvisory: (initialData as any).co_advisory ?? (initialData as any).coAdvisory ?? false,
-        collaborationModels: (initialData as any).collaboration_model || (initialData as any).collaborationModels || [],
-        activeMandates: (initialData as any).active_mandates || (initialData as any).activeMandates || [],
-      }));
+      
+      queueMicrotask(() => {
+        setFormData(prev => ({
+          ...prev,
+          fullName: initialData.fullName || initialData.name || '',
+          workEmail: initialData.email || '',
+          phone: initialData.phone || '',
+          companyName: comp,
+          firmName: comp,
+          website: initialData.website || '',
+          primarySectors: initialData.sectors as string[] || [],
+          currentFocus: (initialData.currentFocus || initialData.intent || []) as string[],
+          expertiseDescription: initialData.expertiseDescription || initialData.expertise_description || '',
+          profileImage: initialData.profileImage || initialData.profile_image || '',
+          termsAccepted: !!((initialData as { termsAccepted?: boolean; terms_accepted?: boolean }).termsAccepted || (initialData as { termsAccepted?: boolean; terms_accepted?: boolean }).terms_accepted),
+          role: initialData.role || '',
+          customRole: (initialData as unknown as Record<string, unknown>).customRole as string || (initialData as unknown as Record<string, unknown>).custom_role as string || '',
+          professionalCategory: (initialData.category as string[] || (initialData as unknown as Record<string, unknown>).professionalCategory as string[] || []) as string[],
+          baseCity: initialData.baseCity || (initialData as unknown as Record<string, unknown>).base_city as string || '',
+          baseCountry: initialData.baseCountry || (initialData as unknown as Record<string, unknown>).base_country as string || '',
+          activeGeographies: (initialData as unknown as Record<string, unknown>).geographies as string[] || (initialData as unknown as Record<string, unknown>).activeGeographies as string[] || [],
+          crossBorder: (initialData as unknown as Record<string, unknown>).cross_border as boolean ?? (initialData as unknown as Record<string, unknown>).crossBorder as boolean ?? false,
+          corridors: (initialData as unknown as Record<string, unknown>).corridors as string[] || [],
+          coAdvisory: (initialData as unknown as Record<string, unknown>).co_advisory as boolean ?? (initialData as unknown as Record<string, unknown>).coAdvisory as boolean ?? false,
+          collaborationModels: (initialData as unknown as Record<string, unknown>).collaboration_model as string[] || (initialData as unknown as Record<string, unknown>).collaborationModels as string[] || [],
+          activeMandates: (initialData as unknown as Record<string, unknown>).active_mandates as string[] || (initialData as unknown as Record<string, unknown>).activeMandates as string[] || [],
+        }));
+        setHasSelectedType(true);
 
-      // Hydrate requirements
-      if (Array.isArray((initialData as { requirements?: AdvisorRequirementItem[] }).requirements)) {
-        const reqs = (initialData as { requirements?: AdvisorRequirementItem[] }).requirements || [];
-        if (reqs.length > 0) {
-          const loaded = [1, 2, 3, 4, 5].map(i => {
-            const found = reqs.find(r => r.slotIndex === i);
-            return found ? { ...found } : emptyCard(i);
-          });
-          setRequirementSlots(loaded);
+        // Hydrate requirements
+        if (Array.isArray((initialData as { requirements?: AdvisorRequirementItem[] }).requirements)) {
+          const reqs = (initialData as { requirements?: AdvisorRequirementItem[] }).requirements || [];
+          if (reqs.length > 0) {
+            const loaded = [1, 2, 3, 4, 5].map(i => {
+              const found = reqs.find(r => r.slotIndex === i);
+              return found ? { ...found } : emptyCard(i);
+            });
+            setRequirementSlots(loaded);
+          }
         }
-      }
+      });
 
       // Also ensure live DB requirements are synced
       fetch('/api/profile/requirements')
@@ -251,6 +256,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
   const isValid = currentErrors.length === 0;
 
   const handleUserTypeChange = (type: 'intermediary' | 'promoter') => {
+    setHasSelectedType(true);
     if (type === 'promoter') {
       updateFormData({
         professionalCategory: ['Business Owner / Promoter'],
@@ -268,19 +274,20 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
     if (currentStep < activeTotalSteps) {
       setDirection('next');
       setCurrentStep(prev => prev + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Delay scrolling slightly to allow DOM to render next step before scrolling
+      setTimeout(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 50);
     } else {
       await handleFinalSubmit();
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setDirection('back');
-      setCurrentStep(prev => prev - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
 
   const handleFinalSubmit = async () => {
     if (isSubmitting) return;
@@ -483,7 +490,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 pt-12 pb-48">
+    <div ref={containerRef} className="max-w-7xl mx-auto px-6 pt-12 pb-48">
       <div className="flex flex-col lg:flex-row gap-12 items-start relative">
 
         {/* LEFT SIDEBAR - Progress Panel */}
@@ -505,7 +512,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
               <ProgressBar progress={progress} />
             </div>
 
-            <nav className="space-y-2 pt-4 border-t border-gray-50">
+            <nav className={`space-y-2 pt-4 border-t border-gray-50 transition-opacity duration-300 ${hasSelectedType ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
               {activeSteps.map((step) => {
                 const isActive = currentStep === step.id;
                 const isCompleted = currentStep > step.id;
@@ -558,9 +565,12 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <button
                   type="button"
-                  onClick={() => handleUserTypeChange('intermediary')}
+                  onClick={() => {
+                    handleUserTypeChange('intermediary');
+                    setHasSelectedType(true);
+                  }}
                   className={`flex flex-col text-left p-6 rounded-2xl border-2 transition-all duration-300 ${
-                    !isBusinessPromoter
+                    !isBusinessPromoter && hasSelectedType
                       ? 'border-brand-accent bg-brand-accent/5 shadow-md shadow-brand-accent/5'
                       : 'border-gray-100 hover:border-gray-200 bg-gray-50/50'
                   }`}
@@ -572,7 +582,10 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleUserTypeChange('promoter')}
+                  onClick={() => {
+                    handleUserTypeChange('promoter');
+                    setHasSelectedType(true);
+                  }}
                   className={`flex flex-col text-left p-6 rounded-2xl border-2 transition-all duration-300 ${
                     isBusinessPromoter
                       ? 'border-brand-accent bg-brand-accent/5 shadow-md shadow-brand-accent/5'
@@ -588,6 +601,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
             </div>
 
             {/* ── STEP 1: BASIC IDENTITY ── */}
+            <div className={`transition-all duration-700 ${hasSelectedType ? 'opacity-100 max-h-[5000px] visible' : 'opacity-0 max-h-0 invisible overflow-hidden'}`}>
             <AnimatedStepWrapper direction={direction} isActive={currentStep === 1}>
               <StepCard 
                 title="Basic Identity" 
@@ -651,7 +665,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                             placeholder="e.g. Acme Corp" 
                           />
                         </InputGroup>
-                        <InputGroup label="Business Website *">
+                        <InputGroup label="Business Website (Optional)">
                           <input 
                             type="text" 
                             value={formData.website} 
@@ -751,56 +765,62 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                     </span>
                   </div>
 
-                  {/* 5 Cards Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* 5 Cards Stack */}
+                  <div className="flex flex-col gap-3">
                     {requirementSlots.map((card, idx) => {
                       const filled = isCardFilled(card);
                       return (
                         <div
                           key={idx}
                           onClick={() => openCardModal(idx)}
-                          className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between h-44 ${
+                          className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 group ${
                             filled
-                              ? 'border-brand-accent/40 bg-brand-accent/5 shadow-sm hover:border-brand-accent'
-                              : 'border-dashed border-gray-200 bg-white hover:border-brand-accent/50 hover:bg-gray-50'
+                              ? 'border-[#FFE4B5] bg-[#fffaf3] shadow-sm hover:border-[#FFA000]'
+                              : 'border-dashed border-gray-300 bg-gray-50/50 hover:border-[#FFA000]/60 hover:bg-[#fffaf3]'
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                              filled ? 'bg-brand-accent text-white' : 'bg-gray-100 text-gray-400'
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                              filled ? 'bg-[#FFA000] text-white shadow-sm' : 'bg-gray-200 text-gray-500 group-hover:bg-[#FFE4B5] group-hover:text-[#FFA000]'
                             }`}>
                               {idx + 1}
                             </span>
+                            
                             {filled ? (
-                              <span className="text-[10px] font-black uppercase text-brand-accent bg-white px-2 py-0.5 rounded-md border border-brand-accent/20 flex items-center gap-1">
-                                <Check size={12} /> Filled
-                              </span>
+                              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                <div className="text-[13px] font-bold text-foreground truncate flex items-center gap-1.5">
+                                  <span>{card.sectors.join(', ')}</span>
+                                  {card.niche && <span className="text-gray-400 font-normal truncate">· {card.niche}</span>}
+                                </div>
+                                <div className="flex items-center gap-2 text-[11px]">
+                                  <span className="text-[#FFA000] font-black tracking-wide">{card.revenue}</span>
+                                  {card.cities.length > 0 && (
+                                    <>
+                                      <span className="text-gray-300">•</span>
+                                      <span className="text-gray-500 truncate font-medium">{card.cities.join(', ')}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             ) : (
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Slot {idx + 1}</span>
+                              <div className="flex flex-col flex-1 min-w-0">
+                                <div className="text-[13px] font-bold text-gray-600 group-hover:text-gray-900 transition-colors">Requirement {idx + 1}</div>
+                                <div className="text-[11px] font-medium text-gray-400">Tap to setup your investment criteria</div>
+                              </div>
                             )}
                           </div>
-
-                          {filled ? (
-                            <div className="space-y-1">
-                              <div className="text-xs font-bold text-foreground line-clamp-1">
-                                {card.sectors.join(', ')}
-                              </div>
-                              <div className="text-[11px] text-brand-secondary line-clamp-1">
-                                {card.niche}
-                              </div>
-                              <div className="text-[10px] text-gray-400 line-clamp-1">
-                                {card.cities.join(', ')}
-                              </div>
-                              <div className="text-xs font-black text-brand-accent">
-                                {card.revenue}
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <div className="text-xs font-bold text-foreground">Requirement {idx + 1}</div>
-                              <div className="text-[11px] font-bold text-brand-accent mt-1">+ Click to configure</div>
-                            </div>
-                          )}
+                          
+                          <div className="shrink-0 flex items-center pl-2">
+                            {filled ? (
+                              <span className="text-[10px] font-black uppercase text-[#047857] bg-[#ECFDF5] px-2 py-1 rounded-md border border-[#A7F3D0] flex items-center gap-1">
+                                <Check size={12} strokeWidth={3} /> Saved
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold text-[#FFA000] px-3 py-1.5 rounded-lg border border-[#FFE4B5] bg-white group-hover:bg-[#FFA000] group-hover:text-white transition-all shadow-sm">
+                                Configure
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -823,13 +843,70 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
             <AnimatedStepWrapper direction={direction} isActive={currentStep === 2 && isBusinessPromoter}>
               <StepCard title="Business Details" helper="Specify your industry, goals, and description">
                 <div className="space-y-8">
-                  <MultiSelectChips
-                    label="Primary Industry Sectors *"
-                    options={[...SECTORS_LIST]}
-                    selected={formData.primarySectors}
-                    onChange={(selected: string[]) => updateFormData({ primarySectors: selected })}
-                    grid
-                  />
+                  <div>
+                    <InputGroup label="Primary Industry Sectors *">
+                      <div className="flex flex-wrap gap-1.5 p-3 bg-white border border-gray-200 rounded-2xl min-h-[48px] items-center">
+                        {formData.primarySectors.map(s => (
+                          <span key={s} className="inline-flex items-center gap-1.5 bg-brand-accent/5 border border-brand-accent/20 text-brand-accent text-xs font-bold px-3 py-1.5 rounded-xl">
+                            {s}
+                            <button 
+                              type="button"
+                              onClick={() => updateFormData({ primarySectors: formData.primarySectors.filter(x => x !== s) })}
+                              className="hover:text-red-500 font-black text-sm"
+                            >
+                              &times;
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          type="text"
+                          value={primarySectorSearch}
+                          onChange={e => setPrimarySectorSearch(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const trimmed = primarySectorSearch.trim();
+                              if (trimmed && !formData.primarySectors.includes(trimmed)) {
+                                updateFormData({ primarySectors: [...formData.primarySectors, trimmed] });
+                                setPrimarySectorSearch('');
+                              }
+                            }
+                          }}
+                          placeholder={formData.primarySectors.length === 0 ? "Search industry..." : "Add industry..."}
+                          className="flex-1 min-w-[140px] bg-transparent text-xs font-bold outline-none px-1 text-foreground"
+                        />
+                      </div>
+                    </InputGroup>
+                    <div className="flex flex-wrap gap-1.5 mt-2.5 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                      {SECTORS_LIST.filter(s => s.toLowerCase().includes(primarySectorSearch.toLowerCase()) && !formData.primarySectors.includes(s)).map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            if (!formData.primarySectors.includes(s)) {
+                              updateFormData({ primarySectors: [...formData.primarySectors, s] });
+                              setPrimarySectorSearch('');
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-xl border border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-600 hover:border-brand-accent hover:text-brand-accent transition-colors text-left"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                      {primarySectorSearch.trim() && !SECTORS_LIST.some(s => s.toLowerCase() === primarySectorSearch.trim().toLowerCase()) && !formData.primarySectors.includes(primarySectorSearch.trim()) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateFormData({ primarySectors: [...formData.primarySectors, primarySectorSearch.trim()] });
+                            setPrimarySectorSearch('');
+                          }}
+                          className="px-3 py-1.5 rounded-xl border border-dashed border-brand-accent text-brand-accent text-[11px] font-bold hover:bg-brand-accent/5 transition-colors text-left"
+                        >
+                          + Add &quot;{primarySectorSearch.trim()}&quot;
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
                   <MultiSelectChips
                     label="What are you looking for? *"
@@ -909,7 +986,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                       )}
 
                       <FileUpload
-                        label="Credentials / Firm Deck (Optional)"
+                        label="Upload Your Profile / Firm Deck (Optional)"
                         file={formData.attachmentFile}
                         existingUrl={formData.attachmentUrl}
                         onFileSelect={(file) => {
@@ -946,6 +1023,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
                 </div>
               </StepCard>
             </AnimatedStepWrapper>
+            </div>
           </div>
         </div>
       </div>
@@ -965,17 +1043,7 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
             </button>
           </div>
         )}
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <button 
-            onClick={handleBack} 
-            disabled={currentStep === 1 || isSubmitting} 
-            className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border-2 ${
-              currentStep === 1 ? 'bg-gray-50 text-gray-300 border-gray-100' : 'bg-white border-brand-accent/20 text-brand-accent hover:bg-brand-accent/5'
-            }`}
-          >
-            <ChevronLeft size={18} /> Back
-          </button>
-
+        <div className="max-w-5xl mx-auto flex items-center justify-end gap-6">
           <div className="flex flex-col items-center gap-1">
             {currentErrors.length > 0 && (
               <span className="text-[10px] font-black text-brand-accent uppercase animate-pulse">{currentErrors[0].message}</span>
@@ -1320,8 +1388,9 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
           border: 1px solid #FFE4B5;
           border-radius: 16px;
           padding: 1rem 1.25rem;
-          font-size: 0.875rem;
-          font-weight: 700;
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #0B1B2B;
           transition: all 0.2s;
           outline: none;
         }
@@ -1330,7 +1399,8 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
           box-shadow: 0 0 0 4px rgba(255, 160, 0, 0.1);
         }
         .input-premium::placeholder {
-          color: #FFE4B5;
+          color: #9CA3AF;
+          font-weight: 400;
         }
         .textarea-premium {
           width: 100% !important;
@@ -1338,8 +1408,9 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
           border: 1px solid #FFE4B5;
           border-radius: 16px;
           padding: 1rem 1.25rem;
-          font-size: 0.875rem;
-          font-weight: 700;
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #0B1B2B;
           transition: all 0.2s;
           outline: none;
           resize: none;
@@ -1350,7 +1421,8 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
           box-shadow: 0 0 0 4px rgba(255, 160, 0, 0.1);
         }
         .textarea-premium::placeholder {
-          color: #FFE4B5;
+          color: #9CA3AF;
+          font-weight: 400;
         }
       `}</style>
     </div>
@@ -1359,8 +1431,8 @@ export default function ProfileStepper({ onComplete, initialData }: ProfileStepp
 
 function InputGroup({ label, children }: { label: string, children: React.ReactNode }) {
   return (
-    <div className="space-y-3 w-full relative">
-      <label className="text-[11px] font-black uppercase tracking-[0.2em] text-brand-secondary ml-2 opacity-70 block">{label}</label>
+    <div className="space-y-2 w-full relative">
+      <label className="text-xs font-bold uppercase tracking-wider text-gray-700 ml-1 block">{label}</label>
       <div className="relative group">
         {children}
       </div>

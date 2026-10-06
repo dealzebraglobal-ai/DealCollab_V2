@@ -100,7 +100,6 @@ export function getProfileCompletion(user: ProfileUser | null | undefined): Cano
   if (isBusinessPromoter) {
     checks.push({ key: 'intent', passed: intent.length > 0 });
     checks.push({ key: 'company_name', passed: !!companyName });
-    checks.push({ key: 'website', passed: !!website });
   } else {
     // For intermediaries, company name is optional but good to have.
     // If they provided it, we can still count it, or we can just require role/base_city.

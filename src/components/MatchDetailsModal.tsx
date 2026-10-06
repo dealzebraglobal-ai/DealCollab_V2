@@ -147,10 +147,10 @@ export default function MatchDetailsModal({ isOpen, onClose, match, matchName, m
               </div>
 
               {/* Counterparty Profile */}
-              <div className="bg-[#F9FAFB] p-5 rounded-xl border border-[#E5E7EB] mb-5">
-                <div className="flex items-center gap-2 mb-4 border-b pb-2">
-                  <Building2 size={16} className="text-[#6B7280]" />
-                  <span className="text-sm font-bold text-[#1F2937]">Counterparty Profile</span>
+              <div className="bg-gradient-to-br from-[#fffaf3] to-white p-5 rounded-xl border border-[#FFE4B5] mb-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 border-b border-[#FFE4B5]/50 pb-2">
+                  <Building2 size={16} className="text-[#FFA000]" />
+                  <span className="text-[13px] font-bold text-[#1F2937]">Counterparty Profile</span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
@@ -234,15 +234,15 @@ export default function MatchDetailsModal({ isOpen, onClose, match, matchName, m
 
               {/* Strategic Rationale */}
               {reason && (
-                <div className="bg-[#F9FAFB] p-5 rounded-xl border border-[#E5E7EB] mb-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Target size={16} className="text-[#F97316]" />
-                    <span className="text-sm font-bold text-[#1F2937]">Strategic Rationale</span>
+                <div className="bg-gradient-to-br from-[#fffaf3] to-white p-5 rounded-xl border border-[#FFE4B5] mb-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3 border-b border-[#FFE4B5]/50 pb-2">
+                    <Target size={16} className="text-[#FFA000]" />
+                    <span className="text-[13px] font-bold text-[#1F2937]">Strategic Rationale</span>
                   </div>
-                  <div className="text-xs font-bold text-[#F97316] mb-1.5 uppercase tracking-wide">
+                  <div className="text-[10px] font-black text-[#FFA000] mb-2 uppercase tracking-widest">
                     {detailedData?.match?.matchArchetype || match?.matchArchetype || 'Adjacency Match'}
                   </div>
-                  <p className="text-sm text-[#4B5563] leading-relaxed">{reason}</p>
+                  <p className="text-[13px] text-gray-700 leading-relaxed font-medium pl-3 border-l-2 border-[#FFA000]/30 py-0.5">{reason}</p>
                 </div>
               )}
 

@@ -93,23 +93,25 @@ export default function DashboardRow({ item, error, onEOIClick, onApprove, onDec
     : (isIncomingOffer ? 94 : 89);
 
   return (
-    <div className="flex flex-col rounded-xl bg-white transition-all duration-200 shadow-2xs border border-[#E5E7EB] hover:border-gray-300">
+    <div className={`flex flex-col rounded-xl bg-white transition-all duration-200 shadow-2xs border ${
+      isIncomingOffer ? 'border-[#FED7AA] hover:border-[#EA580C]' : isApproved ? 'border-[#A7F3D0] hover:border-emerald-400' : 'border-[#E5E7EB] hover:border-gray-300'
+    }`}>
       {/* ── CARD TOP HEADER BAR ── */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-5 py-2.5 border-b border-gray-100 text-xs">
         {/* Left Side: Status Pill & Date */}
         <div className="flex items-center gap-2.5">
           {isSent && (
-            <span className="px-2.5 py-0.5 bg-gray-100 text-gray-700 font-bold text-[10.5px] uppercase tracking-wider rounded">
+            <span className="px-2.5 py-0.5 bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] font-bold text-[10.5px] uppercase tracking-wider rounded">
               SENT
             </span>
           )}
           {isIncomingOffer && (
-            <span className="px-2.5 py-0.5 bg-gray-100 text-gray-700 font-bold text-[10.5px] uppercase tracking-wider rounded">
+            <span className="px-2.5 py-0.5 bg-[#FFF7ED] text-[#EA580C] border border-[#FED7AA] font-bold text-[10.5px] uppercase tracking-wider rounded">
               RECEIVED OFFER
             </span>
           )}
           {isApproved && (
-            <span className="px-2.5 py-0.5 bg-gray-100 text-gray-700 font-bold text-[10.5px] uppercase tracking-wider rounded">
+            <span className="px-2.5 py-0.5 bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0] font-bold text-[10.5px] uppercase tracking-wider rounded">
               CONNECTED
             </span>
           )}

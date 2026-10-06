@@ -12,7 +12,6 @@ import { recordAcceptance, hasAcceptedTerms } from '@/lib/consent';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SIGNUP_TOKEN_GRANT = 100;
 
 export async function POST(req: NextRequest) {
   try {

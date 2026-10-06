@@ -112,11 +112,44 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
     .replace(/Identity stays hidden until an Expression of Interest is exchanged\.?/gi, '')
     .trim();
 
-  // Deep-link route
-  const matchHref =
-    notification.type === 'new_counterparty' && notification.matchId
-      ? `/deal-log/${notification.matchId}`
-      : (typeRoutes[notification.type] ?? '/deal-dashboard');
+  // Deep-link route calculation with fallback preservation
+  const resolvedMatchId = notification.matchId || notification.metadata?.matchId || notification.metadata?.match_id;
+  const resolvedProposalId = notification.proposalId || notification.metadata?.proposalId || notification.metadata?.proposal_id;
+  const resolvedChatId = notification.metadata?.conversation_id || notification.metadata?.chatId;
+
+  let matchHref = typeRoutes[notification.type] ?? '/deal-dashboard';
+  if ((notification.type === 'new_counterparty' || notification.type === 'match') && resolvedMatchId) {
+    matchHref = `/deal-log/${resolvedMatchId}`;
+  } else if (notification.type === 'new_deal' || notification.type === 'status') {
+    matchHref = resolvedProposalId ? '/deal-log' : '/deal-log';
+  } else if (resolvedChatId) {
+    matchHref = `/chat/${resolvedChatId}`;
+  }
+
+  // Get contextual CTA label
+  const getActionLabel = () => {
+    switch (notification.type) {
+      case 'new_counterparty':
+      case 'match':
+        return 'View Match';
+      case 'eoi_received':
+        return 'Review Offer';
+      case 'eoi_approved':
+        return 'View Introduction';
+      case 'eoi_declined':
+        return 'View Activities';
+      case 'eoi_approval_blocked':
+      case 'tokens_low':
+        return 'Buy Tokens';
+      case 'tokens_credited':
+        return 'View Balance';
+      case 'new_deal':
+      case 'status':
+        return 'View Mandate';
+      default:
+        return 'View Details';
+    }
+  };
 
   const navigate = () => {
     onMarkAsRead(notification.id);
@@ -128,18 +161,18 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
   return (
     <div
       onClick={navigate}
-      className={`relative flex items-start gap-4 p-5 rounded-2xl bg-white border transition-all duration-200 cursor-pointer shadow-2xs group ${
+      className={`relative flex items-start gap-4 p-5 rounded-2xl bg-white border transition-all duration-300 cursor-pointer shadow-sm group hover:-translate-y-0.5 hover:shadow-md ${
         isUnread
-          ? 'border-[#E5E7EB] border-l-[3.5px] border-l-[#EA580C] hover:border-gray-300'
-          : 'border-[#E5E7EB] hover:border-gray-300'
+          ? 'border-[#FFE4B5] border-l-[4px] border-l-[#FFA000] hover:border-[#FFA000]'
+          : 'border-gray-200 hover:border-gray-300'
       }`}
     >
       {/* Left Bell Icon Badge */}
       <div
-        className={`w-10 h-10 rounded-xl border shrink-0 flex items-center justify-center transition-all ${
+        className={`w-10 h-10 rounded-xl border shrink-0 flex items-center justify-center transition-all duration-300 ${
           isUnread
-            ? 'bg-[#FFF7ED] border-[#FFEDD5] text-[#EA580C]'
-            : 'bg-[#F3F4F6] border-[#E5E7EB] text-gray-400'
+            ? 'bg-[#fffaf3] border-[#FFE4B5] text-[#FFA000] group-hover:scale-110'
+            : 'bg-gray-50 border-gray-200 text-gray-400 group-hover:text-gray-600'
         }`}
       >
         <Bell size={18} />
@@ -179,7 +212,7 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
           </span>
         </div>
 
-        {/* Message Body: Normal regular text as requested (no artificial bolding) */}
+        {/* Message Body: What happened & Why it is relevant */}
         <p className="text-[13.5px] sm:text-[14px] leading-relaxed text-[#374151] font-normal">
           {cleanBodyMessage}
         </p>
@@ -192,33 +225,19 @@ export default function NotificationCard({ notification, onMarkAsRead }: Notific
           </div>
         )}
 
-        {/* Action Button */}
+        {/* Action Button: Clear CTA directing to the right destination */}
         <div className="mt-3.5">
-          {notification.type === 'eoi_approval_blocked' ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMarkAsRead(notification.id);
-                router.push('/profile/billing');
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-2xs active:scale-95 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300"
-            >
-              Buy Tokens
-              <ArrowRight size={13} />
-            </button>
-          ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMarkAsRead(notification.id);
-                router.push(matchHref);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-2xs active:scale-95 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300"
-            >
-              View Match
-              <ArrowRight size={13} />
-            </button>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMarkAsRead(notification.id);
+              router.push(matchHref);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-2xs active:scale-95 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300"
+          >
+            {getActionLabel()}
+            <ArrowRight size={13} />
+          </button>
         </div>
       </div>
     </div>

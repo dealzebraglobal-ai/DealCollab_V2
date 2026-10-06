@@ -262,9 +262,7 @@ export function validateStep(step: number, data: ProfileFormData): ValidationErr
         if (!data.companyName.trim()) {
           errors.push({ field: 'companyName', message: 'Company / Business Name is required' });
         }
-        if (!data.website.trim()) {
-          errors.push({ field: 'website', message: 'Business Website is required' });
-        } else if (!isValidWebsite(data.website)) {
+        if (data.website.trim() && !isValidWebsite(data.website)) {
           errors.push({ field: 'website', message: 'Enter a valid business website URL' });
         }
         if (data.phone.trim() && !isValidPhone(data.phone)) {

@@ -68,10 +68,16 @@ export default function InputBar({ onSendMessage, isSending = false }: InputBarP
     fileInputRef.current?.click();
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setPendingFile(file);
+      if (file.size > MAX_FILE_SIZE) {
+        alert("Image/Document is too large. Maximum size is 10 MB.");
+      } else {
+        setPendingFile(file);
+      }
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -99,12 +105,23 @@ export default function InputBar({ onSendMessage, isSending = false }: InputBarP
           {/* File Attachment Preview Badge */}
           {pendingFile && (
             <div className="flex items-center gap-2 mx-3 mt-3 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl animate-in slide-in-from-top-2">
-              <div className="w-5 h-5 rounded-full bg-[#FFF7ED] shrink-0 flex items-center justify-center">
-                <Plus size={12} className="text-[#C2410C] rotate-45" />
+              {pendingFile.type.startsWith('image/') ? (
+                <img 
+                  src={URL.createObjectURL(pendingFile)} 
+                  alt="Preview" 
+                  className="w-10 h-10 object-cover rounded-md shrink-0 border border-gray-200"
+                />
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-[#FFF7ED] shrink-0 flex items-center justify-center">
+                  <Plus size={12} className="text-[#C2410C] rotate-45" />
+                </div>
+              )}
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-xs font-medium text-gray-700 truncate max-w-[220px]">
+                  {pendingFile.name}
+                </span>
+                <span className="text-[10px] text-gray-400">Max size: 10 MB</span>
               </div>
-              <span className="text-xs font-medium text-gray-700 truncate max-w-[220px]">
-                {pendingFile.name}
-              </span>
               <button
                 type="button"
                 onClick={() => setPendingFile(null)}

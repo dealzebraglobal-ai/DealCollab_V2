@@ -61,7 +61,7 @@ export default function IncomingEOIDetails({ item, onApprove, onDecline }: Incom
             )}
           </div>
 
-          <div className="bg-gray-50 rounded-2xl border border-gray-100 p-6 space-y-6">
+          <div className="bg-gradient-to-b from-[#fffaf3] to-white rounded-2xl border border-[#FFE4B5] p-6 space-y-6 shadow-sm">
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <p className="text-[10px] font-medium text-gray-400 uppercase mb-1">Intent</p>
@@ -83,21 +83,21 @@ export default function IncomingEOIDetails({ item, onApprove, onDecline }: Incom
             </div>
 
             {synergy && (
-              <div className="pt-4 border-t border-gray-200 space-y-3">
+              <div className="pt-4 border-t border-[#FFE4B5]/50 space-y-3">
                 <p className="text-[10px] font-medium text-gray-400 uppercase mb-1">Synergy Assessment</p>
-                <p className="text-xs text-[#1F2937] leading-relaxed font-normal">{synergy.comment}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                  <div className="bg-white p-2.5 rounded-lg border border-gray-100">
-                    <p className="text-[9px] font-medium uppercase tracking-wider text-gray-400 mb-0.5">Sector</p>
-                    <p className="text-[11px] font-normal text-gray-700">{synergy.sectorFit}</p>
+                <p className="text-[13px] text-gray-800 leading-relaxed font-medium pl-3 border-l-2 border-[#FFA000]">{synergy.comment}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="bg-white p-3 rounded-xl border border-[#FFE4B5] shadow-xs">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#FFA000] mb-1">Sector</p>
+                    <p className="text-[12px] font-semibold text-gray-800">{synergy.sectorFit}</p>
                   </div>
-                  <div className="bg-white p-2.5 rounded-lg border border-gray-100">
-                    <p className="text-[9px] font-medium uppercase tracking-wider text-gray-400 mb-0.5">Financial</p>
-                    <p className="text-[11px] font-normal text-gray-700">{synergy.financialFit}</p>
+                  <div className="bg-white p-3 rounded-xl border border-[#FFE4B5] shadow-xs">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#FFA000] mb-1">Financial</p>
+                    <p className="text-[12px] font-semibold text-gray-800">{synergy.financialFit}</p>
                   </div>
-                  <div className="bg-white p-2.5 rounded-lg border border-gray-100">
-                    <p className="text-[9px] font-medium uppercase tracking-wider text-gray-400 mb-0.5">Geography</p>
-                    <p className="text-[11px] font-normal text-gray-700">{synergy.geographyFit}</p>
+                  <div className="bg-white p-3 rounded-xl border border-[#FFE4B5] shadow-xs">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#FFA000] mb-1">Geography</p>
+                    <p className="text-[12px] font-semibold text-gray-800">{synergy.geographyFit}</p>
                   </div>
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-[10px] font-medium text-[#EA580C]">
@@ -116,17 +116,17 @@ export default function IncomingEOIDetails({ item, onApprove, onDecline }: Incom
               <h4 className="text-xs font-medium uppercase tracking-wider text-[#1F2937]">Identity Status</h4>
             </div>
 
-            <div className="p-6 bg-gray-50 border border-gray-200 rounded-2xl">
+            <div className="p-6 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl shadow-sm">
               <div className="flex items-start gap-4 mb-4">
                 <Info size={20} className="text-[#EA580C] shrink-0 mt-0.5" />
-                <p className="text-xs text-[#4B5563] font-normal leading-relaxed">
+                <p className="text-[13px] text-gray-700 font-medium leading-relaxed">
                   The counterparty&apos;s name and contact details are hidden. By clicking &quot;Approve&quot;, you unlock
                   mutual identity and direct communication channels. Both parties are charged on approval.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 opacity-40 grayscale pointer-events-none select-none">
-                <div className="h-8 bg-white/50 rounded-lg"></div>
-                <div className="h-8 bg-white/50 rounded-lg"></div>
+              <div className="grid grid-cols-2 gap-3 opacity-20 grayscale pointer-events-none select-none blur-[1px]">
+                <div className="h-10 bg-gray-200 rounded-lg"></div>
+                <div className="h-10 bg-gray-200 rounded-lg"></div>
               </div>
             </div>
           </div>

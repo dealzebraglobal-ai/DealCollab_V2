@@ -5,7 +5,6 @@ import InputBar from "@/components/InputBar";
 import { ChatSkeleton } from '@/components/Skeleton';
 import { useChat } from '@/components/ChatProvider';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
 import { validateParseDocumentRequest, type ParseDocumentRequest } from '@/lib/parseDocumentContract';
 
 export default function Home() {
@@ -52,7 +51,7 @@ export default function Home() {
 
     // Build the display message for the user bubble
     // If file only (no text), show a placeholder so the bubble is not empty
-    const displayText = text.trim() || (file ? `Please extract and analyse this document: ${file.name}` : '');
+    const displayText = text.trim() || (file ? `Uploaded document: ${file.name}` : '');
 
     const userMsg: Message = {
       role: 'user' as const,
@@ -216,7 +215,7 @@ export default function Home() {
       // If user only attached a file with no text, use an instruction prompt
       const aiMessage = text.trim()
         ? text.trim()
-        : `Please extract the deal mandate and key information from this document and begin qualification.`;
+        : `Process this document.`;
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -380,9 +379,6 @@ export default function Home() {
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-12 h-12 rounded-full bg-[#F3F4F6] flex items-center justify-center mb-4 border border-[#E5E7EB] shadow-sm">
-                <Plus size={22} className="text-[#FF6A00]" />
-              </div>
               <h2 className="text-xl font-semibold text-[#1F1F1F] mb-1.5 tracking-tight">Start a new conversation</h2>
               <p className="text-[#444746] text-xs max-w-xs font-normal">Describe your deal, mandate, or project to begin extraction.</p>
             </div>

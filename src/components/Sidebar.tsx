@@ -33,7 +33,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
   const { data: session } = useSession();
 
   const menuItems = [
-    { name: 'New Conversation', icon: Plus, href: '/home', isNewChat: true },
+    { name: 'New Conversation', icon: Plus, href: '/home', isNewChat: true, targetId: 'new-conversation' },
     { name: 'Deal Log', icon: FileText, href: '/deal-log', targetId: 'deal-log' },
     { name: 'EOI Activities', icon: LayoutDashboard, href: '/eoi-activities', targetId: 'deal-dashboard' },
     { name: 'Intelligence', icon: BrainIcon, href: '/deal-intelligence' },
@@ -102,6 +102,7 @@ export default function Sidebar({ isCollapsed, onItemClick }: SidebarProps) {
               return (
                 <button
                   key={item.name}
+                  data-onboarding-target={item.targetId}
                   onClick={handleNewChat}
                   className={`group flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2 transition-all duration-200 w-full text-left ${
                     isActive ? activeClass : inactiveClass

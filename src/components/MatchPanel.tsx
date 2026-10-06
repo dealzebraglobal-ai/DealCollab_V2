@@ -16,7 +16,10 @@ function renderDealSummary(rawSummary: string | undefined | null, maxParagraphs?
     const displayParagraphs = maxParagraphs ? paragraphs.slice(0, maxParagraphs) : paragraphs;
 
     return (
-        <div className="my-2.5 p-3.5 bg-gray-50/90 border border-gray-200/90 rounded-xl space-y-2.5 text-xs text-gray-700 leading-relaxed shadow-xs">
+        <div className="my-3 p-4 bg-gradient-to-br from-[#fffaf3] to-white border border-[#FFE4B5] rounded-xl space-y-3 shadow-[0_2px_10px_-4px_rgba(234,88,12,0.1)]">
+            <h4 className="text-[10px] font-black tracking-widest uppercase text-[#FFA000] mb-2 border-b border-[#FFE4B5]/50 pb-2">
+                Deal Summary
+            </h4>
             {displayParagraphs.map((paragraph, pIdx) => {
                 const lines = paragraph.split('\n');
                 const firstLine = lines[0].trim();
@@ -25,15 +28,15 @@ function renderDealSummary(rawSummary: string | undefined | null, maxParagraphs?
                 const bodyText = isHeading ? lines.slice(1).join(' ').trim() : lines.join(' ').trim();
 
                 return (
-                    <div key={pIdx} className="space-y-0.5">
+                    <div key={pIdx} className="space-y-1">
                         {headingText && (
-                            <h4 className="text-[11px] font-semibold tracking-wide uppercase text-gray-900 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF6A00] inline-block" />
+                            <h5 className="text-[12px] font-bold text-gray-900 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C] inline-block" />
                                 {headingText}
-                            </h4>
+                            </h5>
                         )}
                         {bodyText && (
-                            <p className="text-gray-600 font-normal leading-relaxed pl-3 border-l border-gray-200">
+                            <p className="text-[13px] text-gray-600 font-medium leading-relaxed pl-3 border-l-2 border-[#EA580C]/20 py-0.5">
                                 {bodyText}
                             </p>
                         )}

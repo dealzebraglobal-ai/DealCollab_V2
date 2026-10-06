@@ -18,16 +18,25 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'tokens',
     targetKey: 'tokens',
     title: 'Tokens',
-    badge: '1 of 5',
+    badge: '1 of 6',
     description: 'Tokens are used across DealCollab to access and use platform features. You can earn Tokens through eligible activities (such as completing your profile) and use them where Tokens are required, such as sending Expressions of Interest.',
     preferredPlacement: 'bottom',
     icon: Coins,
   },
   {
+    id: 'new-conversation',
+    targetKey: 'new-conversation',
+    title: 'New Conversation',
+    badge: '2 of 6',
+    description: 'Start a new conversation with DealCollab AI to discover matches, analyze companies, and explore opportunities.',
+    preferredPlacement: 'right',
+    icon: Sparkles,
+  },
+  {
     id: 'deal-log',
     targetKey: 'deal-log',
     title: 'Deal Log',
-    badge: '2 of 5',
+    badge: '3 of 6',
     description: 'Deal Log is where you can see your deals, conversations, and matched opportunities.',
     preferredPlacement: 'right',
     icon: FileText,
@@ -36,7 +45,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'deal-dashboard',
     targetKey: 'deal-dashboard',
     title: 'EOI Activities',
-    badge: '3 of 5',
+    badge: '4 of 6',
     description: 'EOI Activities helps you track your EOI interactions, mutual interest, and connected parties.',
     preferredPlacement: 'right',
     icon: LayoutDashboard,
@@ -45,7 +54,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'notifications',
     targetKey: 'notifications',
     title: 'Notifications',
-    badge: '4 of 5',
+    badge: '5 of 6',
     description: 'Stay updated with real-time deal alerts, counterparty responses, EOI status changes, and critical mandate updates.',
     preferredPlacement: 'right',
     icon: Bell,
@@ -54,7 +63,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'guide',
     targetKey: 'guide',
     title: 'Guide & Trust',
-    badge: '5 of 5',
+    badge: '6 of 6',
     description: 'Explore comprehensive guides on platform workflows, mandate matching, and token usage, alongside our institutional Trust Center covering privacy, NDAs, and DPDP Act compliance.',
     preferredPlacement: 'right',
     icon: BookOpen,
@@ -92,7 +101,7 @@ export default function OnboardingTutorial() {
 
     // Rule: Already completed or skipped tutorial
     if (profile.onboardingTutorialCompleted || onboarding.tutorialCompleted) return false;
-    if (typeof window !== 'undefined' && localStorage.getItem('dc_tutorial_completed') === 'true') {
+    if (typeof window !== 'undefined' && profile?.id && localStorage.getItem(`dc_tutorial_completed_${profile.id}`) === 'true') {
       return false;
     }
 

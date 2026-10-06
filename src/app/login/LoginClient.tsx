@@ -17,7 +17,7 @@ import { getMailtoUrl } from '@/lib/supportEmail';
 const AuthContent = () => {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
-  const { setOnboarding, isProfileComplete, isProfileLoading } = useUser();
+  const { onboarding, setOnboarding, isProfileComplete, isProfileLoading } = useUser();
   const router = useRouter();
   
   const source = searchParams.get('source');
@@ -79,17 +79,22 @@ const AuthContent = () => {
 
   // 2. State Machine for Auth Steps
   useEffect(() => {
-    if (!mounted || status !== 'authenticated' || !session?.user) return;
+    if (!mounted || status !== 'authenticated' || !session?.user || isProfileLoading) return;
     
-    // Once authenticated (Google or Email), user is verified — no mobile verification roadblock
-    setOnboarding('phoneVerified', true);
-    if (step !== 'verified') {
-      Promise.resolve().then(() => setStep('verified'));
+    // Check if phone is verified
+    if (!onboarding.phoneVerified) {
+      if (step !== 'phone') {
+        Promise.resolve().then(() => setStep('phone'));
+      }
+    } else {
+      if (step !== 'verified') {
+        Promise.resolve().then(() => setStep('verified'));
+      }
+      if (!isVerified) {
+        Promise.resolve().then(() => setIsVerified(true));
+      }
     }
-    if (!isVerified) {
-      Promise.resolve().then(() => setIsVerified(true));
-    }
-  }, [mounted, status, session, setOnboarding, step, isVerified]);
+  }, [mounted, status, session, onboarding.phoneVerified, isProfileLoading, step, isVerified]);
 
   const handleGoogleSignIn = () => {
     setIsLoading(true);
@@ -109,9 +114,14 @@ const AuthContent = () => {
 
   const handleEmailOtpSuccess = (hasPhone: boolean) => {
     console.log('[Auth] Email OTP verified', { hasPhone });
-    setOnboarding('phoneVerified', true);
-    setStep('verified');
-    setIsVerified(true);
+    if (hasPhone) {
+      setOnboarding('phoneVerified', true);
+      setStep('verified');
+      setIsVerified(true);
+    } else {
+      setOnboarding('phoneVerified', false);
+      setStep('phone');
+    }
   };
 
   return (

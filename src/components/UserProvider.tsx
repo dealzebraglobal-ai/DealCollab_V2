@@ -140,6 +140,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     additional: 0,
   });
 
+  const logout = useCallback(async (reason?: 'session_expired' | 'link_expired') => {
+    setProfile(null);
+    setTokens(0);
+    setApprovedDeals([]);
+    setIsProfileLoading(false);
+    setOnboardingState({
+      phoneVerified: false,
+      profileCompleted: false,
+      dealSubmitted: false,
+      tutorialCompleted: false,
+    });
+    
+    trackLogout();
+    await signOut({
+      callbackUrl: reason ? `/login?error=${reason}` : '/',
+      redirect: true
+    });
+  }, []);
+
   const fetchSupabaseData = useCallback(async () => {
     if (!supabase) {
       setGlobalError("Supabase configuration is missing. Please check your .env file.");
@@ -224,7 +243,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         });
         
         setOnboardingState(prev => ({
-          phoneVerified: !!(data.is_phone_verified || data.phone),
+          phoneVerified: !!(data.is_phone_verified || data.isPhoneVerified),
           profileCompleted,
           dealSubmitted: prev.dealSubmitted,
           tutorialCompleted,
@@ -235,11 +254,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsProfileLoading(false);
     }
-  }, [session, supabase]);
+  }, [session, supabase, logout]);
 
   const completeOnboardingTutorial = useCallback(async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dc_tutorial_completed', 'true');
+    if (typeof window !== 'undefined' && profile?.id) {
+      localStorage.setItem(`dc_tutorial_completed_${profile.id}`, 'true');
     }
     setOnboardingState(prev => ({ ...prev, tutorialCompleted: true }));
     setProfile(prev => prev ? { ...prev, onboardingTutorialCompleted: true } : null);
@@ -259,7 +278,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         await fetchSupabaseData();
       })();
     } else if (status === 'unauthenticated') {
-      setIsProfileLoading(false);
+      setTimeout(() => setIsProfileLoading(false), 0);
     }
   }, [status, fetchSupabaseData]);
 
@@ -267,28 +286,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // Auth is managed by NextAuth status
   }, []);
 
-  const logout = useCallback(async (reason?: 'session_expired' | 'link_expired') => {
-    setProfile(null);
-    setTokens(0);
-    setApprovedDeals([]);
-    setIsProfileLoading(false);
-    setOnboardingState({
-      phoneVerified: false,
-      profileCompleted: false,
-      dealSubmitted: false,
-      tutorialCompleted: false,
-    });
-    
-    trackLogout();
-    await signOut({
-      // A deliberate logout goes to / (the public homepage, per spec). An
-      // involuntary bounce (session/link expired — the user was trying to
-      // reach the private app) goes to /login with the reason, since that's
-      // where the sign-in form (and its error banner) now lives.
-      callbackUrl: reason ? `/login?error=${reason}` : '/',
-      redirect: true
-    });
-  }, []);
+
 
   const setOnboarding = useCallback((step: 'phoneVerified' | 'profileCompleted' | 'dealSubmitted' | 'tutorialCompleted', value: boolean) => {
     setOnboardingState(prev => {
