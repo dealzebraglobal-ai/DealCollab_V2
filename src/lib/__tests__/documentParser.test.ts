@@ -153,7 +153,7 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
 
     const { extractTextFromFile } = await import('../documentParser');
     await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow(/OCR_FAILED/);
-    expect(tesseractTerminate).toHaveBeenCalled();
+    expect(pdfParseDestroy).toHaveBeenCalled();
   });
 
   it('5b. worker.recognize() itself throwing (distinct from a screenshot/render failure) is caught and reported as OCR_FAILED', async () => {
@@ -313,7 +313,8 @@ describe('extractTextFromFile — per-page hybrid extraction, bounded OCR fallba
 
   it('14. worker and parser resources are always cleaned up, even when extraction ultimately fails', async () => {
     pdfParseGetText.mockResolvedValue(textResult(['x']));
-    pdfParseGetScreenshot.mockRejectedValue(new Error('renderer unavailable'));
+    pdfParseGetScreenshot.mockResolvedValue(screenshotFor(1));
+    tesseractRecognize.mockRejectedValue(new Error('tesseract crash'));
 
     const { extractTextFromFile } = await import('../documentParser');
     await expect(extractTextFromFile(Buffer.from('pdf'), 'application/pdf')).rejects.toThrow();

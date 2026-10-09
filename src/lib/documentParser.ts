@@ -1,5 +1,6 @@
 import mammoth from 'mammoth';
 import zlib from 'node:zlib';
+import OpenAI from 'openai';
 
 interface PDFParseInstance {
   getText(params?: Record<string, unknown>): Promise<{ total: number; text?: string; pages: Array<{ num: number; text: string }> }>;
@@ -26,6 +27,55 @@ function envInt(name: string, fallback: number): number {
 const PDF_EXTRACTION_TIMEOUT_MS = envInt('PDF_EXTRACTION_TIMEOUT_MS', 20_000);
 const OCR_WORKER_INIT_TIMEOUT_MS = envInt('OCR_WORKER_INIT_TIMEOUT_MS', 60_000);
 const OCR_PAGE_TIMEOUT_MS = envInt('OCR_PAGE_TIMEOUT_MS', 60_000);
+const VISION_PAGE_TIMEOUT_MS = envInt('VISION_PAGE_TIMEOUT_MS', 25_000);
+
+/**
+ * Extracts text, metrics, and structured financial data from an image/page data URL using OpenAI Vision.
+ * Provides high-accuracy parsing on visual infographics and pitch decks while running safely within
+ * Vercel Serverless execution environments.
+ */
+async function extractPageWithVision(dataUrl: string, pageNum: number, requestId: string): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  const tag = `[parse-document][request=${requestId}]`;
+  const start = Date.now();
+  console.error(`${tag} STEP vision:start page=${pageNum}`);
+  try {
+    const openai = new OpenAI({ apiKey });
+    const response = await withTimeout(
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract all readable text, titles, numbers, financial metrics, bullet points, and key details from this document page verbatim and cleanly formatted in markdown. Preserve tables and data structures.'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: dataUrl
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 2000,
+      }),
+      VISION_PAGE_TIMEOUT_MS,
+      `Vision recognition for page ${pageNum}`
+    );
+    const content = response.choices[0]?.message?.content?.trim() || '';
+    console.error(`${tag} STEP vision:success page=${pageNum} duration_ms=${Date.now() - start} chars=${content.length}`);
+    return content;
+  } catch (err) {
+    console.error(`${tag} STEP vision:fallback page=${pageNum}`, err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
 
 // Document-size limits — configurable via env so large-but-legitimate
 // business documents can be tuned without a code change.
@@ -299,14 +349,6 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
       }
 
       try {
-        if (!worker) {
-          console.error(`${tag} STEP ocr-worker-init:start`);
-          const workerInitStart = Date.now();
-          const { createWorker } = await import('tesseract.js');
-          worker = await withTimeout(createWorker('eng'), OCR_WORKER_INIT_TIMEOUT_MS, 'OCR worker initialization');
-          console.error(`${tag} STEP ocr-worker-init:success duration_ms=${Date.now() - workerInitStart}`);
-        }
-
         console.error(`${tag} STEP screenshot:start page=${pageNum}`);
         const screenshotStart = Date.now();
         const shot = await withTimeout(
@@ -323,20 +365,39 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
           `${tag} STEP screenshot:success page=${pageNum} duration_ms=${Date.now() - screenshotStart} type=${renderedMimeType} size=${dataUrlPayload?.length ?? 0}`,
         );
 
-        console.error(`${tag} STEP ocr-recognize:start page=${pageNum}`);
-        const recognizeStart = Date.now();
-        const { data: { text: ocrText } } = await withTimeout(
-          worker.recognize(dataUrl),
-          OCR_PAGE_TIMEOUT_MS,
-          `OCR page ${pageNum} recognition`,
-        );
-        console.error(
-          `${tag} STEP ocr-recognize:success page=${pageNum} duration_ms=${Date.now() - recognizeStart} chars=${ocrText.length}`,
-        );
+        let pageText = '';
+        if (process.env.OPENAI_API_KEY) {
+          const visionText = await extractPageWithVision(dataUrl, pageNum, requestId);
+          if (visionText && hasUsableOcrText(visionText)) {
+            pageText = visionText;
+          }
+        }
+
+        if (!pageText) {
+          if (!worker) {
+            console.error(`${tag} STEP ocr-worker-init:start`);
+            const workerInitStart = Date.now();
+            const { createWorker } = await import('tesseract.js');
+            worker = await withTimeout(createWorker('eng'), OCR_WORKER_INIT_TIMEOUT_MS, 'OCR worker initialization');
+            console.error(`${tag} STEP ocr-worker-init:success duration_ms=${Date.now() - workerInitStart}`);
+          }
+
+          console.error(`${tag} STEP ocr-recognize:start page=${pageNum}`);
+          const recognizeStart = Date.now();
+          const { data: { text: ocrText } } = await withTimeout(
+            worker.recognize(dataUrl),
+            OCR_PAGE_TIMEOUT_MS,
+            `OCR page ${pageNum} recognition`,
+          );
+          console.error(
+            `${tag} STEP ocr-recognize:success page=${pageNum} duration_ms=${Date.now() - recognizeStart} chars=${ocrText.length}`,
+          );
+          pageText = ocrText;
+        }
 
         ocrPagesUsed++;
-        if (hasUsableOcrText(ocrText)) {
-          perPageText.push(ocrText.trim());
+        if (hasUsableOcrText(pageText)) {
+          perPageText.push(pageText.trim());
           usedOcr = true;
         } else {
           warnings.push(`Page ${pageNum} produced no readable text (native extraction and OCR both came back empty or unusable).`);
@@ -397,6 +458,19 @@ async function extractPdf(buffer: Buffer, requestId: string): Promise<Extraction
 // "native text layer" (unlike a PDF), so it always goes straight to OCR.
 async function extractImageText(buffer: Buffer, mimeType: string, requestId: string): Promise<ExtractionResult> {
   const tag = `[parse-document][request=${requestId}]`;
+  const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const visionText = await extractPageWithVision(dataUrl, 1, requestId);
+      if (visionText && hasUsableOcrText(visionText)) {
+        return { text: visionText.trim(), pageCount: 1, extractionMethod: 'ocr', pagesProcessed: 1, warnings: [] };
+      }
+    } catch (visionErr) {
+      console.error(`${tag} Image vision extraction failed, falling back to Tesseract:`, visionErr);
+    }
+  }
+
   type TesseractWorker = Awaited<ReturnType<typeof import('tesseract.js')['createWorker']>>;
   let worker: TesseractWorker | null = null;
   try {
@@ -405,7 +479,6 @@ async function extractImageText(buffer: Buffer, mimeType: string, requestId: str
     worker = await withTimeout(createWorker('eng'), OCR_WORKER_INIT_TIMEOUT_MS, 'OCR worker initialization');
     console.error(`${tag} STEP ocr-worker-init:success (image)`);
 
-    const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
     console.error(`${tag} STEP ocr-recognize:start (image)`);
     const { data: { text } } = await withTimeout(
       worker.recognize(dataUrl),
