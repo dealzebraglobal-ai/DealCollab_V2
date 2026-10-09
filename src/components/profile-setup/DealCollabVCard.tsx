@@ -135,7 +135,7 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
       <div className="flex items-center gap-3.5 sm:gap-5 my-3.5">
         {/* Photo Box */}
         <div
-          className="rounded-2xl border-2 border-[#EFD2A5] p-0.5 shrink-0 overflow-hidden shadow-xs bg-white flex items-center justify-center"
+          className="rounded-2xl border-[2px] sm:border-[2.5px] border-[#EFD2A5] p-1 sm:p-1.5 shrink-0 overflow-hidden shadow-xs bg-white flex items-center justify-center"
           style={{ width: '104px', height: '104px', minWidth: '104px', minHeight: '104px', maxWidth: '104px', maxHeight: '104px' }}
         >
           {photo && !photoFailed ? (
@@ -143,13 +143,12 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
             <img
               src={photo}
               alt={name}
-              className="rounded-[14px] block"
-              style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', objectFit: 'cover' }}
+              className="rounded-xl block w-full h-full object-cover object-top"
               onError={() => setPhotoFailed(true)}
               crossOrigin="anonymous"
             />
           ) : (
-            <div className="w-full h-full rounded-[14px] bg-[#FDF8EE] text-[#B45309] font-bold text-2xl sm:text-3xl flex items-center justify-center">
+            <div className="w-full h-full rounded-xl bg-[#FDF8EE] text-[#B45309] font-bold text-2xl sm:text-3xl flex items-center justify-center">
               {initials}
             </div>
           )}

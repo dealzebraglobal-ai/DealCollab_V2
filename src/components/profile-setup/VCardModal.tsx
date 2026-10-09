@@ -256,20 +256,27 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
       return y;
     };
 
-    // 3. Hero Profile Row: Square 259 x 259 photo at (34, 114)
+    // 3. Hero Profile Row: Square 259 x 259 photo at (34, 114) with protected golden frame & 10px inner padding
     const photoX = 34;
     const photoY = 114;
     const photoW = 259;
     const photoH = 259;
     const photoRadius = 24;
+    const photoPadding = 10;
 
+    // Outer white box fill
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(photoX, photoY, photoW, photoH, [photoRadius]);
-    ctx.lineWidth = 3.5;
-    ctx.strokeStyle = '#EFD2A5';
-    ctx.stroke();
-    ctx.clip();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+
+    // Inner photo area with rounded corners
+    const innerX = photoX + photoPadding;
+    const innerY = photoY + photoPadding;
+    const innerW = photoW - photoPadding * 2;
+    const innerH = photoH - photoPadding * 2;
+    const innerRadius = 16;
 
     let imageDrawn = false;
     if (photo) {
@@ -281,12 +288,21 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
           img.onerror = () => reject();
           img.src = photo;
         });
-        const scale = Math.max(photoW / img.width, photoH / img.height);
-        const sw = photoW / scale;
-        const sh = photoH / scale;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(innerX, innerY, innerW, innerH, [innerRadius]);
+        ctx.clip();
+
+        // Scale & crop properly: if portrait, bias towards upper portion where face is located
+        const scale = Math.max(innerW / img.width, innerH / img.height);
+        const sw = innerW / scale;
+        const sh = innerH / scale;
         const sx = (img.width - sw) / 2;
-        const sy = (img.height - sh) / 2;
-        ctx.drawImage(img, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+        const sy = img.height > img.width ? Math.max(0, (img.height - sh) * 0.2) : (img.height - sh) / 2;
+
+        ctx.drawImage(img, sx, sy, sw, sh, innerX, innerY, innerW, innerH);
+        ctx.restore();
         imageDrawn = true;
       } catch {
         // Fallback to initials
@@ -294,15 +310,26 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
     }
 
     if (!imageDrawn) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(innerX, innerY, innerW, innerH, [innerRadius]);
       ctx.fillStyle = '#FDF8EE';
-      ctx.fillRect(photoX, photoY, photoW, photoH);
+      ctx.fill();
       const initials = (name ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('') : 'DC').toUpperCase();
       ctx.fillStyle = '#B45309';
       ctx.font = 'bold 64px Cambria, Georgia, serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(initials, photoX + photoW / 2, photoY + photoH / 2);
+      ctx.fillText(initials, innerX + innerW / 2, innerY + innerH / 2);
+      ctx.restore();
     }
+
+    // Outer Golden Border drawn cleanly ON TOP so it is NEVER covered or removed
+    ctx.beginPath();
+    ctx.roundRect(photoX, photoY, photoW, photoH, [photoRadius]);
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#EFD2A5';
+    ctx.stroke();
     ctx.restore();
 
     // Name, Firm Name, Designation
