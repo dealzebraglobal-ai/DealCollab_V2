@@ -108,9 +108,37 @@ describe("parseWappbizInbound — rejected", () => {
     });
   });
 
-  it("unknown data.type (e.g. image) → UNSUPPORTED_TYPE (with detail)", () => {
-    const p = { ...validPayload, data: { ...validPayload.data, type: "image", text: undefined } };
-    expect(parseWappbizInbound(p)).toEqual({ ok: false, reason: "UNSUPPORTED_TYPE", detail: "image" });
+  it("accepts document attachment with media_url", () => {
+    const docPayload = {
+      ...validPayload,
+      data: {
+        ...validPayload.data,
+        type: "document",
+        text: undefined,
+        document: {
+          filename: "Project_Jewel_Investor_Teaser_V2_Oct26.pdf",
+          media_url: "https://d3h7pbw71jzzlo.cloudfront.net/doc.pdf",
+          mime_type: "application/pdf",
+        },
+      },
+    };
+    expect(parseWappbizInbound(docPayload)).toEqual({
+      ok: true,
+      from: "918850333250",
+      text: "[Document attached: Project_Jewel_Investor_Teaser_V2_Oct26.pdf]",
+      messageId: "wamid.HBgMOTE4ODUwMzMzMjUwFQIA",
+      kind: "document",
+      document: {
+        filename: "Project_Jewel_Investor_Teaser_V2_Oct26.pdf",
+        mediaUrl: "https://d3h7pbw71jzzlo.cloudfront.net/doc.pdf",
+        mimeType: "application/pdf",
+      },
+    });
+  });
+
+  it("unknown data.type (e.g. video) → UNSUPPORTED_TYPE (with detail)", () => {
+    const p = { ...validPayload, data: { ...validPayload.data, type: "video", text: undefined } };
+    expect(parseWappbizInbound(p)).toEqual({ ok: false, reason: "UNSUPPORTED_TYPE", detail: "video" });
   });
 
   it("missing sender → NO_SENDER", () => {

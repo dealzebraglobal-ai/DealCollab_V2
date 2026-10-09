@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { users, chatSessions, proposalMatches, proposals } from "@/db/schema";
+import { users, chatSessions, proposalMatches, proposals, documents } from "@/db/schema";
 import { eq, desc, asc, inArray } from "drizzle-orm";
 import { createMagicLinkToken } from "@/lib/magicLink";
 import { runChatTurn } from "@/lib/chatPipeline";
@@ -166,9 +166,14 @@ export async function processIncomingMessage(
   text: string,
   provider: WhatsAppProvider,
   providedCtx?: WaCtx,
+  incomingDocument?: {
+    filename: string;
+    mediaUrl: string;
+    mimeType: string;
+  },
 ) {
   const ctx = providedCtx ?? newWaCtx(null, rawPhone);
-  console.log(`[Wappbiz Chatbot] Inbound message received (provider=${provider})`);
+  console.log(`[Wappbiz Chatbot] Inbound message received (provider=${provider}, hasDoc=${Boolean(incomingDocument)})`);
 
   // Local send wrappers — every outbound reply flips ctx.responseSent so the
   // webhook route knows whether a safe fallback is still needed on a throw.
@@ -473,15 +478,86 @@ export async function processIncomingMessage(
     messageToSend = "Hi";
   }
 
-  // 3. Delegate to the existing chatbot pipeline (src/lib/chatPipeline.ts —
+  // 3. Document ingestion (if attachment present)
+  let extractedDocText = '';
+  let docId: string | null = null;
+  let structuredData: Record<string, unknown> = {};
+
+  if (incomingDocument?.mediaUrl) {
+    try {
+      waLog(ctx, "DOCUMENT_DOWNLOAD", "START", { filename: incomingDocument.filename, mime: incomingDocument.mimeType });
+      const docRes = await fetch(incomingDocument.mediaUrl);
+      if (!docRes.ok) {
+        throw new Error(`HTTP ${docRes.status} downloading media`);
+      }
+      const arrayBuf = await docRes.arrayBuffer();
+      const buffer = Buffer.from(arrayBuf);
+      waLog(ctx, "DOCUMENT_DOWNLOAD", "SUCCESS", { bytes: buffer.length });
+
+      const { extractTextFromFile } = await import("@/lib/documentParser");
+      const extraction = await extractTextFromFile(buffer, incomingDocument.mimeType, ctx.correlationId || undefined);
+      extractedDocText = extraction.text.trim();
+      waLog(ctx, "DOCUMENT_EXTRACTED", "SUCCESS", { chars: extractedDocText.length, method: extraction.extractionMethod });
+
+      const { cleanAndStructureDocument } = await import("@/lib/intelligenceEngine");
+      try {
+        const rawStruct = await cleanAndStructureDocument(extractedDocText);
+        if (rawStruct && typeof rawStruct === "object" && !Array.isArray(rawStruct)) {
+          structuredData = rawStruct as unknown as Record<string, unknown>;
+        }
+      } catch (structErr) {
+        console.warn("[WHATSAPP] Document structuring fallback:", structErr);
+      }
+
+      // Persist in documents table
+      const [newDoc] = await db
+        .insert(documents)
+        .values({
+          userId: user.id,
+          name: incomingDocument.filename,
+          url: incomingDocument.mediaUrl,
+          extracted_text: extractedDocText,
+          structured_data: structuredData,
+        })
+        .returning({ id: documents.id });
+      docId = newDoc?.id ?? null;
+      waLog(ctx, "DOCUMENT_PERSISTED", "SUCCESS", { docId });
+
+      // Auto-create/seed fresh chat session from document intelligence
+      const { initializeStateFromDocument } = await import("@/lib/promptRouter");
+      const seededState = initializeStateFromDocument(structuredData);
+      seededState.is_document_intake = true;
+
+      const [newSession] = await db
+        .insert(chatSessions)
+        .values({
+          userId: user.id,
+          documentId: docId,
+          title: `Deal Intake: ${incomingDocument.filename}`,
+          state: seededState,
+          source: provider === "meta" ? "WHATSAPP" : "WHATSAPP-WAPPBIZ",
+          whatsappPhoneNumber: formattedPhone,
+        })
+        .returning();
+      activeChatId = newSession.id;
+
+      if (!text || text.startsWith("[Document attached:")) {
+        messageToSend = `I have uploaded my teaser document: ${incomingDocument.filename}. Please analyze it and summarize the key deal parameters.`;
+      }
+    } catch (docErr) {
+      console.error("[WHATSAPP] Failed to process incoming document:", docErr);
+      await reply("⚠️ I received your document, but had trouble reading the text. You can describe your proposal here in plain text or try uploading a PDF/DOCX file.");
+      return;
+    }
+  }
+
+  // 4. Delegate to the existing chatbot pipeline (src/lib/chatPipeline.ts —
   // the same intake intelligence + matchmaking engine the web chat route
-  // uses), in-process. Previously this made an HTTP self-call to /api/chat
-  // gated on ADMIN_API_KEY, which added a network hop and a credential
-  // dependency for no benefit — runChatTurn is the real entry point.
+  // uses), in-process.
   console.log("[Wappbiz Chatbot] Conversation resolved, processing started");
 
   let result;
-  waLog(ctx, "AI_REQUEST", "START", { reset: isResetCommand, newSession: !activeChatId });
+  waLog(ctx, "AI_REQUEST", "START", { reset: isResetCommand, newSession: !activeChatId, hasDoc: !!docId });
   try {
     result = await runChatTurn({
       userId: user.id,
@@ -489,6 +565,9 @@ export async function processIncomingMessage(
       channel: "WHATSAPP",
       chatId: activeChatId ?? null,
       whatsappPhoneNumber: formattedPhone,
+      documentText: extractedDocText || null,
+      documentId: docId,
+      documentUrl: incomingDocument?.mediaUrl ?? null,
     });
   } catch (err) {
     waLog(ctx, "AI_REQUEST", "FAILED", { ...describePgError(err) });

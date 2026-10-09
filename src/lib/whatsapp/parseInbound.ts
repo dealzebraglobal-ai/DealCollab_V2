@@ -26,6 +26,20 @@ export interface RawWappbizPayload {
     timestamp?: string;
     from_user_id?: string;
     business_number?: string;
+    document?: {
+      filename?: string;
+      media_url?: string;
+      mime_type?: string;
+      caption?: string;
+      id?: string;
+    };
+    image?: {
+      filename?: string;
+      media_url?: string;
+      mime_type?: string;
+      caption?: string;
+      id?: string;
+    };
     // Best-effort interactive/button fields (undocumented — read defensively).
     button?: { id?: string; payload?: string; text?: string; title?: string };
     interactive?: {
@@ -47,14 +61,24 @@ export type WappbizInboundReject =
   | "NO_TEXT_BODY";
 
 export type WappbizInboundParse =
-  | { ok: true; from: string; text: string; messageId: string | null; kind: "text" | "interactive" }
+  | {
+      ok: true;
+      from: string;
+      text: string;
+      messageId: string | null;
+      kind: "text" | "interactive" | "document";
+      document?: {
+        filename: string;
+        mediaUrl: string;
+        mimeType: string;
+      };
+    }
   | { ok: false; reason: WappbizInboundReject; detail?: string };
 
 /**
  * Decide whether an inbound WappBiz webhook body is something the chatbot
- * should act on. Accepts `data.type === "text"` (as before) AND button /
- * interactive taps — the latter surface the button id/payload as `text` so
- * classifyWhatsAppCommand routes them deterministically.
+ * should act on. Accepts `data.type === "text"`, button / interactive taps,
+ * and document / image attachments.
  */
 export function parseWappbizInbound(payload: RawWappbizPayload | null | undefined): WappbizInboundParse {
   if (!payload || typeof payload !== "object") return { ok: false, reason: "NO_DATA" };
@@ -75,6 +99,45 @@ export function parseWappbizInbound(payload: RawWappbizPayload | null | undefine
       return { ok: false, reason: "NO_TEXT_BODY" };
     }
     return { ok: true, from: data.from, text: body, messageId, kind: "text" };
+  }
+
+  // ── Document or Image attachment (e.g. Teaser / Pitch Deck) ──
+  if (data.type === "document" || data.document || data.type === "image" || data.image) {
+    const doc = data.document;
+    const img = data.image;
+    const mediaUrl = doc?.media_url || img?.media_url;
+    if (!mediaUrl || typeof mediaUrl !== "string") {
+      return { ok: false, reason: "NO_DATA", detail: "media attachment without media_url" };
+    }
+
+    const isImage = data.type === "image" || !!img;
+    const filename =
+      doc?.filename ||
+      img?.filename ||
+      (isImage ? "image.jpg" : "document.pdf");
+    const mimeType =
+      doc?.mime_type ||
+      img?.mime_type ||
+      (isImage ? "image/jpeg" : "application/pdf");
+
+    const rawCaption = doc?.caption || img?.caption || data.text?.body;
+    const text =
+      typeof rawCaption === "string" && rawCaption.trim()
+        ? rawCaption.trim()
+        : `[Document attached: ${filename}]`;
+
+    return {
+      ok: true,
+      from: data.from,
+      text,
+      messageId,
+      kind: "document",
+      document: {
+        filename,
+        mediaUrl,
+        mimeType,
+      },
+    };
   }
 
   // ── Interactive / button tap ──

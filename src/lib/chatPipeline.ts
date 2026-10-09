@@ -51,6 +51,12 @@ export interface ChatTurnParams {
   chatId?: string | null;
   /** Required for channel='WHATSAPP' — persisted on chat_sessions for lookup on the next inbound message. */
   whatsappPhoneNumber?: string | null;
+  /** Extracted text from uploaded document/teaser (if any). */
+  documentText?: string | null;
+  /** ID of persisted document record in public.documents (if any). */
+  documentId?: string | null;
+  /** Public or CDN URL of document file (if any). */
+  documentUrl?: string | null;
 }
 
 export interface ChatTurnResult {
@@ -230,6 +236,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
       .from('chat_sessions')
       .insert([{
         user_id: userId,
+        document_id: params.documentId ?? null,
         title: message.slice(0, 30) + (message.length > 30 ? '...' : ''),
         state: storedState,
         source: channel,
@@ -239,6 +246,35 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
       .single();
     if (sessionErr) throw new Error(sessionErr.message);
     activeChatId = newSession.id;
+  }
+
+  // ─── DOCUMENT CONTEXT RESTORATION ─────────────────────────
+  let documentText = params.documentText || '';
+  let documentUrl = params.documentUrl || '';
+  const documentId = params.documentId || null;
+
+  const needsDocLoad = (!documentText || (documentText.length < 10_000 && !documentText)) && !!activeChatId;
+  if (needsDocLoad) {
+    const { data: sessionDoc } = await supabase
+      .from('chat_sessions')
+      .select('document_id')
+      .eq('id', activeChatId)
+      .maybeSingle();
+
+    const docId = documentId || sessionDoc?.document_id;
+    if (docId) {
+      const { data: doc } = await supabase
+        .from('documents')
+        .select('extracted_text, url')
+        .eq('id', docId)
+        .maybeSingle();
+      if (doc?.extracted_text && doc.extracted_text.length > documentText.length) {
+        documentText = doc.extracted_text;
+      }
+      if (!documentUrl && doc?.url) {
+        documentUrl = doc.url;
+      }
+    }
   }
 
   // ─── FRICTION HARD OVERRIDE (mirrors route.ts layer 2) ─────
@@ -313,7 +349,7 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
 
   // ─── PRE-DETECTION (same detectors route.ts uses) ─────────
   const candidateState: RouterState = { ...storedState };
-  const fullTextForDetection = message;
+  const fullTextForDetection = documentText ? `${message}\n\n${documentText}` : message;
 
   if (!candidateState.sector) {
     const detectedSector = detectSectorFromText(fullTextForDetection);
@@ -348,12 +384,22 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
     candidateState.gateway_clarifier = null;
   }
 
+  // ─── DOCUMENT INTAKE DETECTION ────────────────────────────
+  if (!candidateState.is_document_intake) {
+    const documentPresent = (documentText || '').trim().length > 100;
+    const isFirstUserTurn = (candidateState.turn_count ?? 0) === 0;
+    const isLongStructuredPaste = isFirstUserTurn && message.length > 300;
+    if (documentPresent || isLongStructuredPaste) {
+      candidateState.is_document_intake = true;
+    }
+  }
+
   // ─── BUILD SYSTEM PROMPT + AI CALL ─────────────────────────
   const helpQueryDetected = detectHelpQuery(message);
   const { systemPrompt, modulesLoaded } = buildSystemPrompt(candidateState, matchedMandatesStr, helpQueryDetected);
 
   let extraction: { intent: DealIntent; state: Partial<RouterState>; is_complete: boolean; message: string };
-  const raw = await processIntelligence(message, formattedHistory, '', systemPrompt);
+  const raw = await processIntelligence(message, formattedHistory, documentText || '', systemPrompt);
   if (typeof raw === 'string') {
     const trimmed = (raw as string).trim();
     if (trimmed.startsWith('<') || trimmed.length === 0) {
@@ -435,10 +481,12 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
           revenue_max_cr: revenue.max,
           deal_structure: s.structure,
           special_conditions: s.industry_data ? [JSON.stringify(s.industry_data)] : [],
-          urgency: 'Medium',
-          buyer_type: s.intent_focus || 'Strategic',
+          urgency: updatedState.urgency ?? s.urgency ?? 'Medium',
+          buyer_type: updatedState.buyer_type ?? s.buyer_type ?? s.intent_focus ?? 'Strategic',
           status: 'ACTIVE',
           source: channel,
+          document_url: documentUrl || null,
+          document_text: documentText || null,
           intent_validated: true,
           quality_score: updatedState.quality_score,
         }])
@@ -487,6 +535,8 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
           contact_phone: updatedState.contact_phone ?? s.contact_phone ?? null,
           intent_validated: updatedState.intent_validated ?? s.intent_validated ?? false,
           is_shell_query: updatedState.is_shell_query ?? false,
+          document_url: documentUrl || null,
+          document_text: documentText || null,
           source: channel,
         });
 

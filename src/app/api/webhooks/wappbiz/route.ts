@@ -140,7 +140,7 @@ export async function POST(req: Request) {
       return new NextResponse('OK', { status: 200 });
     }
 
-    await processIncomingMessage(parsed.from, parsed.text, 'wappbiz', ctx);
+    await processIncomingMessage(parsed.from, parsed.text, 'wappbiz', ctx, parsed.document);
     waLog(ctx, 'WEBHOOK_COMPLETED', 'SUCCESS', { responseSent: ctx.responseSent });
   } catch (err) {
     const info = describePgError(err);

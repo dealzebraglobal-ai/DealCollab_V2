@@ -297,9 +297,11 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
   }
 
   // ── STEP B: quality gate (L645–682) ────────────────────────────────────────
+  let qualityGateFailedThisTurn = false;
   if (updatedState.is_complete && !updatedState.quality_gate_passed && updatedState.intent_validated !== true) {
     const q = computeQualityGate(updatedState);
     if (!q.passed) {
+      qualityGateFailedThisTurn = true;
       if (updatedState.quality_gate_attempted) {
         // Second failure — hard close, no DB insert.
         updatedState.is_complete = false;
@@ -353,7 +355,7 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
       messageOverride = INTENT_DECLINED_MESSAGE;              // user declined the genuine-mandate check
     } else if (updatedState.quality_gate_passed && updatedState.intent_validated === null) {
       messageOverride = GENUINE_MANDATE_QUESTION;             // awaiting the genuine-mandate Yes/No
-    } else if (updatedState.quality_gate_attempted && !updatedState.quality_gate_passed) {
+    } else if (qualityGateFailedThisTurn) {
       messageOverride = computeQualityGate(updatedState).message;  // "to register this mandate we need: X"
     }
     if (messageOverride) {
@@ -373,7 +375,7 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
     // NOTE: if shouldInsert is ALSO true here, that's the "sure" edge (scenario M) —
     // inserting while phase still reads INTENT_VALIDATION and intent_validated is null.
     reason = 'quality-gate-pass-await-validation';
-  } else if (updatedState.quality_gate_attempted && !updatedState.quality_gate_passed && !shouldInsert) {
+  } else if (qualityGateFailedThisTurn && !shouldInsert) {
     reason = updatedState.round_count === 0 ? 'quality-gate-extend' : 'quality-gate-hardclose';
   } else if (shouldInsert && hasFriction) {
     reason = 'friction';
