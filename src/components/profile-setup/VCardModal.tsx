@@ -471,7 +471,7 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
 
     // 8. Bottom Golden Divider 3
     ctx.fillStyle = '#EFD2A5';
-    ctx.fillRect(28, 1012, 812, 2);
+    ctx.fillRect(27, 1010, 810, 3.5);
 
     return canvas;
   };

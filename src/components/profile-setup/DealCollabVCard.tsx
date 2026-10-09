@@ -259,7 +259,7 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
       </div>
 
       {/* 7. Bottom Golden Divider 3 */}
-      <div className="w-full h-[2px] bg-[#EFD2A5] mt-3.5 sm:mt-4" />
+      <div className="w-full h-[2.5px] bg-[#EFD2A5] mt-3.5 sm:mt-4" />
     </div>
   );
 }
