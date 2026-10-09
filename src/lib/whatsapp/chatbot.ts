@@ -619,6 +619,18 @@ export async function processIncomingMessage(
         page: 1,
         remaining,
       });
+    } else {
+      const magicLinkUrl = `${appUrl.replace(/\/$/, "")}/api/auth/magic-link?token=${createMagicLinkToken(user.id, formattedPhone)}`;
+      await replyButtons(
+        `🔍 *No immediate matches found yet*\n\n` +
+        `We searched our network, but there are currently no verified active counterparties matching your exact criteria in our registry.\n\n` +
+        `Your mandate is active in our matching engine. As new counterparties register, you will be automatically notified here on WhatsApp.\n\n` +
+        `You can open your DealLog portal to review your mandate:`,
+        [
+          { id: "OPEN_WEBSITE", title: "🌐 Open Website" },
+          { id: "START_OVER", title: "🔄 New Mandate" },
+        ]
+      );
     }
   }
 }

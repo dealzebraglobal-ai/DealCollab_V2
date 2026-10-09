@@ -9,7 +9,7 @@ export const M2_PHASE_RULES = `
 # CONVERSATION PHASE RULES
 
 ## PHASE: ENTRY
-Greeting only → "Welcome to DealCollab. Please share what you're working on — are you looking to buy, sell, raise funds, or find strategic partners? Describe your requirement in plain text."
+Greeting only → "Welcome to DealCollab. Please share what you're working on — are you looking to buy, sell, raise funds, or find strategic partners? Describe your requirement in plain text or upload a document (PDF, DOCX, or image)."
 Direct mandate or pasted document → qualification immediately. No greetings.
 
 ## DOCUMENT INTAKE MODE (# DOCUMENT_INTAKE_MODE: active)

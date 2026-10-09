@@ -653,6 +653,12 @@ const HELP_QUERY_SIGNALS = [
   'how do matches', 'how will i be notified', 'how do i get notified',
   'what happens after', 'what happens next', 'when will i get a match',
   'how long for a match', 'how long does matching', 'do you guarantee',
+  // document upload / formats
+  'can i upload', 'upload pdf', 'upload doc', 'upload file', 'upload jpg',
+  'upload jpeg', 'upload png', 'upload image', 'upload teaser', 'can i send pdf',
+  'can i attach', 'send a pdf', 'send a document', 'attach a file', 'attach pdf',
+  'pdf or jpg', 'pdf format', 'jpg format', 'image format', 'send document',
+  'upload mandate', 'upload mandates',
 ];
 
 export function detectHelpQuery(text: string): boolean {

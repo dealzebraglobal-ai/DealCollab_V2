@@ -46,7 +46,7 @@ Your inputs remain confidential and will only be used for precise matchmaking.`;
   }
 
   // 5. LAST RESORT FALLBACK
-  return "Welcome to DealCollab. Please share your requirement — are you looking to buy, sell, or raise funds? Describe your business or target in plain text to begin.";
+  return "Welcome to DealCollab. Please share your requirement — are you looking to buy, sell, or raise funds? Describe your business or target in plain text or upload a document (PDF, DOCX, or image) to begin.";
 }
 
 function isPlaceholderMessage(msg: string): boolean {
