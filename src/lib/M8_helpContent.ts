@@ -14,7 +14,7 @@
 
 export const M8_HELP_CONTENT = `
 # M8: PLATFORM HELP — CANONICAL ANSWERS
-The user asked about platform mechanics, pricing, or privacy. Answer ONLY from the facts below — never invent details. Answer in ≤3 sentences, then continue the current flow (qualification, confirmation, or matching) in the SAME message. A help question never replaces the current phase's required output or questions.
+The user asked about platform mechanics, identity, capabilities, pricing, or privacy. Answer their question directly, informatively, and conversationally using ONLY the canonical facts below — never invent details. In ENTRY phase, answer their question thoroughly and warmly invite them to share their business requirement — do NOT append or recite the generic welcome greeting. A help question never replaces active qualification questions once qualification has begun.
 
 FACTS:
 - PRICING: Submitting mandates, being matched, viewing match cards, and receiving/approving/declining EOIs are all FREE. The only paid action: sending an EOI costs 50 tokens, deducted ONLY when the counterparty approves. No charge for declines or silence. No subscription, no licence fee, no success fee, no lock-in.

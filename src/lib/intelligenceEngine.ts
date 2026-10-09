@@ -222,10 +222,17 @@ export async function processIntelligence(
     ? buildDocumentAwareUserContent(message, documentText!)
     : message;
 
+  // Exclude current message if caller already persisted it as the last item in history
+  const historyToReplay = [...history];
+  const lastHistoryItem = historyToReplay[historyToReplay.length - 1];
+  if (lastHistoryItem && lastHistoryItem.role === 'user' && lastHistoryItem.content.trim() === message.trim()) {
+    historyToReplay.pop();
+  }
+
   const aiMessages: ChatMessage[] = [
     { role: "system", content: finalSystemPrompt },
     // Last 8 turns — keeps token count predictable and cost low
-    ...history.slice(-8).map((h) => ({
+    ...historyToReplay.slice(-8).map((h) => ({
       role: h.role as "user" | "assistant" | "system",
       content:
         h.role === "assistant"
