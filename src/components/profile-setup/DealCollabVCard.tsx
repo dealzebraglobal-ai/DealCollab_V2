@@ -157,23 +157,23 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
 
         {/* Name and Titles in Cambria font */}
         <div className="flex-1 min-w-0 pr-1">
-          <h1 className="font-bold text-xl sm:text-2xl text-black tracking-tight leading-snug break-words">
+          <h1 className="font-bold text-2xl sm:text-[26px] text-black tracking-tight leading-snug break-words">
             {name}
           </h1>
-          <p className="text-xs sm:text-[13px] text-gray-900 mt-2 leading-snug break-words">
+          <p className="text-[13px] sm:text-sm text-gray-900 mt-2 leading-snug break-words">
             <span className="font-bold text-black">Firm Name:</span> {company}
           </p>
-          <p className="text-xs sm:text-[13px] text-gray-900 mt-1 leading-snug break-words">
+          <p className="text-[13px] sm:text-sm text-gray-900 mt-1.5 leading-snug break-words">
             <span className="font-bold text-black">Designation:</span> {role}
           </p>
         </div>
       </div>
 
       {/* 3. Golden Divider 1 */}
-      <div className="w-full h-[2px] bg-[#EFD2A5] my-3.5 sm:my-4" />
+      <div className="w-full h-[2.5px] bg-[#EFD2A5] my-3.5 sm:my-4" />
 
       {/* 4. Two-Column Info Grid — Row-by-row structure prevents any overlapping */}
-      <div className="space-y-3 sm:space-y-3.5 text-xs sm:text-[13px]">
+      <div className="space-y-4 sm:space-y-5 text-[13px] sm:text-sm">
         {/* Row 1: Contact (left) | Email (right) */}
         <div className="grid grid-cols-2 gap-x-4 sm:gap-x-6 items-start">
           <div className="min-w-0">
@@ -227,15 +227,15 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
       </div>
 
       {/* 5. Golden Divider 2 */}
-      <div className="w-full h-[2px] bg-[#EFD2A5] my-3.5 sm:my-4" />
+      <div className="w-full h-[2.5px] bg-[#EFD2A5] my-3.5 sm:my-4" />
 
       {/* 6. Footer Section: Promotional pitch on left, QR Code on right */}
       <div className="flex items-center justify-between gap-3 pt-0.5">
         <div className="flex-1 pr-2">
-          <p className="font-bold text-[11px] sm:text-xs text-black leading-snug break-words">
+          <p className="font-bold text-xs sm:text-[13px] text-black leading-snug break-words">
             Accelerate your next M&A, Joint Venture, Partnership, or Fundraising round.......
           </p>
-          <p className="text-[10px] sm:text-[11px] text-gray-900 leading-relaxed mt-1 break-words">
+          <p className="text-[11px] sm:text-xs text-gray-900 leading-relaxed mt-1 break-words">
             <strong className="font-bold text-black">DealCollab</strong> connects you with the ideal counterparties and unlocks premium deal-sourcing opportunities tailored to your strategic goals.
           </p>
         </div>
