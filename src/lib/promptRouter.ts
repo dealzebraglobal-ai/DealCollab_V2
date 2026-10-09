@@ -126,7 +126,7 @@ export function buildSystemPrompt(
     // NM7: Awaiting intent confirmation
     modules.push({ key: 'M_intent_validation', content: M_INTENT_VALIDATION });
 
-  } else if (state.quality_gate_attempted && !state.quality_gate_passed) {
+  } else if (state.quality_gate_attempted && !state.quality_gate_passed && state.phase !== 'CLOSURE') {
     // NM7: Quality gate failed — ask only missing fields
     const qualityResult = computeQualityGate(state);
     modules.push({ key: 'M_quality_gate_fail', content: buildQualityGateFailModule(qualityResult.message) });

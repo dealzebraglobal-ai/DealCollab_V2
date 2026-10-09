@@ -58,13 +58,14 @@ export function buildQualityGateFailModule(message: string): string {
 
 This mandate does not yet meet the minimum threshold to be registered as an active deal.
 Do NOT deliver the closure message. Do NOT say "unfortunately" or apologise.
-Do NOT ask multiple questions.
+Do NOT ask multiple unrelated questions.
 
-Deliver this message verbatim:
+The following information is still required:
 "${message}"
 
-Then wait. Ask nothing else this turn.
-  `.trim();
+If the user asks a question (such as uploading a document or teaser, or how the matching process works), answer their question directly, conversationally, and helpfully, and invite them to upload the document or share the missing details.
+Otherwise, deliver the required prompt to collect the missing fields.
+`.trim();
 }
 
 // ─────────────────────────────────────────────────────────────

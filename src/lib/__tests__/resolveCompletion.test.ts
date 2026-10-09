@@ -36,6 +36,33 @@ describe('resolveCompletion — quality gate funnel (correct behavior)', () => {
     expect(r.reason).toBe('quality-gate-extend');
   });
 
+  it('B2. SELL_SIDE missing geography, second failure → quality FAIL (second) → hardclose, phase=CLOSURE, is_complete=true, no insert', () => {
+    const stored = baseState({
+      intent: 'SELL_SIDE', sector: 'pharma', m4_questions_asked: true, phase: 'MOMENTUM',
+      quality_gate_attempted: true, quality_gate_passed: false,
+    });
+    const r = run({ storedState: stored, candidateState: stored, message: 'done', extraction: ext({ is_complete: true }) });
+    expect(r.shouldInsert).toBe(false);
+    expect(r.state.is_complete).toBe(true);
+    expect(r.state.quality_gate_passed).toBe(false);
+    expect(r.state.phase).toBe('CLOSURE');
+    expect(r.reason).toBe('quality-gate-hardclose');
+    expect(r.messageOverride).toContain('We were unable to capture enough details');
+  });
+
+  it('B3. turn_count >= 4 but quality_gate_attempted is already true → conversational question does NOT auto-close', () => {
+    const stored = baseState({
+      intent: 'SELL_SIDE', sector: 'pharma', m4_questions_asked: true, phase: 'MOMENTUM',
+      turn_count: 5, quality_gate_attempted: true, quality_gate_passed: false,
+    });
+    const r = run({ storedState: stored, candidateState: stored, message: 'Can I upload teaser, Can you read it ?', extraction: ext({ is_complete: false, message: 'Yes, you can upload your teaser here!' }) });
+    expect(r.state.is_complete).toBe(false);
+    expect(r.shouldInsert).toBe(false);
+    expect(r.reason).toBe('not-finalized');
+    expect(r.messageOverride).toBeNull();
+    expect(r.extraction.message).toBe('Yes, you can upload your teaser here!');
+  });
+
   it('N. BUY_SIDE full set → quality PASS → INTENT_VALIDATION', () => {
     const stored = baseState({
       intent: 'BUY_SIDE', sector: 'saas', geography: 'India', deal_size: '₹100 Cr',

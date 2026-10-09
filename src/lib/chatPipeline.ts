@@ -221,9 +221,9 @@ export async function runChatTurn(params: ChatTurnParams): Promise<ChatTurnResul
       // web "New chat": start fresh. Explicit nav/RESET commands are already
       // handled in chatbot.ts before this point, so anything reaching here is a
       // genuine new conversational turn.
-      if (channel === 'WHATSAPP' && (storedState.is_complete || storedState.is_captured)) {
+      if (channel === 'WHATSAPP' && (storedState.is_complete || storedState.is_captured || storedState.phase === 'CLOSURE')) {
         console.log(
-          `[SESSION] WhatsApp: session ${activeChatId} is captured/complete — starting a fresh session for the new mandate.`,
+          `[SESSION] WhatsApp: session ${activeChatId} is captured/complete/closed — starting a fresh session for the new mandate.`,
         );
         activeChatId = null;
         storedState = createBlankState();

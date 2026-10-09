@@ -120,6 +120,10 @@ export const CAPTURE_CONFIRMATION =
   'counterparties, validate their intent, and surface only relevant opportunities for your approval. Aligned counterparties ' +
   'now appear in your Deal Log. We work continuously across the network and will notify you via WhatsApp or email as new matches emerge.';
 
+export const QUALITY_GATE_HARDCLOSE_MESSAGE =
+  'We were unable to capture enough details to register an active mandate at this time. ' +
+  'Your session is saved. Whenever you are ready with the industry, geography, and deal size or revenue, start a new chat and we will proceed immediately.';
+
 export function resolveCompletion(input: ResolveCompletionInput): ResolveCompletionResult {
   const { message, candidateState, modulesLoaded = [] } = input;
 
@@ -213,7 +217,8 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
   if (
     updatedState.turn_count >= 4 &&
     (updatedState.intent || updatedState.sector) &&
-    !updatedState.is_complete
+    !updatedState.is_complete &&
+    !updatedState.quality_gate_attempted
   ) {
     updatedState.is_complete = true;
     // Part 2: do NOT stamp CLOSURE. Hitting the round limit must still go through the single
@@ -298,14 +303,18 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
 
   // ── STEP B: quality gate (L645–682) ────────────────────────────────────────
   let qualityGateFailedThisTurn = false;
+  let isHardClose = false;
   if (updatedState.is_complete && !updatedState.quality_gate_passed && updatedState.intent_validated !== true) {
     const q = computeQualityGate(updatedState);
     if (!q.passed) {
       qualityGateFailedThisTurn = true;
       if (updatedState.quality_gate_attempted) {
         // Second failure — hard close, no DB insert.
-        updatedState.is_complete = false;
+        isHardClose = true;
+        updatedState.is_complete = true;
         updatedState.quality_gate_passed = false;
+        updatedState.phase = 'CLOSURE';
+        extraction.is_complete = true;
       } else {
         // First failure — one extension.
         updatedState.quality_gate_attempted = true;
@@ -313,6 +322,9 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
         updatedState.is_complete = false;
         updatedState.quality_gate_passed = false;
         updatedState.round_count = 0;
+        if (updatedState.phase === 'CLOSURE') {
+          updatedState.phase = storedState.phase === 'CLOSURE' ? 'MOMENTUM' : storedState.phase;
+        }
       }
     } else if (updatedState.is_document_intake) {
       // Phase 3.4: a confirmed document IS the genuine mandate — skip the separate
@@ -337,7 +349,11 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
   // Step 1: insert ONCE. shouldInsert is true only on the turn the deal first completes,
   // never again (the terminal short-circuit above handles every later turn). Stamp
   // is_captured so the next turn takes the terminal path.
-  const shouldInsert = updatedState.is_complete && !input.storedState.is_captured;
+  const shouldInsert =
+    updatedState.is_complete &&
+    !input.storedState.is_captured &&
+    updatedState.quality_gate_passed === true &&
+    updatedState.intent_validated === true;
   if (shouldInsert) {
     updatedState.is_captured = true;
   }
@@ -356,7 +372,11 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
     } else if (updatedState.quality_gate_passed && updatedState.intent_validated === null) {
       messageOverride = GENUINE_MANDATE_QUESTION;             // awaiting the genuine-mandate Yes/No
     } else if (qualityGateFailedThisTurn) {
-      messageOverride = computeQualityGate(updatedState).message;  // "to register this mandate we need: X"
+      if (isHardClose) {
+        messageOverride = QUALITY_GATE_HARDCLOSE_MESSAGE;
+      } else {
+        messageOverride = computeQualityGate(updatedState).message;  // "to register this mandate we need: X"
+      }
     }
     if (messageOverride) {
       extraction.message = messageOverride;
@@ -376,7 +396,7 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
     // inserting while phase still reads INTENT_VALIDATION and intent_validated is null.
     reason = 'quality-gate-pass-await-validation';
   } else if (qualityGateFailedThisTurn && !shouldInsert) {
-    reason = updatedState.round_count === 0 ? 'quality-gate-extend' : 'quality-gate-hardclose';
+    reason = isHardClose ? 'quality-gate-hardclose' : 'quality-gate-extend';
   } else if (shouldInsert && hasFriction) {
     reason = 'friction';
   } else if (shouldInsert && updatedState.turn_count >= 4) {
