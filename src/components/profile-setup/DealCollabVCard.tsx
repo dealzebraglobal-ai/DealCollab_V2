@@ -135,8 +135,8 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
       <div className="flex items-center gap-3.5 sm:gap-5 my-3.5">
         {/* Photo Box */}
         <div
-          className="rounded-2xl border-2 border-[#E8CF9B] p-0.5 shrink-0 overflow-hidden shadow-xs bg-white flex items-center justify-center"
-          style={{ width: '96px', height: '116px', minWidth: '96px', minHeight: '116px', maxWidth: '96px', maxHeight: '116px' }}
+          className="rounded-2xl border-2 border-[#EFD2A5] p-0.5 shrink-0 overflow-hidden shadow-xs bg-white flex items-center justify-center"
+          style={{ width: '104px', height: '104px', minWidth: '104px', minHeight: '104px', maxWidth: '104px', maxHeight: '104px' }}
         >
           {photo && !photoFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -170,7 +170,7 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
       </div>
 
       {/* 3. Golden Divider 1 */}
-      <div className="w-full h-[2px] bg-[#E8CF9B] my-3.5 sm:my-4" />
+      <div className="w-full h-[2px] bg-[#EFD2A5] my-3.5 sm:my-4" />
 
       {/* 4. Two-Column Info Grid — Row-by-row structure prevents any overlapping */}
       <div className="space-y-3 sm:space-y-3.5 text-xs sm:text-[13px]">
@@ -227,7 +227,7 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
       </div>
 
       {/* 5. Golden Divider 2 */}
-      <div className="w-full h-[2px] bg-[#E8CF9B] my-3.5 sm:my-4" />
+      <div className="w-full h-[2px] bg-[#EFD2A5] my-3.5 sm:my-4" />
 
       {/* 6. Footer Section: Promotional pitch on left, QR Code on right */}
       <div className="flex items-center justify-between gap-3 pt-0.5">
@@ -257,6 +257,9 @@ export default function DealCollabVCard({ data, className = '', qrDataUrl: propQ
           </span>
         </div>
       </div>
+
+      {/* 7. Bottom Golden Divider 3 */}
+      <div className="w-full h-[2px] bg-[#EFD2A5] mt-3.5 sm:mt-4" />
     </div>
   );
 }

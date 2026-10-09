@@ -175,8 +175,8 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
     : '';
 
   const drawCardToCanvas = async (): Promise<HTMLCanvasElement> => {
-    const width = 1000;
-    const height = 1200;
+    const width = 868;
+    const height = 1024;
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -187,77 +187,29 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Header: Tagline (left) + Exact DealCollab logo (right, from sample)
-    ctx.fillStyle = '#6B7280';
-    ctx.font = '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    // 2. Header: Tagline on Left (24, 52) + DealCollab Logo on Right (643, 27)
+    ctx.fillStyle = '#374151';
+    ctx.font = '500 13.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Connecting People, Possibilities & Deals', 60, 58);
+    ctx.fillText('Connecting People, Possibilities & Deals', 24, 52);
 
-    // DealCollab Logo (exact logo image from sample)
     try {
       const logoImg = new window.Image();
       await new Promise<void>((resolve, reject) => {
         logoImg.onload = () => resolve();
         logoImg.onerror = () => reject();
-        logoImg.src = '/dealcollab-logo-2x.png';
+        logoImg.src = '/dealcollab-logo.png';
       });
-      const logoH = 32;
-      const logoW = (logoImg.width / logoImg.height) * logoH;
-      ctx.drawImage(logoImg, width - 60 - logoW, 58 - logoH / 2, logoW, logoH);
+      ctx.drawImage(logoImg, 643, 27, 192, 50);
     } catch {
       ctx.textAlign = 'right';
-      ctx.font = '900 23px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = '#000000';
-      ctx.fillText('DealCollab', width - 60, 58);
+      ctx.fillText('DealCollab', 844, 52);
     }
 
-    // 3. Hero Profile Row
-    const photoX = 60;
-    const photoY = 105;
-    const photoW = 195;
-    const photoH = 235;
-    const photoRadius = 22;
-
-    // Draw gold border around photo
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(photoX, photoY, photoW, photoH, [photoRadius]);
-    ctx.lineWidth = 3.5;
-    ctx.strokeStyle = '#E8CF9B';
-    ctx.stroke();
-    ctx.clip();
-
-    let imageDrawn = false;
-    if (photo) {
-      try {
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject();
-          img.src = photo;
-        });
-        ctx.drawImage(img, photoX, photoY, photoW, photoH);
-        imageDrawn = true;
-      } catch {
-        // Fallback to initials
-      }
-    }
-
-    if (!imageDrawn) {
-      ctx.fillStyle = '#FDF8EE';
-      ctx.fillRect(photoX, photoY, photoW, photoH);
-      const initials = (name ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('') : 'DC').toUpperCase();
-      ctx.fillStyle = '#B45309';
-      ctx.font = 'bold 60px Cambria, Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(initials, photoX + photoW / 2, photoY + photoH / 2);
-    }
-    ctx.restore();
-
-    // Two-Column Info Grid Helper
+    // Helper for wrapped text
     const drawWrappedText = (
       text: string,
       x: number,
@@ -266,7 +218,9 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
       lineHeight: number,
       maxLines: number = 4
     ): number => {
-      const words = text.split(' ');
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      const words = String(text || '').split(' ');
       let currentLine = '';
       let y = startY;
       let lineCount = 0;
@@ -302,126 +256,193 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
       return y;
     };
 
-    // Name, Firm Name, Designation in Cambria Font
+    // 3. Hero Profile Row: Square 259 x 259 photo at (34, 114)
+    const photoX = 34;
+    const photoY = 114;
+    const photoW = 259;
+    const photoH = 259;
+    const photoRadius = 24;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(photoX, photoY, photoW, photoH, [photoRadius]);
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#EFD2A5';
+    ctx.stroke();
+    ctx.clip();
+
+    let imageDrawn = false;
+    if (photo) {
+      try {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = photo;
+        });
+        const scale = Math.max(photoW / img.width, photoH / img.height);
+        const sw = photoW / scale;
+        const sh = photoH / scale;
+        const sx = (img.width - sw) / 2;
+        const sy = (img.height - sh) / 2;
+        ctx.drawImage(img, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+        imageDrawn = true;
+      } catch {
+        // Fallback to initials
+      }
+    }
+
+    if (!imageDrawn) {
+      ctx.fillStyle = '#FDF8EE';
+      ctx.fillRect(photoX, photoY, photoW, photoH);
+      const initials = (name ? name.split(' ').map((n: string) => n[0]).slice(0, 2).join('') : 'DC').toUpperCase();
+      ctx.fillStyle = '#B45309';
+      ctx.font = 'bold 64px Cambria, Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(initials, photoX + photoW / 2, photoY + photoH / 2);
+    }
+    ctx.restore();
+
+    // Name, Firm Name, Designation
+    const textStartX = 312;
+    const heroTextMaxWidth = width - 24 - textStartX;
+    let heroY = 205;
+
+    // Name
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    const textStartX = 295;
-    const heroTextMaxWidth = width - 60 - textStartX;
-    let heroTextY = 168;
+    ctx.font = 'bold 38px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
+    heroY = drawWrappedText(name || 'Verified Member', textStartX, heroY, heroTextMaxWidth, 44, 2);
 
-    // Name in Cambria bold
-    ctx.font = 'bold 42px Cambria, Georgia, serif';
-    ctx.fillStyle = '#0A0A0A';
-    heroTextY = drawWrappedText(name || 'Verified Member', textStartX, heroTextY, heroTextMaxWidth, 48, 2);
-
-    // Firm Name in Cambria
-    heroTextY += 16;
-    ctx.font = 'bold 22px Cambria, Georgia, serif';
-    ctx.fillStyle = '#0A0A0A';
-    ctx.fillText('Firm Name: ', textStartX, heroTextY);
-    const fnWidth = ctx.measureText('Firm Name: ').width;
-    ctx.font = 'normal 22px Cambria, Georgia, serif';
+    // Firm Name
+    heroY += 26;
+    ctx.font = 'bold 20px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
+    ctx.fillText('Firm Name: ', textStartX, heroY);
+    const fnW = ctx.measureText('Firm Name: ').width;
+    ctx.font = 'normal 20px Cambria, Georgia, serif';
     ctx.fillStyle = '#1F2937';
-    heroTextY = drawWrappedText(company || 'Independent', textStartX + fnWidth, heroTextY, heroTextMaxWidth - fnWidth, 28, 2);
+    heroY = drawWrappedText(company || 'Independent', textStartX + fnW, heroY, heroTextMaxWidth - fnW, 26, 2);
 
-    // Designation in Cambria
-    heroTextY += 12;
-    ctx.font = 'bold 22px Cambria, Georgia, serif';
-    ctx.fillStyle = '#0A0A0A';
-    ctx.fillText('Designation: ', textStartX, heroTextY);
-    const desigWidth = ctx.measureText('Designation: ').width;
-    ctx.font = 'normal 22px Cambria, Georgia, serif';
+    // Designation
+    heroY += 16;
+    ctx.font = 'bold 20px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
+    ctx.fillText('Designation: ', textStartX, heroY);
+    const desigW = ctx.measureText('Designation: ').width;
+    ctx.font = 'normal 20px Cambria, Georgia, serif';
     ctx.fillStyle = '#1F2937';
-    heroTextY = drawWrappedText(role || 'Advisor', textStartX + desigWidth, heroTextY, heroTextMaxWidth - desigWidth, 28, 2);
+    heroY = drawWrappedText(role || 'Advisor', textStartX + desigW, heroY, heroTextMaxWidth - desigW, 26, 2);
 
-    // 4. Golden Divider 1 — dynamically placed below the taller of photo or hero text
-    const div1Y = Math.max(photoY + photoH, heroTextY) + 24;
-    ctx.fillStyle = '#E8CF9B';
-    ctx.fillRect(60, div1Y, width - 120, 2.5);
+    // 4. Golden Divider 1
+    ctx.fillStyle = '#EFD2A5';
+    ctx.fillRect(24, 407, 820, 2.5);
 
-    // 5. Two-Column Info Grid — dynamically calculated row pairs to guarantee ZERO overlap
+    // 5. Two-Column Info Grid
     const col1X = 60;
-    const col2X = 520;
-    const colWidth = 420;
-    let currentRowY = div1Y + 45;
+    const col2X = 485;
+    const colWidth = 360;
+    let currentRowY = 458;
 
-    // Row 1: Contact (left) vs Email (right)
-    ctx.font = 'bold 23px Cambria, Georgia, serif';
-    ctx.fillStyle = '#0A0A0A';
+    // Row 1: Contact | Email
+    ctx.font = 'bold 20px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
     ctx.fillText('Contact:', col1X, currentRowY);
     ctx.fillText('Email:', col2X, currentRowY);
 
-    ctx.font = 'normal 21px Cambria, Georgia, serif';
+    ctx.font = 'normal 18px Cambria, Georgia, serif';
     ctx.fillStyle = '#1F2937';
-    const contactBottom = drawWrappedText(data?.phone || 'Not provided', col1X, currentRowY + 32, colWidth, 29, 2);
-    const emailBottom = drawWrappedText(data?.email || 'Not provided', col2X, currentRowY + 32, colWidth, 29, 2);
+    const contactBottom = drawWrappedText(data?.phone || 'Not provided', col1X, currentRowY + 28, colWidth, 24, 2);
+    const emailBottom = drawWrappedText(data?.email || 'Not provided', col2X, currentRowY + 28, colWidth, 24, 2);
 
-    currentRowY = Math.max(contactBottom, emailBottom) + 26;
+    currentRowY = Math.max(contactBottom, emailBottom) + 24;
 
-    // Row 2: Professional Category (left) vs Based City (right)
-    ctx.font = 'bold 23px Cambria, Georgia, serif';
-    ctx.fillStyle = '#0A0A0A';
+    // Row 2: Professional Category | Based City
+    ctx.font = 'bold 20px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
     ctx.fillText('Professional Category', col1X, currentRowY);
     ctx.fillText('Based City:', col2X, currentRowY);
 
-    ctx.font = 'normal 21px Cambria, Georgia, serif';
+    ctx.font = 'normal 18px Cambria, Georgia, serif';
     ctx.fillStyle = '#1F2937';
-    const catBottom = drawWrappedText(categoryText, col1X, currentRowY + 32, colWidth, 29, 4);
-    const cityBottom = drawWrappedText(basedCityText, col2X, currentRowY + 32, colWidth, 29, 3);
+    const catBottom = drawWrappedText(categoryText, col1X, currentRowY + 28, colWidth, 25, 4);
+    const cityBottom = drawWrappedText(basedCityText, col2X, currentRowY + 28, colWidth, 25, 3);
 
-    currentRowY = Math.max(catBottom, cityBottom) + 26;
+    currentRowY = Math.max(catBottom, cityBottom) + 24;
 
-    // Row 3: Focus Sector (left) vs Focus Geography (right)
-    ctx.font = 'bold 23px Cambria, Georgia, serif';
-    ctx.fillStyle = '#0A0A0A';
+    // Row 3: Focus Sector | Focus Geography
+    ctx.font = 'bold 20px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
     ctx.fillText('Focus Sector:', col1X, currentRowY);
     ctx.fillText('Focus Geography:', col2X, currentRowY);
 
-    ctx.font = 'normal 21px Cambria, Georgia, serif';
+    ctx.font = 'normal 18px Cambria, Georgia, serif';
     ctx.fillStyle = '#1F2937';
-    const secBottom = drawWrappedText(sectorsText, col1X, currentRowY + 32, colWidth, 29, 4);
-    const geoBottom = drawWrappedText(geographiesText, col2X, currentRowY + 32, colWidth, 29, 4);
+    drawWrappedText(sectorsText, col1X, currentRowY + 28, colWidth, 25, 4);
+    drawWrappedText(geographiesText, col2X, currentRowY + 28, colWidth, 25, 4);
 
-    currentRowY = Math.max(secBottom, geoBottom) + 30;
+    // 6. Golden Divider 2
+    const div2Y = 830;
+    ctx.fillStyle = '#EFD2A5';
+    ctx.fillRect(24, div2Y, 820, 2.5);
 
-    // 6. Golden Divider 2 — dynamically positioned below the grid
-    const div2Y = currentRowY;
-    ctx.fillStyle = '#E8CF9B';
-    ctx.fillRect(60, div2Y, width - 120, 2.5);
-
-    // 7. Footer: Pitch (left) + QR code (right) in Cambria font
-    const footerStartY = div2Y + 36;
-    const pitchX = 60;
-    const pitchWidth = 660;
+    // 7. Footer: Pitch (left) + QR code (right)
+    const pitchX = 38;
+    const pitchWidth = 640;
+    const pitchStartY = div2Y + 34;
 
     // Pitch headline
-    ctx.font = 'bold 18px Cambria, Georgia, serif';
-    ctx.fillStyle = '#0A0A0A';
+    ctx.font = 'bold 16px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
     const pitchHeadBottom = drawWrappedText(
       'Accelerate your next M&A, Joint Venture, Partnership, or Fundraising round.......',
       pitchX,
-      footerStartY,
+      pitchStartY,
       pitchWidth,
-      26,
+      24,
       2
     );
 
-    // Pitch body
-    ctx.font = 'normal 16px Cambria, Georgia, serif';
+    // Pitch body with "DealCollab" in bold
+    const bodyY = pitchHeadBottom + 6;
+    ctx.font = 'bold 15px Cambria, Georgia, serif';
+    ctx.fillStyle = '#000000';
+    const dcW = ctx.measureText('DealCollab ').width;
+    ctx.fillText('DealCollab', pitchX, bodyY);
+
+    ctx.font = 'normal 15px Cambria, Georgia, serif';
     ctx.fillStyle = '#1F2937';
-    drawWrappedText(
-      'DealCollab connects you with the ideal counterparties and unlocks premium deal-sourcing opportunities tailored to your strategic goals.',
-      pitchX,
-      pitchHeadBottom + 6,
-      pitchWidth,
-      24,
-      3
-    );
+
+    const restText = 'connects you with the ideal counterparties and unlocks premium deal-sourcing opportunities tailored to your strategic goals.';
+    const bodyWords = restText.split(' ');
+    let curLine = '';
+    let curY = bodyY;
+    let startX = pitchX + dcW;
+    let maxW = pitchWidth - dcW;
+
+    for (let i = 0; i < bodyWords.length; i++) {
+      const testLine = curLine ? `${curLine} ${bodyWords[i]}` : bodyWords[i];
+      if (ctx.measureText(testLine).width > maxW && curLine) {
+        ctx.fillText(curLine, startX, curY);
+        curLine = bodyWords[i];
+        curY += 22;
+        startX = pitchX;
+        maxW = pitchWidth;
+      } else {
+        curLine = testLine;
+      }
+    }
+    if (curLine) {
+      ctx.fillText(curLine, startX, curY);
+    }
 
     // QR Code
-    const qrSize = 145;
-    const qrX = width - 60 - qrSize;
-    const qrY = div2Y + 22;
+    const qrSize = 135;
+    const qrX = 700;
+    const qrY = div2Y + 18;
 
     try {
       const publicUrl = buildPublicProfileUrl(profileSlug);
@@ -440,13 +461,17 @@ export default function VCardModal({ isOpen, onClose, data, isProfileComplete }:
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
       // dealcollab.org text under QR in Cambria font
-      ctx.font = 'bold 15px Cambria, Georgia, serif';
+      ctx.font = 'bold 13px Cambria, Georgia, serif';
       ctx.fillStyle = '#4B5563';
       ctx.textAlign = 'center';
-      ctx.fillText('dealcollab.org', qrX + qrSize / 2, qrY + qrSize + 22);
+      ctx.fillText('dealcollab.org', qrX + qrSize / 2, qrY + qrSize + 18);
     } catch (err) {
       console.error('Failed to render QR code on canvas:', err);
     }
+
+    // 8. Bottom Golden Divider 3
+    ctx.fillStyle = '#EFD2A5';
+    ctx.fillRect(28, 1012, 812, 2);
 
     return canvas;
   };
