@@ -679,3 +679,16 @@ export function detectHelpQuery(text: string): boolean {
   if (hit) console.log('[DETECTOR] Help query detected');
   return hit;
 }
+
+// ─────────────────────────────────────────────────────────────
+// CANONICAL WELCOME & BARE GREETINGS
+// ─────────────────────────────────────────────────────────────
+
+export const CANONICAL_WELCOME_MESSAGE =
+  "Welcome! I'm DealCollab AI, here to assist you with business deals, M&A mandates, fundraising, or strategic partnerships. Please share what you're currently working on or any specific requirements you have.";
+
+export function isBareGreeting(text: string): boolean {
+  if (!text) return false;
+  const trimmed = text.trim();
+  return /^(hi+|hello+|hey+|heyy+|greetings|namaste|good\s+(morning|afternoon|evening)|start)\s*[!.]*$/i.test(trimmed);
+}

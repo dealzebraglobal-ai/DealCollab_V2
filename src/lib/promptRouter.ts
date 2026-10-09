@@ -42,7 +42,10 @@ import {
   detectGatewaySector,
   detectHelpQuery,
   detectContractManufacturingExposure,
+  isBareGreeting,
+  CANONICAL_WELCOME_MESSAGE,
 } from './detectors';
+export { isBareGreeting, CANONICAL_WELCOME_MESSAGE } from './detectors';
 import {
   createBlankState,
   updateStateFromExtraction,
@@ -278,7 +281,7 @@ export function buildSystemPrompt(
     `# TURN: ${state.turn_count + 1} | REFINEMENTS USED: ${state.refinement_count}/3`,
     state.turn_count > 0
       ? `# CONVERSATION CONTINUITY: You are on turn ${state.turn_count + 1}. The initial greeting has ALREADY occurred earlier in this session. NEVER repeat or output the initial welcome greeting. Address the user's specific statement or question directly, conversationally, and insightfully.`
-      : `# CONVERSATION START: Turn 1. Welcome the user and invite them to share what they are working on.`,
+      : `# CONVERSATION START: Turn 1. If the user provides a greeting or starts the chat, welcome them with EXACTLY:\n#    "${CANONICAL_WELCOME_MESSAGE}"`,
     `# M4 QUESTIONS ASKED THIS SESSION: ${state.m4_questions_asked}`,
     `# MODULES IN THIS PROMPT: ${modules.map(m => m.key).join(', ')}`,
     intermediaryLine,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveCompletion } from '../resolveCompletion';
+import { resolveCompletion, CANONICAL_WELCOME_MESSAGE } from '../resolveCompletion';
 import { baseState, ext } from './_helpers';
 
 // Convenience: candidateState defaults to the storedState (no pre-detection effect)
@@ -61,6 +61,14 @@ describe('resolveCompletion — quality gate funnel (correct behavior)', () => {
     expect(r.reason).toBe('not-finalized');
     expect(r.messageOverride).toBeNull();
     expect(r.extraction.message).toBe('Yes, you can upload your teaser here!');
+  });
+
+  it('B4. Turn 1 bare greeting ("hi") → returns CANONICAL_WELCOME_MESSAGE', () => {
+    const stored = baseState({ turn_count: 0, phase: 'ENTRY' });
+    const r = run({ storedState: stored, candidateState: stored, message: 'hi', extraction: ext({ is_complete: false, message: 'Some other message' }) });
+    expect(r.messageOverride).toBe(CANONICAL_WELCOME_MESSAGE);
+    expect(r.extraction.message).toBe(CANONICAL_WELCOME_MESSAGE);
+    expect(r.extraction.message).toContain("Welcome! I'm DealCollab AI");
   });
 
   it('N. BUY_SIDE full set → quality PASS → INTENT_VALIDATION', () => {

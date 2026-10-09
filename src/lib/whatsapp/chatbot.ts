@@ -18,6 +18,7 @@ import {
 import { formatMatchScore } from "@/utils/formatters";
 import { newWaCtx, waLog, describePgError, type WaCtx } from "./webhookDiagnostics";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { isBareGreeting } from "@/lib/detectors";
 
 const MATCH_PAGE_SIZE = 3;
 const MATCH_ROW_FETCH_LIMIT = 12;
@@ -446,23 +447,19 @@ export async function processIncomingMessage(
   }
 
   const isResetCommand = command.type === "RESET";
+  const isGreeting = isBareGreeting(text);
 
   let activeChatId: string | undefined = latestSession
     ? latestSession.id
     : undefined;
   let messageToSend = text;
 
-  // Only an EXPLICIT reset command starts a fresh session. A mandate being
-  // marked complete does NOT mean the WhatsApp conversation is over — the
-  // shared pipeline (resolveCompletion.ts's is_captured terminal lock)
-  // already handles "mandate captured, user says something else" by keeping
-  // the same session and returning a fixed steady-state status line.
-  // Force-resetting here on every post-capture message used to wipe that
-  // context and restart intake from scratch on any follow-up.
-  if (isResetCommand) {
+  // An explicit reset command OR a bare greeting ("Hi", "Hello") starts a fresh session.
+  // This ensures WhatsApp users can always start a new intake/mandate naturally by typing "Hi".
+  if (isResetCommand || isGreeting) {
     if (latestSession) {
       console.log(
-        `[WHATSAPP] Reset requested for session ${latestSession.id}. Starting fresh session.`,
+        `[WHATSAPP] ${isGreeting ? 'Greeting' : 'Reset'} received for session ${latestSession.id}. Starting fresh session.`,
       );
       await db
         .update(chatSessions)
@@ -470,12 +467,13 @@ export async function processIncomingMessage(
           state: {
             ...(latestSession.state as Record<string, unknown>),
             is_complete: true,
+            phase: 'CLOSURE',
           },
         })
         .where(eq(chatSessions.id, latestSession.id));
     }
     activeChatId = undefined;
-    messageToSend = "Hi";
+    messageToSend = text;
   }
 
   // 3. Document ingestion (if attachment present)

@@ -33,7 +33,8 @@
  * messageOverride } instead of the in-line mutations.
  */
 
-import { detectFrictionSignal, detectConfirmation } from './detectors';
+import { detectFrictionSignal, detectConfirmation, isBareGreeting, CANONICAL_WELCOME_MESSAGE } from './detectors';
+export { CANONICAL_WELCOME_MESSAGE, isBareGreeting };
 import { computeQualityGate } from './qualityGate';
 import { updateStateFromExtraction } from './stateManager';
 import type { RouterState, DealIntent } from './types';
@@ -377,6 +378,8 @@ export function resolveCompletion(input: ResolveCompletionInput): ResolveComplet
       } else {
         messageOverride = computeQualityGate(updatedState).message;  // "to register this mandate we need: X"
       }
+    } else if (isBareGreeting(message) && !updatedState.intent && !updatedState.sector && updatedState.turn_count <= 1) {
+      messageOverride = CANONICAL_WELCOME_MESSAGE;
     }
     if (messageOverride) {
       extraction.message = messageOverride;
