@@ -659,6 +659,11 @@ const HELP_QUERY_SIGNALS = [
   'can i attach', 'send a pdf', 'send a document', 'attach a file', 'attach pdf',
   'pdf or jpg', 'pdf format', 'jpg format', 'image format', 'send document',
   'upload mandate', 'upload mandates',
+  // identity / about DealCollab
+  'tell me about yourself', 'about yourself', 'who are you', 'what are you',
+  'what is dealcollab', 'what do you do', 'who made you', 'about you',
+  'introduce yourself', 'can you tell me about yourself', 'what is this platform',
+  'how can you help', 'how do you work', 'what is this bot',
 ];
 
 export function detectHelpQuery(text: string): boolean {
