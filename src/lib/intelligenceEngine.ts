@@ -248,7 +248,7 @@ export async function processIntelligence(
 
   // callAI validates the raw string before returning (HTML guard, fence strip).
   // Any error propagates to route.ts which wraps it in a 502 response.
-  const content = await callAI(aiMessages, 800);
+  const content = await callAI(aiMessages, 500);
 
   try {
     return JSON.parse(content) as IntelligenceState;

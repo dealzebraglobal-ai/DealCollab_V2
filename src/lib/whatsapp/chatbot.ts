@@ -577,18 +577,16 @@ export async function processIncomingMessage(
   }
   waLog(ctx, "AI_REQUEST", "SUCCESS", { isComplete: result.isComplete, hasProposal: !!result.proposalId });
 
-  console.log("[Wappbiz Chatbot] Response generated");
-
-  // 4. Stamp source once a fresh session exists (runChatTurn already sets
-  // whatsapp_phone_number on creation; this only backfills the provider tag).
-  await db
-    .update(chatSessions)
-    .set({ source: provider === "meta" ? "WHATSAPP" : "WHATSAPP-WAPPBIZ" })
-    .where(eq(chatSessions.id, result.chatId));
-
-  // 5. Send AI reply back via WhatsApp
+  // 4. Send AI reply back via WhatsApp IMMEDIATELY so the user receives it without waiting
   await reply(result.message);
   console.log("[Wappbiz] Response sent");
+
+  // 5. Stamp source asynchronously / non-blocking
+  void db
+    .update(chatSessions)
+    .set({ source: provider === "meta" ? "WHATSAPP" : "WHATSAPP-WAPPBIZ" })
+    .where(eq(chatSessions.id, result.chatId))
+    .catch((err) => console.error("[Wappbiz] Failed to stamp session source:", err));
 
   // 6. If matching counterparties were found, send page 1 of the persisted
   //    match rows. Reads the same proposal_matches table "show more" pages —
